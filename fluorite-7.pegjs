@@ -232,8 +232,8 @@
       m("_PLUS", e => "(vm.add(" + e.code(0) + "," + e.code(1) + "))");
       m("_MINUS", e => "(" + e.code(0) + "-" + e.code(1) + ")");
       m("_AMPERSAND", e => "(" + e.code(0) + ".toString()+" + e.code(1) + ")");
-      m("_TILDE", e => "(vm.range(" + e.code(0) + "," + e.code(1) + "))");
-      m("_PERIOD2", e => "(vm.rangeOpened(" + e.code(0) + "," + e.code(1) + "))");
+      m("_TILDE", e => "(vm.rangeOpened(" + e.code(0) + "," + e.code(1) + "))");
+      m("_PERIOD2", e => "(vm.range(" + e.code(0) + "," + e.code(1) + "))");
       m("_LESS2", e => "(vm.curryLeft(" + e.code(0) + ",[" + as2c2(e.pc(), e.node().getArgument(1)) + "]))");
       m("_GREATER2", e => "(vm.curryRight(" + e.code(0) + ",[" + as2c2(e.pc(), e.node().getArgument(1)) + "]))");
       m("_AMPERSAND2", e => "(function(){var a=" + e.code(0) + ";return !vm.toBoolean(a)?a:" + e.code(1) + "}())");
