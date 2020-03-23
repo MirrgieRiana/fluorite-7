@@ -1,0 +1,23 @@
+{
+  "name": "fluorite-7",
+  "version": "1.0.0",
+  "description": "",
+  "main": "fluorite-7.js",
+  "dependencies": {
+    "pegjs": "0.10.0"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/MirrgieRiana/fluorite-7.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/MirrgieRiana/fluorite-7/issues"
+  },
+  "homepage": "https://github.com/MirrgieRiana/fluorite-7#readme"
+}

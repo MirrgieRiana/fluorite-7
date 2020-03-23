@@ -1,2 +1,2 @@
 #!/usr/bin/env bash
-pegjs fluorite-7.pegjs
+node_modules/pegjs/bin/pegjs --cache fluorite-7.pegjs
