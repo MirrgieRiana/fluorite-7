@@ -1017,7 +1017,7 @@ Root
 //
 
 NestedComment
-  = "/+" (NestedComment / (!("+/" / "+/") .))* "+/"
+  = "/+" (NestedComment / (!("+/" / "/+") .))* "+/"
 
 _ "Comment"
   = ( [ \t\r\n]+
