@@ -202,6 +202,13 @@
 
         return stream.toArray().join(delimiter);
       }));
+      c("JSON", new FluoriteLambda((vm, args) => {
+        var value = args[0];
+        if (value === undefined) throw new Error("Illegal argument");
+        var outputs = [];
+        vm.writeAsJson(value, string => outputs[outputs.length] = string);
+        return outputs.join();
+      }));
       c("REVERSE", new FluoriteLambda((vm, args) => {
         var stream = args[0];
         if (stream === undefined) throw new Error("Illegal argument");
@@ -504,6 +511,10 @@
         return array[this.toNumber(index)];
       }
       throw new Error("Illegal argument: " + array + ", " + index);
+    }
+
+    writeAsJson(value, out) {
+      out(JSON.stringify(value)); // TODO
     }
 
   }
