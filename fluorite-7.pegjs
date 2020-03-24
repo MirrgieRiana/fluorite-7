@@ -1018,6 +1018,7 @@ Root
 
 NestedComment
   = "/+" (NestedComment / (!("+/" / "/+") .))+ "+/"
+// TODO /+++ +++/ 的なの
 
 _ "Comment"
   = ( [ \t\r\n]+
