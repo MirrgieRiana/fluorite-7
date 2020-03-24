@@ -191,6 +191,39 @@
         }
         return result;
       }));
+      c("MUL", new FluoriteLambda((vm, args) => {
+        var stream = args[0];
+        if (stream === undefined) throw new Error("Illegal argument");
+        stream = vm.toStream(stream);
+
+        var result = 1;
+        while (true) {
+          var next = stream.next();
+          if (next === undefined) break;
+          result *= vm.toNumber(next);
+        }
+        return result;
+      }));
+      c("ARRAY", new FluoriteLambda((vm, args) => {
+        var value = args[0];
+        if (value === undefined) throw new Error("Illegal argument");
+        return vm.toStream(value).toArray();
+      }));
+      c("STRING", new FluoriteLambda((vm, args) => {
+        var value = args[0];
+        if (value === undefined) throw new Error("Illegal argument");
+        return vm.toString(value);
+      }));
+      c("NUMBER", new FluoriteLambda((vm, args) => {
+        var value = args[0];
+        if (value === undefined) throw new Error("Illegal argument");
+        return vm.toNumber(value);
+      }));
+      c("BOOLEAN", new FluoriteLambda((vm, args) => {
+        var value = args[0];
+        if (value === undefined) throw new Error("Illegal argument");
+        return vm.toBoolean(value);
+      }));
       c("JOIN", new FluoriteLambda((vm, args) => {
         var delimiter = args[1];
         if (delimiter === undefined) delimiter = ",";
