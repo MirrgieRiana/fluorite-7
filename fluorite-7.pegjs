@@ -1,6 +1,20 @@
 
 {
 
+  class Fluorite7 {
+	constructor(node) {
+      this.node = node;
+    }
+	createParserContext() {
+      return new FluoriteParserContext();
+    }
+	getNode() {
+      return this.node;
+    }
+  }
+
+  //
+
   class Fluorite {
 
   }
@@ -924,7 +938,7 @@ RootDemonstration
   }
 
 Root
-  = _ main:Expression _ { return main; }
+  = _ main:Expression _ { return new Fluorite7(main); }
 
 //
 
@@ -1246,4 +1260,3 @@ Arguments
 
 Expression
   = Arguments
-
