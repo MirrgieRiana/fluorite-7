@@ -1016,10 +1016,15 @@ Root
 
 //
 
+NestedComment
+  = "/+" (NestedComment / (!("+/" / "+/") .))* "+/"
+
 _ "Comment"
   = ( [ \t\r\n]+
-    / "#!" [^\r\n]*
+    / "#" [^\r\n]*
     / "//" [^\r\n]*
+    / "/*" (!"*/" .)* "*/"
+    / NestedComment
   )*
 
 TokenInteger "Integer"
