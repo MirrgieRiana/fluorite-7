@@ -254,7 +254,7 @@
       m("_MINUS", e => "(" + e.code(0) + "-" + e.code(1) + ")");
       m("_AMPERSAND", e => "(" + e.code(0) + ".toString()+" + e.code(1) + ")");
       m("_TILDE", e => "(vm.rangeOpened(" + e.code(0) + "," + e.code(1) + "))");
-      m("_PERIOD2", e => "(vm.range(" + e.code(0) + "," + e.code(1) + "))");
+      m("_PERIOD2", e => "(vm.rangeClosed(" + e.code(0) + "," + e.code(1) + "))");
       m("_LESS2", e => "(vm.curryLeft(" + e.code(0) + ",[" + as2c2(e.pc(), e.node().getArgument(1)) + "]))");
       m("_GREATER2", e => "(vm.curryRight(" + e.code(0) + ",[" + as2c2(e.pc(), e.node().getArgument(1)) + "]))");
       m("_AMPERSAND2", e => "(function(){var a=" + e.code(0) + ";return !vm.toBoolean(a)?a:" + e.code(1) + "}())");
@@ -382,11 +382,11 @@
     }
 
     rangeOpened(start, end) {
-      return new FluoriteStreamRange(this.toNumber(start), this.toNumber(end) - 1);
+      return new FluoriteStreamRangeOpened(this.toNumber(start), this.toNumber(end));
     }
 
-    range(start, end) {
-      return new FluoriteStreamRange(this.toNumber(start), this.toNumber(end));
+    rangeClosed(start, end) {
+      return new FluoriteStreamRangeClosed(this.toNumber(start), this.toNumber(end));
     }
 
     toStream(value) {
@@ -789,6 +789,36 @@
       this._end = end;
       this._stepdown = end < start;
       this._i = start;
+    }
+
+  }
+
+  class FluoriteStreamRangeOpened extends FluoriteStreamRange {
+
+    constructor(start, end) {
+      super(start, end);
+    }
+
+    next() {
+      var result = this._i;
+
+      if (this._stepdown) {
+        if (this._i <= this._end) return undefined;
+        this._i--;
+      } else {
+        if (this._i >= this._end) return undefined;
+        this._i++;
+      }
+      
+      return result;
+    }
+
+  }
+
+  class FluoriteStreamRangeClosed extends FluoriteStreamRange {
+
+    constructor(start, end) {
+      super(start, end);
     }
 
     next() {
