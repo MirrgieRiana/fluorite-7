@@ -20,4 +20,22 @@ then
 	./compile.bash || exit 2
 fi
 
-node -e 'var a = require("./fluorite-7.js"); console.log(a.parse(process.argv[1])[1])' "$exec"
+export exec
+node - << 'END'
+var source = process.env.exec;
+var parser = require("./fluorite-7.js");
+var result = parser.parse(source);
+
+var pc = result.createParserContext();
+var node = result.getNode();
+var code = node.getCode(pc);
+var vm = pc.createVirtualMachine();
+var stream = vm.toStream(eval(code));
+
+while (true) {
+  var next = stream.next();
+  if (next === undefined) break;
+  console.log(vm.toString(next));
+}
+
+END
