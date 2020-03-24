@@ -899,7 +899,7 @@
 
 //////////////////////////////////////////////////////////////////
 
-Root
+RootDemonstration
   = _ main:Expression _ {
 
     var pc = new FluoriteParserContext();
@@ -920,9 +920,11 @@ Root
     } catch (e) {
       return ["Runtime Error", "" + e, code, main.getTree()];
     }
-
     return ["OK", resultString, result, code, main.getTree()];
   }
+
+Root
+  = _ main:Expression _ { return main; }
 
 //
 
