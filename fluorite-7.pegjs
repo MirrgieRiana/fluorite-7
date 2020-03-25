@@ -181,6 +181,18 @@
         }
         throw new Error("Illegal argument");
       }));
+      c("OUT", new FluoriteLambda((vm, args) => {
+        if (args.length == 1) {
+          var stream = vm.toStream(args[0]);
+          while (true) {
+            var next = stream.next();
+            if (next === undefined) break;
+            console.log(vm.toString(next));
+          }
+          return null;
+        }
+        throw new Error("Illegal argument");
+      }));
       c("TRUE", true);
       c("FALSE", false);
       c("NULL", null);
@@ -286,6 +298,10 @@
         var alias = e.pc().getAliasOrUndefined(e.node().getLocation(), key);
         if (alias === undefined) return JSON.stringify(key); // throw new Error("No such alias '" + key + "'");
         return alias.getCode(e.pc(), e.node().getLocation());
+      });
+      m("_LITERAL_STRING", e => {
+        if (!(e.node().getArgument(0) instanceof FluoriteNodeTokenString)) throw new Error("Illegal argument");
+        return "(" + JSON.stringify(e.node().getArgument(0).getValue()) + ")";
       });
       m("_ROUND", e => e.code(0));
       m("_EMPTY_ROUND", e => "(vm.empty())");
@@ -658,6 +674,14 @@
   }
 
   class FluoriteNodeTokenIdentifier extends FluoriteNodeToken {
+
+    constructor(location, value, source) {
+      super(location, value, source);
+    }
+
+  }
+
+  class FluoriteNodeTokenString extends FluoriteNodeToken {
 
     constructor(location, value, source) {
       super(location, value, source);
@@ -1058,7 +1082,7 @@ TokenBasedInteger "BasedInteger"
       / [bB] { return 2; }
       / [oO] { return 8; }
       / [hH] { return 16; }
-    ) "#" body:([0-9a-zA-Z] [0-9a-zA-Z_]* { return text(); }) {
+    ) "#" body:$([0-9a-zA-Z] [0-9a-zA-Z_]*) {
     if (base < 2) throw new Error("Illegal base: " + base);
     if (base > 36) throw new Error("Illegal base: " + base);
     var number = parseInt(body.replace(/_/g, ""), base);
@@ -1075,6 +1099,13 @@ TokenFloat "Float"
 TokenIdentifier "Identifier"
   = [a-zA-Z_] [a-zA-Z0-9_]* { return new FluoriteNodeTokenIdentifier(location(), text(), text()); }
 
+TokenStringCharacter
+  = [^'\\]
+  / "\\" main:. { return main; }
+
+TokenString "String"
+  = "'" main:TokenStringCharacter* "'" { return new FluoriteNodeTokenString(location(), main.join(""), text()); }
+
 //
 
 LiteralInteger
@@ -1089,11 +1120,15 @@ LiteralFloat
 LiteralIdentifier
   = main:TokenIdentifier { return new FluoriteNodeMacro(location(), "_LITERAL_IDENTIFIER", [main]); }
 
+LiteralString
+  = main:TokenString { return new FluoriteNodeMacro(location(), "_LITERAL_STRING", [main]); }
+
 Literal
   = LiteralFloat
   / LiteralBasedInteger
   / LiteralInteger
   / LiteralIdentifier
+  / LiteralString
 
 //
 
