@@ -160,6 +160,27 @@
       };
       c("PI", Math.PI);
       c("E", Math.E);
+      c("SIN", new FluoriteLambda((vm, args) => {
+        if (args.length == 1) {
+          return Math.sin(vm.toNumber(args[0]));
+        }
+        throw new Error("Illegal argument");
+      }));
+      c("COS", new FluoriteLambda((vm, args) => {
+        if (args.length == 1) {
+          return Math.cos(vm.toNumber(args[0]));
+        }
+        throw new Error("Illegal argument");
+      }));
+      c("LOG", new FluoriteLambda((vm, args) => {
+        if (args.length == 1) {
+          return Math.log(vm.toNumber(args[0]));
+        }
+        if (args.length == 2) {
+          return Math.log(vm.toNumber(args[0])) / Math.log(vm.toNumber(args[1]));
+        }
+        throw new Error("Illegal argument");
+      }));
       c("TRUE", true);
       c("FALSE", false);
       c("NULL", null);
