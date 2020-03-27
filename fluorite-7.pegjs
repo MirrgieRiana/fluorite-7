@@ -411,7 +411,7 @@
       m("_PERCENT", e => "(" + e.code(0) + "%" + e.code(1) + ")");
       m("_PLUS", e => "(vm.add(" + e.code(0) + "," + e.code(1) + "))");
       m("_MINUS", e => "(" + e.code(0) + "-" + e.code(1) + ")");
-      m("_AMPERSAND", e => "(" + e.code(0) + ".toString()+" + e.code(1) + ")");
+      m("_AMPERSAND", e => "(vm.toString(" + e.code(0) + ")+vm.toString(" + e.code(1) + "))");
       m("_TILDE", e => "(vm.rangeOpened(" + e.code(0) + "," + e.code(1) + "))");
       m("_PERIOD2", e => "(vm.rangeClosed(" + e.code(0) + "," + e.code(1) + "))");
       m("_LESS2", e => "(vm.curryLeft(" + e.code(0) + ",[" + as2c2(e.pc(), e.node().getArgument(1)) + "]))");
@@ -526,90 +526,21 @@
       this.constants = constants;
     }
 
-    empty() {
-      return new FluoriteStreamEmpty();
-    }
-
-    rangeOpened(start, end) {
-      return new FluoriteStreamRangeOpened(this.toNumber(start), this.toNumber(end));
-    }
-
-    rangeClosed(start, end) {
-      return new FluoriteStreamRangeClosed(this.toNumber(start), this.toNumber(end));
-    }
-
-    toStream(value) {
-      if (value instanceof FluoriteStream) {
-        return value;
-      } else {
-        return new FluoriteStreamScalar(value);
-      }
-    }
-
-    toStreamFromArray(array) {
-      if (!(array instanceof Array)) throw new Error("Illegal argument: " + array);
-      return new FluoriteStreamValues(array);
-    }
-
-    toStreamFromValues(values) {
-      return new FluoriteStreamValues(values);
-    }
-
-    map(stream, func) {
-      return new FluoriteStreamMap(stream, func);
-    }
-
-    call(lambda, args) {
-      if (!(lambda instanceof FluoriteLambda)) throw new Error("Cannot call a non-lambda object: " + lambda);
-      return lambda.call(this, args);
-    }
-
     toNumber(value) {
       if (Number.isFinite(value)) return value;
       if (value === null) return 0;
       if (value === true) return 1;
       if (value === false) return 0;
-      if (value instanceof Array) {
-        return value.length;
-      }
+      if (value instanceof Array) return value.length;
       if (typeof value === 'string' || value instanceof String) {
         var result = Number(value);
-        if (Number.isNaN(result)) throw new Error("Cannot convert to number: " + value);
-        return result;
-      }
-      throw new Error("Cannot convert to number: " + value);
-    }
-
-    createLambda(func) {
-      return new FluoriteLambda(func);
-    }
-
-    curryLeft(lambda, values) {
-      if (!(lambda instanceof FluoriteLambda)) throw new Error("Cannot curry a non-lambda object: " + lambda);
-      return lambda.curryLeft(values);
-    }
-
-    curryRight(lambda, values) {
-      if (!(lambda instanceof FluoriteLambda)) throw new Error("Cannot curry a non-lambda object: " + lambda);
-      return lambda.curryRight(values);
-    }
-
-    toString(value) {
-      if (value === undefined) return super.toString(); // VMを文字列化する
-      if (value === null) return "NULL";
-      if (value === true) return "TRUE";
-      if (value === false) return "FALSE";
-      if (value instanceof Array) {
-        return value.map(a => this.toString(a)).join(",");
+        if (!Number.isNaN(result)) return result;
       }
       if (value instanceof FluoriteObject) {
-        var strings = [];
-        for (var key in value.map) {
-          strings.push(key + ":" + this.toString(value.map[key]));
-        }
-        return strings.join(",");
+        var res = this.getValueFromObject(value, "TO_NUMBER");
+        if (res !== null) return this.toNumber(this.call(res, [value]));
       }
-      return value.toString();
+      throw new Error("Cannot convert to number: " + value);
     }
 
     toBoolean(value) {
@@ -617,13 +548,31 @@
       if (value === null) return false;
       if (value === false) return false;
       if (value === "") return false;
-      if (value instanceof Array) {
-        if (value.length == 0) return false;
-      }
-      if (value instanceof FluoriteStream) {
-        throw new Error("Cannot convert to boolean: " + value);
+      if (value instanceof Array) return value.length != 0;
+      if (value instanceof FluoriteStream) throw new Error("Cannot convert to boolean: " + value);
+      if (value instanceof FluoriteObject) {
+        var res = this.getValueFromObject(value, "TO_BOOLEAN");
+        if (res !== null) return this.toBoolean(this.call(res, [value]));
       }
       return true;
+    }
+
+    toString(value) {
+      if (value === undefined) return super.toString(); // VMを文字列化する
+      if (value === null) return "NULL";
+      if (value === true) return "TRUE";
+      if (value === false) return "FALSE";
+      if (value instanceof Array) return value.map(a => this.toString(a)).join(",");
+      if (value instanceof FluoriteObject) {
+        var res = this.getValueFromObject(value, "TO_STRING");
+        if (res !== null) return this.toString(this.call(res, [value]));
+      }
+      return value.toString();
+    }
+
+    toStream(value) {
+      if (value instanceof FluoriteStream) return value;
+      return new FluoriteStreamScalar(value);
     }
 
     add(a, b) {
@@ -662,6 +611,41 @@
       throw new Error("Illegal argument: " + a + ", " + b);
     }
 
+    writeAsJson(value, out) {
+      out(JSON.stringify(value)); // TODO
+    }
+
+    //
+
+    empty() {
+      return new FluoriteStreamEmpty();
+    }
+
+    rangeOpened(start, end) {
+      return new FluoriteStreamRangeOpened(this.toNumber(start), this.toNumber(end));
+    }
+
+    rangeClosed(start, end) {
+      return new FluoriteStreamRangeClosed(this.toNumber(start), this.toNumber(end));
+    }
+
+    toStreamFromValues(values) {
+      return new FluoriteStreamValues(values);
+    }
+
+    map(stream, func) {
+      return new FluoriteStreamMap(stream, func);
+    }
+
+    //
+
+    toStreamFromArray(array) {
+      if (array instanceof Array) {
+        return new FluoriteStreamValues(array);
+      }
+      throw new Error("Illegal argument: " + array);
+    }
+
     getFromArray(array, index) {
       if (array instanceof Array) {
         return array[this.toNumber(index)];
@@ -669,12 +653,37 @@
       throw new Error("Illegal argument: " + array + ", " + index);
     }
 
-    writeAsJson(value, out) {
-      out(JSON.stringify(value)); // TODO
+    //
+
+    createLambda(func) {
+      return new FluoriteLambda(func);
     }
 
+    call(lambda, args) {
+      if (lambda instanceof FluoriteLambda) {
+        return lambda.call(this, args);
+      }
+      throw new Error("Cannot call a non-lambda object: " + lambda);
+    }
+
+    curryLeft(lambda, values) {
+      if (lambda instanceof FluoriteLambda) {
+        return lambda.curryLeft(values);
+      }
+      throw new Error("Cannot curry a non-lambda object: " + lambda);
+    }
+
+    curryRight(lambda, values) {
+      if (lambda instanceof FluoriteLambda) {
+        return lambda.curryRight(values);
+      }
+      throw new Error("Cannot curry a non-lambda object: " + lambda);
+    }
+
+    //
+
     createObject(parent, map) {
-      return new FluoriteObject(parent, map);
+      return new FluoriteObject(this, parent, map);
     }
 
     getValueFromObject(object, key) {
@@ -707,7 +716,7 @@
           }
           objectClass = objectClass.parent;
         }
-        throw new Error("No such method: " + key + " of" + object);
+        throw new Error("No such method: " + key + " of " + object);
       }
       throw new Error("Illegal argument: " + object + ", " + key);
     }
@@ -950,7 +959,25 @@
 
   //
 
-  class FluoriteStream {
+  class FluoriteValue {
+
+    toString() {
+      throw new Error("Not Implemented");
+    }
+
+    toJSON() {
+      throw new Error("Not Implemented");
+    }
+
+  }
+
+  //
+
+  class FluoriteStream extends FluoriteValue {
+
+    constructor() {
+      super();
+    }
 
     toArray() {
       var result = [];
@@ -967,6 +994,10 @@
     }
 
     toString() {
+      return "[FluoriteStream]";
+    }
+
+    toJSON() {
       return "[FluoriteStream]";
     }
 
@@ -1119,9 +1150,10 @@
 
   //
 
-  class FluoriteLambda {
+  class FluoriteLambda extends FluoriteValue {
 
     constructor(func) {
+      super();
       this._func = func;
     }
 
@@ -1151,15 +1183,33 @@
       return "[FluoriteLambda]";
     }
 
+    toJSON() {
+      return "[FluoriteLambda]";
+    }
+
   }
 
   //
 
-  class FluoriteObject {
+  class FluoriteObject extends FluoriteValue {
 
-    constructor(parent, map) {
+    constructor(vm, parent, map) {
+      super();
+      this.vm = vm;
       this.parent = parent;
       this.map = map;
+    }
+
+    toString() {
+      var strings = [];
+      for (var key in this.map) {
+        strings.push(key + ":" + this.vm.toString(this.map[key]));
+      }
+      return strings.join(",");
+    }
+
+    toJSON() {
+      return this.map;
     }
 
   }
