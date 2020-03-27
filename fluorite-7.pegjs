@@ -333,53 +333,43 @@
       m("_QUESTION_COLON", e => "(function(){var a=" + e.code(0) + ";return a!==null?a:" + e.code(1) + "}())");
       m("_MINUS_GREATER", e => {
 
-        var args = undefined;
-        if (e.node().getArgument(0) instanceof FluoriteNodeMacro) {
-          if (e.node().getArgument(0).getKey() === "_LITERAL_IDENTIFIER") {
-            if (e.node().getArgument(0).getArgument(0) instanceof FluoriteNodeTokenIdentifier) {
-              args = [e.node().getArgument(0).getArgument(0).getValue()];
-            }
+        // 引数部全体を括弧で囲んでもよい
+        var nodeArgs = e.node().getArgument(0);
+        if (nodeArgs instanceof FluoriteNodeMacro) {
+          if (nodeArgs.getKey() === "_ROUND") {
+            nodeArgs = nodeArgs.getArgument(0);
           }
         }
-        if (e.node().getArgument(0) instanceof FluoriteNodeMacro) {
-          if (e.node().getArgument(0).getKey() === "_EMPTY_ROUND") {
-            args = [];
+
+        // 引数部はコロン、セミコロン、空括弧であってもよい
+        var nodesArg = undefined;
+        if (nodeArgs instanceof FluoriteNodeMacro) {
+          if (nodeArgs.getKey() === "_SEMICOLON") {
+            nodesArg = nodeArgs.getArguments();
+          } else if (nodeArgs.getKey() === "_COMMA") {
+            nodesArg = nodeArgs.getArguments();
+          } else if (nodeArgs.getKey() === "_EMPTY_ROUND") {
+            nodesArg = [];
+          } else {
+            nodesArg = [nodeArgs];
           }
         }
-        if (e.node().getArgument(0) instanceof FluoriteNodeMacro) {
-          if (e.node().getArgument(0).getKey() === "_ROUND") {
-            if (e.node().getArgument(0).getArgument(0) instanceof FluoriteNodeMacro) {
-              if (e.node().getArgument(0).getArgument(0).getKey() === "_SEMICOLON") {
-                args = [];
-                var as = e.node().getArgument(0).getArgument(0).getArguments();
-                for (var i = 0; i < as.length; i++) {
-                  var a = as[i];
-                  if (a instanceof FluoriteNodeMacro) {
-                    if (a.getKey() === "_LITERAL_IDENTIFIER") {
-                      if (a.getArgument(0) instanceof FluoriteNodeTokenIdentifier) {
-                        args.push(a.getArgument(0).getValue());
-                        continue;
-                      }
-                    }
-                  }
-                  throw new Error("Illegal lambda argument: " + a);
-                }
+        if (nodesArg === undefined) throw new Error("Illegal lambda argument");
+
+        // 引数は識別子でなければならない
+        var args = [];
+        for (var i = 0; i < nodesArg.length; i++) {
+          var nodeArg = nodesArg[i];
+          if (nodeArg instanceof FluoriteNodeMacro) {
+            if (nodeArg.getKey() === "_LITERAL_IDENTIFIER") {
+              if (nodeArg.getArgument(0) instanceof FluoriteNodeTokenIdentifier) {
+                args.push(nodeArg.getArgument(0).getValue());
+                continue;
               }
             }
           }
+          throw new Error("Illegal lambda argument: " + nodeArg);
         }
-        if (e.node().getArgument(0) instanceof FluoriteNodeMacro) {
-          if (e.node().getArgument(0).getKey() === "_ROUND") {
-            if (e.node().getArgument(0).getArgument(0) instanceof FluoriteNodeMacro) {
-              if (e.node().getArgument(0).getArgument(0).getKey() === "_LITERAL_IDENTIFIER") {
-                if (e.node().getArgument(0).getArgument(0).getArgument(0) instanceof FluoriteNodeTokenIdentifier) {
-                  args = [e.node().getArgument(0).getArgument(0).getArgument(0).getValue()];
-                }
-              }
-            }
-          }
-        }
-        if (args === undefined) throw new Error("Illegal lambda argument: " + e.node().getArgument(0));
 
         var aliases = args.map(a => new FluoriteAliasVariable(e.pc().allocateVariableId()));
 
@@ -1194,7 +1184,7 @@ Left
     ( "+" { return [location(), "_LEFT_PLUS"]; }
     / "-" { return [location(), "_LEFT_MINUS"]; }
     / "?" { return [location(), "_LEFT_QUESTION"]; }
-    / "!" { return [location(), "_LEFT_EXCLAMATION"]; }
+    / "!" !"!" { return [location(), "_LEFT_EXCLAMATION"]; }
     / "&" { return [location(), "_LEFT_AMPERSAND"]; }
   ) _ tail:Left {
     return new FluoriteNodeMacro(head[0], head[1], [tail]);
@@ -1311,23 +1301,11 @@ Condition
   }
   / Or
 
-Lambda
-  = head:(Condition _
-    ( "->" { return [location(), "_MINUS_GREATER"]; }
-  ) _)* tail:Condition {
-    var result = tail;
-    for (var i = head.length - 1; i >= 0; i--) {
-      var h = head[i];
-      result = new FluoriteNodeMacro(h[2][0], h[2][1], [h[0], result]);
-    }
-    return result;
-  }
-
 Stream
-  = head:(Lambda _)? "," tail:
-    ( _ main:Lambda _ "," { return main; }
+  = head:(Condition _)? "," tail:
+    ( _ main:Condition _ "," { return main; }
     / _ "," { return null; }
-  )* last:(_ Lambda)? {
+  )* last:(_ Condition)? {
     var result = [];
     result.push(head != null ? head[0] : new FluoriteNodeVoid(location()));
     for (var i = 0; i < tail.length; i++) {
@@ -1337,12 +1315,24 @@ Stream
     result.push(last != null ? last[1] : new FluoriteNodeVoid(location()));
     return new FluoriteNodeMacro(location(), "_COMMA", result);
   }
-  / Lambda
+  / Condition
+
+Lambda
+  = head:(Stream _
+    ( "->" { return [location(), "_MINUS_GREATER"]; }
+  ) _)* tail:Stream {
+    var result = tail;
+    for (var i = head.length - 1; i >= 0; i--) {
+      var h = head[i];
+      result = new FluoriteNodeMacro(h[2][0], h[2][1], [h[0], result]);
+    }
+    return result;
+  }
 
 Pair
-  = head:Stream tail:(_
+  = head:Lambda tail:(_
     ( ":" { return [location(), "_COLON"]; }
-  ) _ Stream)* {
+  ) _ Lambda)* {
     var result = head;
     for (var i = 0; i < tail.length; i++) {//
       var t = tail[i];
