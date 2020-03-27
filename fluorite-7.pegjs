@@ -681,9 +681,9 @@
       if (object instanceof FluoriteObject) {
         var objectClass = object;
         while (objectClass !== null) {
-          var res = objectClass.map[key];
-          if (res !== undefined) {
-            return res;
+          var descriptor = Object.getOwnPropertyDescriptor(objectClass.map, key);
+          if (descriptor !== undefined) {
+            return descriptor.value;
           }
           objectClass = objectClass.parent;
         }
@@ -696,8 +696,9 @@
       if (object instanceof FluoriteObject) {
         var objectClass = object;
         while (objectClass !== null) {
-          var res = objectClass.map[key];
-          if (res !== undefined) {
+          var descriptor = Object.getOwnPropertyDescriptor(objectClass.map, key);
+          if (descriptor !== undefined) {
+            var res = descriptor.value;
             if (res instanceof FluoriteLambda) {
               return res.curryLeft([object]);
             } else {
