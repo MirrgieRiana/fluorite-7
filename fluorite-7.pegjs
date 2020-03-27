@@ -158,6 +158,57 @@
         }
         return arg.getCode(pc);
       };
+      var getCodeToCreateFluoriteObject = (pc, nodeParent, nodeMap) => {
+
+        var codeParent;
+        if (nodeParent === null) {
+          codeParent = "null";
+        } else {
+          codeParent = nodeParent.getCode(pc);
+        }
+
+        var nodesEntry = undefined;
+        if (nodeMap === null) {
+          nodesEntry = [];
+        }
+        if (nodeMap instanceof FluoriteNodeMacro) {
+          if (nodeMap.getKey() === "_SEMICOLON") {
+            nodesEntry = nodeMap.getArguments();
+          }
+        }
+        if (nodesEntry === undefined) nodesEntry = [nodeMap];
+
+        var codesEntry = [];
+        for (var i = 0; i < nodesEntry.length; i++) {
+          var nodeEntry = nodesEntry[i];
+          if (nodeEntry instanceof FluoriteNodeMacro) {
+            if (nodeEntry.getKey() === "_COLON") {
+
+              var nodeKey = nodeEntry.getArgument(0);
+              var key = undefined;
+              if (nodeKey instanceof FluoriteNodeMacro) {
+                if (nodeKey.getKey() === "_LITERAL_IDENTIFIER") {
+                  if (nodeKey.getArgument(0) instanceof FluoriteNodeTokenIdentifier) {
+                    key = nodeKey.getArgument(0).getValue();
+                  }
+                }
+              }
+              if (key === undefined) throw new Error("Illegal object key");
+
+              var nodeValue = nodeEntry.getArgument(1);
+
+              codesEntry.push(JSON.stringify(key) + ":" + nodeValue.getCode(pc));
+              continue;
+            }
+          }
+          if (nodeEntry instanceof FluoriteNodeVoid) {
+            continue;
+          }
+          throw new Error("Illegal object pair");
+        }
+
+        return "(vm.createObject(" + codeParent + ",{" + codesEntry.join(",") + "}))";
+      };
       c("PI", Math.PI);
       c("E", Math.E);
       c("SIN", new FluoriteLambda((vm, args) => {
@@ -307,55 +358,48 @@
       m("_EMPTY_ROUND", e => "(vm.empty())");
       m("_SQUARE", e => "(vm.toStream(" + e.code(0) + ").toArray())");
       m("_EMPTY_SQUARE", e => "[]");
-      m("_CURLY", e => {
+      m("_CURLY", e => getCodeToCreateFluoriteObject(e.pc(), null, e.node().getArgument(0)));
+      m("_EMPTY_CURLY", e => getCodeToCreateFluoriteObject(e.pc(), null, null));
+      m("_PERIOD", e => {
 
-        var node = e.node().getArgument(0);
- 
-        var nodesPair = undefined;
-        if (node instanceof FluoriteNodeMacro) {
-          if (node.getKey() === "_SEMICOLON") {
-            nodesPair = node.getArguments();
-          }
-        }
-        if (nodesPair === undefined) nodesPair = [node];
+        var nodeObject = e.node().getArgument(0);
+        var nodeKey = e.node().getArgument(1);
 
-        var codesPair = [];
-        for (var i = 0; i < nodesPair.length; i++) {
-          var nodePair = nodesPair[i];
-          if (nodePair instanceof FluoriteNodeMacro) {
-            if (nodePair.getKey() === "_COLON") {
-
-              var nodeKey = nodePair.getArgument(0);
-              var key = undefined;
-              if (nodeKey instanceof FluoriteNodeMacro) {
-                if (nodeKey.getKey() === "_LITERAL_IDENTIFIER") {
-                  if (nodeKey.getArgument(0) instanceof FluoriteNodeTokenIdentifier) {
-                    key = nodeKey.getArgument(0).getValue();
-                  }
-                }
-              }
-              if (key === undefined) throw new Error("Illegal object key");
-
-              var nodeValue = nodePair.getArgument(1);
-
-              codesPair.push(key + ":" + nodeValue.getCode(e.pc()));
-              continue;
+        var key = undefined;
+        if (nodeKey instanceof FluoriteNodeMacro) {
+          if (nodeKey.getKey() === "_LITERAL_IDENTIFIER") {
+            if (nodeKey.getArgument(0) instanceof FluoriteNodeTokenIdentifier) {
+              key = nodeKey.getArgument(0).getValue();
             }
           }
-          if (nodePair instanceof FluoriteNodeVoid) {
-            continue;
-          }
-          throw new Error("Illegal object pair");
         }
+        if (key === undefined) throw new Error("Illegal member access key");
 
-        return "({" + codesPair.join(",") + "})"
+        return "(vm.getValueFromObject(" + nodeObject.getCode(e.pc()) + "," + JSON.stringify(key) + "))"
       });
-      m("_EMPTY_CURLY", e => "({})");
-      m("_PERIOD", e => "(vm.period(" + e.code(0) + "," + e.code(1) + "))");
+      m("_COLON2", e => {
+
+        var nodeObject = e.node().getArgument(0);
+        var nodeKey = e.node().getArgument(1);
+
+        var key = undefined;
+        if (nodeKey instanceof FluoriteNodeMacro) {
+          if (nodeKey.getKey() === "_LITERAL_IDENTIFIER") {
+            if (nodeKey.getArgument(0) instanceof FluoriteNodeTokenIdentifier) {
+              key = nodeKey.getArgument(0).getValue();
+            }
+          }
+        }
+        if (key === undefined) throw new Error("Illegal member access key");
+
+        return "(vm.getDelegate(" + nodeObject.getCode(e.pc()) + "," + JSON.stringify(key) + "))";
+      });
       m("_RIGHT_ROUND", e => "(vm.call(" + e.code(0) + ", [" + as2c(e.pc(), e.node().getArgument(1)) + "]))");
       m("_RIGHT_EMPTY_ROUND", e => "(vm.call(" + e.code(0) + ", []))");
       m("_RIGHT_SQUARE", e => "(vm.getFromArray(" + e.code(0) + "," + e.code(1) + "))");
       m("_RIGHT_EMPTY_SQUARE", e => "(vm.toStreamFromArray(" + e.code(0) + "))");
+      m("_RIGHT_CURLY", e => getCodeToCreateFluoriteObject(e.pc(), e.node().getArgument(0), e.node().getArgument(1)));
+      m("_RIGHT_EMPTY_CURLY", e => getCodeToCreateFluoriteObject(e.pc(), e.node().getArgument(0), null));
       m("_LEFT_PLUS", e => "(vm.toNumber(" + e.code(0) + "))");
       m("_LEFT_MINUS", e => "(-vm.toNumber(" + e.code(0) + "))");
       m("_LEFT_QUESTION", e => "(vm.toBoolean(" + e.code(0) + "))");
@@ -558,6 +602,13 @@
       if (value instanceof Array) {
         return value.map(a => this.toString(a)).join(",");
       }
+      if (value instanceof FluoriteObject) {
+        var strings = [];
+        for (var key in value.map) {
+          strings.push(key + ":" + this.toString(value.map[key]));
+        }
+        return strings.join(",");
+      }
       return value.toString();
     }
 
@@ -622,11 +673,42 @@
       out(JSON.stringify(value)); // TODO
     }
 
-    period(a, b) {
-      if (a instanceof Object) {
-        return a[b];
+    createObject(parent, map) {
+      return new FluoriteObject(parent, map);
+    }
+
+    getValueFromObject(object, key) {
+      if (object instanceof FluoriteObject) {
+        var objectClass = object;
+        while (objectClass !== null) {
+          var res = objectClass.map[key];
+          if (res !== undefined) {
+            return res;
+          }
+          objectClass = objectClass.parent;
+        }
+        return null;
       }
-      throw new Error("Illegal argument: " + a + ", " + b);
+      throw new Error("Illegal argument: " + object + ", " + key);
+    }
+
+    getDelegate(object, key) {
+      if (object instanceof FluoriteObject) {
+        var objectClass = object;
+        while (objectClass !== null) {
+          var res = objectClass.map[key];
+          if (res !== undefined) {
+            if (res instanceof FluoriteLambda) {
+              return res.curryLeft([object]);
+            } else {
+              throw new Error("'" + key + "' of " + object + " is not a function");
+            }
+          }
+          objectClass = objectClass.parent;
+        }
+        throw new Error("No such method: " + key + " of" + object);
+      }
+      throw new Error("Illegal argument: " + object + ", " + key);
     }
 
   }
@@ -1070,6 +1152,17 @@
 
   }
 
+  //
+
+  class FluoriteObject {
+
+    constructor(parent, map) {
+      this.parent = parent;
+      this.map = map;
+    }
+
+  }
+
 }
 
 //////////////////////////////////////////////////////////////////
@@ -1222,6 +1315,7 @@ Right
     / "[" _ "]" { return [location(), "_RIGHT_EMPTY_SQUARE", null]; }
     / "{" _ "}" { return [location(), "_RIGHT_EMPTY_CURLY", null]; }
     / "." _ main:Factor { return [location(), "_PERIOD", main]; }
+    / "::" _ main:Factor { return [location(), "_COLON2", main]; }
   ))* {
     var result = head;
     for (var i = 0; i < tail.length; i++) {
