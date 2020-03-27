@@ -160,6 +160,7 @@
       };
       var getCodeToCreateFluoriteObject = (pc, nodeParent, nodeMap) => {
 
+        // 親オブジェクトの計算
         var codeParent;
         if (nodeParent === null) {
           codeParent = "null";
@@ -167,6 +168,7 @@
           codeParent = nodeParent.getCode(pc);
         }
 
+        // エントリー列の取得
         var nodesEntry = undefined;
         if (nodeMap === null) {
           nodesEntry = [];
@@ -178,9 +180,13 @@
         }
         if (nodesEntry === undefined) nodesEntry = [nodeMap];
 
-        var codesEntry = [];
+        // エントリー列の変換
+        var keys = []; // [key : string...]
+        var entries = []; // [[key : string, node : Node]...]
         for (var i = 0; i < nodesEntry.length; i++) {
           var nodeEntry = nodesEntry[i];
+
+          // 宣言文
           if (nodeEntry instanceof FluoriteNodeMacro) {
             if (nodeEntry.getKey() === "_COLON") {
 
@@ -197,17 +203,71 @@
 
               var nodeValue = nodeEntry.getArgument(1);
 
-              codesEntry.push(JSON.stringify(key) + ":" + nodeValue.getCode(pc));
+              keys.push(key);
+              entries.push([key, nodeValue]);
               continue;
             }
           }
+
+          // 代入文
+          if (nodeEntry instanceof FluoriteNodeMacro) {
+            if (nodeEntry.getKey() === "_EQUAL") {
+
+              var nodeKey = nodeEntry.getArgument(0);
+              var key = undefined;
+              if (nodeKey instanceof FluoriteNodeMacro) {
+                if (nodeKey.getKey() === "_LITERAL_IDENTIFIER") {
+                  if (nodeKey.getArgument(0) instanceof FluoriteNodeTokenIdentifier) {
+                    key = nodeKey.getArgument(0).getValue();
+                  }
+                }
+              }
+              if (key === undefined) throw new Error("Illegal object key");
+
+              var nodeValue = nodeEntry.getArgument(1);
+
+              entries.push([key, nodeValue]);
+              continue;
+            }
+          }
+
+          // 即席代入文
+          if (nodeEntry instanceof FluoriteNodeMacro) {
+            if (nodeEntry.getKey() === "_LITERAL_IDENTIFIER") {
+              if (nodeEntry.getArgument(0) instanceof FluoriteNodeTokenIdentifier) {
+                entries.push([nodeEntry.getArgument(0).getValue(), nodeEntry]);
+                continue;
+              }
+            }
+          }
+
+          // 空文
           if (nodeEntry instanceof FluoriteNodeVoid) {
             continue;
           }
+
           throw new Error("Illegal object pair");
         }
 
-        return "(vm.createObject(" + codeParent + ",{" + codesEntry.join(",") + "}))";
+        var variableId1 = pc.allocateVariableId();
+        var variableId2 = pc.allocateVariableId();
+        pc.pushFrame();
+        for (var i = 0; i < keys.length; i++) {
+          var key = keys[i];
+          pc.getFrame()[key] = new FluoriteAliasMember(variableId2, key);
+        }
+        var codes = [];
+        for (var i = 0; i < entries.length; i++) {
+          var entry = entries[i];
+          codes.push("v_" + variableId1 + "[" + JSON.stringify(entry[0]) + "]=" + entry[1].getCode(pc) + ";");
+        }
+        pc.popFrame();
+
+        var code1 = "var v_" + variableId1 + "={};";
+        var code2 = "var v_" + variableId2 + "=vm.createObject(" + codeParent + ",v_" + variableId1 + ");";
+        var code3 = codes.join("");
+        var code4 = "return v_" + variableId2;
+        return "(function(){" + code1 + code2 + code3 + code4 + "}())";
       };
       c("PI", Math.PI);
       c("E", Math.E);
@@ -683,7 +743,21 @@
     //
 
     createObject(parent, map) {
-      return new FluoriteObject(this, parent, map);
+      if (parent === null) {
+        return new FluoriteObject(this, null, map);
+      }
+      if (parent instanceof FluoriteObject) {
+        return new FluoriteObject(this, parent, map);
+      }
+      throw new Error("Illegal argument: " + parent + ", " + map);
+    }
+
+    getOwnValueFromObject(object, key) {
+      if (object instanceof FluoriteObject) {
+        var descriptor = Object.getOwnPropertyDescriptor(object.map, key);
+        return descriptor !== undefined ? descriptor.value : null;
+      }
+      throw new Error("Illegal argument: " + object + ", " + key);
     }
 
     getValueFromObject(object, key) {
@@ -957,6 +1031,20 @@
 
   }
 
+  class FluoriteAliasMember extends FluoriteAlias {
+
+    constructor(variableId, key) {
+      super();
+      this._variableId = variableId;
+      this._key = key;
+    }
+
+    getCode(pc, location) {
+      return "(vm.getOwnValueFromObject(v_" + this._variableId + "," + JSON.stringify(this._key) + "))";
+    }
+
+  }
+
   //
 
   class FluoriteValue {
@@ -1205,7 +1293,7 @@
       for (var key in this.map) {
         strings.push(key + ":" + this.vm.toString(this.map[key]));
       }
-      return strings.join(",");
+      return "{" + strings.join(";") + "}";
     }
 
     toJSON() {
@@ -1515,9 +1603,11 @@ Stream
   }
   / Condition
 
-Lambda
+Assignment
   = head:(Stream _
     ( "->" { return [location(), "_MINUS_GREATER"]; }
+    / ":" { return [location(), "_COLON"]; }
+    / "=" { return [location(), "_EQUAL"]; }
   ) _)* tail:Stream {
     var result = tail;
     for (var i = head.length - 1; i >= 0; i--) {
@@ -1527,22 +1617,10 @@ Lambda
     return result;
   }
 
-Pair
-  = head:Lambda tail:(_
-    ( ":" { return [location(), "_COLON"]; }
-  ) _ Lambda)* {
-    var result = head;
-    for (var i = 0; i < tail.length; i++) {//
-      var t = tail[i];
-      result = new FluoriteNodeMacro(t[1][0], t[1][1], [result, t[3]]);
-    }
-    return result;
-  }
-
 Pipe
-  = head:(Pair _
+  = head:(Assignment _
     ( "|" { return [location(), "_PIPE"]; }
-  ) _)* tail:Pair {
+  ) _)* tail:Assignment {
     var result = tail;
     for (var i = head.length - 1; i >= 0; i--) {
       var h = head[i];
@@ -1553,7 +1631,7 @@ Pipe
 
 Arrow
   = head:Pipe tail:
-    ( _ ("=>" { return [location(), "_EQUAL_GREATER"]; }) _ Pair
+    ( _ ("=>" { return [location(), "_EQUAL_GREATER"]; }) _ Assignment
     / _ ("|" { return [location(), "_PIPE"]; }) _ Pipe
   )* {
     var result = head;
