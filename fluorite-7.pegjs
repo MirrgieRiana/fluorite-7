@@ -307,6 +307,51 @@
       m("_EMPTY_ROUND", e => "(vm.empty())");
       m("_SQUARE", e => "(vm.toStream(" + e.code(0) + ").toArray())");
       m("_EMPTY_SQUARE", e => "[]");
+      m("_CURLY", e => {
+
+        var node = e.node().getArgument(0);
+ 
+        var nodesPair = undefined;
+        if (node instanceof FluoriteNodeMacro) {
+          if (node.getKey() === "_SEMICOLON") {
+            nodesPair = node.getArguments();
+          }
+        }
+        if (nodesPair === undefined) nodesPair = [node];
+
+        var codesPair = [];
+        for (var i = 0; i < nodesPair.length; i++) {
+          var nodePair = nodesPair[i];
+          if (nodePair instanceof FluoriteNodeMacro) {
+            if (nodePair.getKey() === "_COLON") {
+
+              var nodeKey = nodePair.getArgument(0);
+              var key = undefined;
+              if (nodeKey instanceof FluoriteNodeMacro) {
+                if (nodeKey.getKey() === "_LITERAL_IDENTIFIER") {
+                  if (nodeKey.getArgument(0) instanceof FluoriteNodeTokenIdentifier) {
+                    key = nodeKey.getArgument(0).getValue();
+                  }
+                }
+              }
+              if (key === undefined) throw new Error("Illegal object key");
+
+              var nodeValue = nodePair.getArgument(1);
+
+              codesPair.push(key + ":" + nodeValue.getCode(e.pc()));
+              continue;
+            }
+          }
+          if (nodePair instanceof FluoriteNodeVoid) {
+            continue;
+          }
+          throw new Error("Illegal object pair");
+        }
+
+        return "({" + codesPair.join(",") + "})"
+      });
+      m("_EMPTY_CURLY", e => "({})");
+      m("_PERIOD", e => "(vm.period(" + e.code(0) + "," + e.code(1) + "))");
       m("_RIGHT_ROUND", e => "(vm.call(" + e.code(0) + ", [" + as2c(e.pc(), e.node().getArgument(1)) + "]))");
       m("_RIGHT_EMPTY_ROUND", e => "(vm.call(" + e.code(0) + ", []))");
       m("_RIGHT_SQUARE", e => "(vm.getFromArray(" + e.code(0) + "," + e.code(1) + "))");
@@ -575,6 +620,13 @@
 
     writeAsJson(value, out) {
       out(JSON.stringify(value)); // TODO
+    }
+
+    period(a, b) {
+      if (a instanceof Object) {
+        return a[b];
+      }
+      throw new Error("Illegal argument: " + a + ", " + b);
     }
 
   }
@@ -1169,6 +1221,7 @@ Right
     / "(" _ ")" { return [location(), "_RIGHT_EMPTY_ROUND", null]; }
     / "[" _ "]" { return [location(), "_RIGHT_EMPTY_SQUARE", null]; }
     / "{" _ "}" { return [location(), "_RIGHT_EMPTY_CURLY", null]; }
+    / "." _ main:Factor { return [location(), "_PERIOD", main]; }
   ))* {
     var result = head;
     for (var i = 0; i < tail.length; i++) {
