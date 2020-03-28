@@ -294,7 +294,7 @@
       }));
       c("OUT", new FluoriteLambda((vm, args) => {
         if (args.length == 1) {
-          var stream = vm.toStream(args[0]);
+          var stream = vm.toStream(args[0]).start();
           while (true) {
             var next = stream.next();
             if (next === undefined) break;
@@ -325,8 +325,7 @@
       c("ADD", new FluoriteLambda((vm, args) => {
         var stream = args[0];
         if (stream === undefined) throw new Error("Illegal argument");
-        stream = vm.toStream(stream);
-
+        stream = vm.toStream(stream).start();
         var result = 0;
         while (true) {
           var next = stream.next();
@@ -338,8 +337,7 @@
       c("MUL", new FluoriteLambda((vm, args) => {
         var stream = args[0];
         if (stream === undefined) throw new Error("Illegal argument");
-        stream = vm.toStream(stream);
-
+        stream = vm.toStream(stream).start();
         var result = 1;
         while (true) {
           var next = stream.next();
@@ -632,7 +630,7 @@
 
     toStream(value) {
       if (value instanceof FluoriteStream) return value;
-      return new FluoriteStreamScalar(value);
+      return new FluoriteStreamScalar(this, value);
     }
 
     add(a, b) {
@@ -678,30 +676,30 @@
     //
 
     empty() {
-      return new FluoriteStreamEmpty();
+      return new FluoriteStreamEmpty(this);
     }
 
     rangeOpened(start, end) {
-      return new FluoriteStreamRangeOpened(this.toNumber(start), this.toNumber(end));
+      return new FluoriteStreamRangeOpened(this, this.toNumber(start), this.toNumber(end));
     }
 
     rangeClosed(start, end) {
-      return new FluoriteStreamRangeClosed(this.toNumber(start), this.toNumber(end));
+      return new FluoriteStreamRangeClosed(this, this.toNumber(start), this.toNumber(end));
     }
 
     toStreamFromValues(values) {
-      return new FluoriteStreamValues(values);
+      return new FluoriteStreamValues(this, values);
     }
 
     map(stream, func) {
-      return new FluoriteStreamMap(stream, func);
+      return new FluoriteStreamMap(this, stream, func);
     }
 
     //
 
     toStreamFromArray(array) {
       if (array instanceof Array) {
-        return new FluoriteStreamValues(array);
+        return new FluoriteStreamValues(this, array);
       }
       throw new Error("Illegal argument: " + array);
     }
@@ -1063,18 +1061,24 @@
 
   class FluoriteStream extends FluoriteValue {
 
-    constructor() {
+    constructor(vm) {
       super();
+      this._vm = vm;
     }
 
     toArray() {
       var result = [];
+      var stream = this.start();
       while (true) {
-        var item = this.next();
+        var item = stream.next();
         if (item === undefined) break;
         result.push(item);
       }
       return result;
+    }
+
+    start() {
+      return "[FluoriteStream]";
     }
 
     next() {
@@ -1082,19 +1086,19 @@
     }
 
     toString() {
-      return "[FluoriteStream]";
+      return this.toArray().map(value => this._vm.toString(value)).join("\n");
     }
 
     toJSON() {
-      return "[FluoriteStream]";
+      return this.toArray();
     }
 
   }
 
   class FluoriteStreamEmpty extends FluoriteStream {
 
-    constructor() {
-      super();
+    constructor(vm) {
+      super(vm);
     }
 
     next() {
@@ -1105,8 +1109,8 @@
 
   class FluoriteStreamRange extends FluoriteStream {
 
-    constructor(start, end) {
-      super();
+    constructor(vm, start, end) {
+      super(vm);
       this._start = start;
       this._end = end;
       this._stepdown = end < start;
@@ -1117,8 +1121,8 @@
 
   class FluoriteStreamRangeOpened extends FluoriteStreamRange {
 
-    constructor(start, end) {
-      super(start, end);
+    constructor(vm, start, end) {
+      super(vm, start, end);
     }
 
     next() {
@@ -1139,8 +1143,8 @@
 
   class FluoriteStreamRangeClosed extends FluoriteStreamRange {
 
-    constructor(start, end) {
-      super(start, end);
+    constructor(vm, start, end) {
+      super(vm, start, end);
     }
 
     next() {
@@ -1161,8 +1165,8 @@
 
   class FluoriteStreamValues extends FluoriteStream {
 
-    constructor(values) {
-      super();
+    constructor(vm, values) {
+      super(vm);
       this._values = values;
       this._i = 0;
       this._currentStream = undefined;
@@ -1181,7 +1185,7 @@
         var result = this._values[this._i];
         this._i++;
         if (result instanceof FluoriteStream) {
-          this._currentStream = result;
+          this._currentStream = result.start();
           continue;
         }
         return result;
@@ -1192,8 +1196,8 @@
 
   class FluoriteStreamMap extends FluoriteStream {
 
-    constructor(stream, func) {
-      super();
+    constructor(vm, stream, func) {
+      super(vm);
       this._stream = stream;
       this._func = func;
       this._currentStream = undefined;
@@ -1211,7 +1215,7 @@
         if (result === undefined) return undefined;
         result = this._func(result);
         if (result instanceof FluoriteStream) {
-          this._currentStream = result;
+          this._currentStream = result.start();
           continue;
         }
         return result;
@@ -1222,8 +1226,8 @@
 
   class FluoriteStreamScalar extends FluoriteStream {
 
-    constructor(value) {
-      super();
+    constructor(vm, value) {
+      super(vm);
       this._value = value;
       this._used = false;
     }
@@ -1607,7 +1611,7 @@ Assignment
   = head:(Stream _
     ( "->" { return [location(), "_MINUS_GREATER"]; }
     / ":" { return [location(), "_COLON"]; }
-    / "=" { return [location(), "_EQUAL"]; }
+    / "=" !">" { return [location(), "_EQUAL"]; }
   ) _)* tail:Stream {
     var result = tail;
     for (var i = head.length - 1; i >= 0; i--) {
