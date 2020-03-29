@@ -1,9 +1,17 @@
 #!/usr/bin/env bash
 
 usage() {
-	echo "Usage $0 CODE" >&2
+	echo "Usage $0 [-j] CODE" >&2
 	exit 1
 }
+
+output_json=0
+
+if [ "$1" = "-j" ]
+then
+  shift
+  output_json=1
+fi
 
 (($# > 0)) || usage
 exec=$1
@@ -21,21 +29,33 @@ then
 fi
 
 export exec
+export output_json
 node - << 'END'
 var source = process.env.exec;
 var parser = require("./fluorite-7.js");
 var result = parser.parse(source);
 
-var pc = result.createParserContext();
-var node = result.getNode();
-var code = node.getCode(pc);
-var vm = pc.createVirtualMachine();
-var stream = vm.toStream(eval(code));
+var env = new result.fl7c.Environment();
+result.loadAliases(env);
 
-while (true) {
-  var next = stream.next();
-  if (next === undefined) break;
-  console.log(vm.toString(next));
+var code = result.node.getCode(env);
+
+var util = fl7.util;
+var constants = env.getConstants();
+var stream = util.toStreamer(eval(code)).start();
+
+if (process.env.output_json) {
+  while (true) {
+    var next = stream.next();
+    if (next === undefined) break;
+    console.log(JSON.stringify(next));
+  }
+} else {
+  while (true) {
+    var next = stream.next();
+    if (next === undefined) break;
+    console.log(util.toString(next));
+  }
 }
 
 END
