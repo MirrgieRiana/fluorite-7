@@ -44,7 +44,7 @@ var util = result.fl7.util;
 var constants = env.getConstants();
 var stream = util.toStreamer(eval(code)).start();
 
-if (process.env.output_json) {
+if (process.env.output_json !== "0") {
   while (true) {
     var next = stream.next();
     if (next === undefined) break;
