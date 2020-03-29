@@ -30,32 +30,81 @@ fi
 
 export exec
 export output_json
-node - << 'END'
-var source = process.env.exec;
-var parser = require("./fluorite-7.js");
-var result = parser.parse(source);
+node -e "$(cat << 'END'
+const fs = require("fs");
+const source = process.env.exec;
+const parser = require("./fluorite-7.js");
+const result = parser.parse(source);
 
-var env = new result.fl7c.Environment();
+const env = new result.fl7c.Environment();
 result.loadAliases(env);
 
-var code = result.node.getCode(env);
+const c = (key, value) => {
+  var constantId = env.allocateConstantId();
+  env.setAlias(key, new result.fl7c.FluoriteAliasConstant(constantId));
+  env.setConstant(constantId, value);
+};
+c("IN", (function(){
+  class FluoriteStreamerStdin extends result.fl7.FluoriteStreamer {
 
-var util = result.fl7.util;
-var constants = env.getConstants();
-var stream = util.toStreamer(eval(code)).start();
+    constructor () {
+      super();
+    }
+
+    start() { // TODO 1行ずつ読み込む
+      var fd = process.stdin.fd;
+      var buffers = [];
+      var length = 0;
+      while (true) {
+        var buffer = new Buffer(4096);
+        var bytesRead = fs.readSync(fd, buffer, 0, 4096, null);
+        if (bytesRead === 0) break;
+        buffers.push(buffer);
+        length += bytesRead;
+      }
+      var buffer = Buffer.concat(buffers);
+      var input = buffer.toString('utf8', 0, length);
+      var inputs = input.split("\n");
+      var i = 0;
+      return {
+        next: () => {
+          if (i >= inputs.length) return undefined;
+          if (i == inputs.length - 1) {
+            if (inputs[i] === "") {
+              i++;
+              return undefined;
+            }
+          }
+          var result = inputs[i];
+          i++;
+          return result;
+        },
+      };
+    }
+
+  }
+  return new FluoriteStreamerStdin();
+})());
+
+const code = result.node.getCode(env);
+
+const util = result.fl7.util;
+const constants = env.getConstants();
+const stream = util.toStreamer(eval(code)).start();
 
 if (process.env.output_json !== "0") {
   while (true) {
-    var next = stream.next();
+    const next = stream.next();
     if (next === undefined) break;
     console.log(JSON.stringify(next));
   }
 } else {
   while (true) {
-    var next = stream.next();
+    const next = stream.next();
     if (next === undefined) break;
     console.log(util.toString(next));
   }
 }
 
 END
+)"
