@@ -765,6 +765,10 @@
         return new FluoriteStreamerScalar(value);
       },
 
+      toStreamer: function(value) {
+        util.toStream(value);
+      },
+
       add: function(a, b) {
         if (Number.isFinite(a)) {
           return a + util.toNumber(b);
@@ -1446,8 +1450,9 @@ RootDemonstration
 
 Root
   = _ main:Expression _ { return {
-    fl7: fl7,
-    fl7c: fl7c,
+    fl7,
+    fl7c,
+    loadAliases,
     node: main,
   }; }
 
