@@ -1418,7 +1418,8 @@
       });
       m("_PIPE", e => {
         var key = undefined;
-        var stream = undefined;
+        var codeLeft = undefined;
+        var iterate = undefined;
 
         if (e.node().getArgument(0) instanceof fl7c.FluoriteNodeMacro) {
           if (e.node().getArgument(0).getKey() === "_COLON") {
@@ -1426,7 +1427,19 @@
               if (e.node().getArgument(0).getArgument(0).getKey() === "_LITERAL_IDENTIFIER") {
                 if (e.node().getArgument(0).getArgument(0).getArgument(0) instanceof fl7c.FluoriteNodeTokenIdentifier) {
                   key = e.node().getArgument(0).getArgument(0).getArgument(0).getValue();
-                  stream = e.node().getArgument(0).getArgument(1).getCode(e.pc());
+                  codeLeft = e.node().getArgument(0).getArgument(1).getCode(e.pc());
+                  iterate = true;
+                }
+              }
+            }
+          }
+          if (e.node().getArgument(0).getKey() === "_EQUAL") {
+            if (e.node().getArgument(0).getArgument(0) instanceof fl7c.FluoriteNodeMacro) {
+              if (e.node().getArgument(0).getArgument(0).getKey() === "_LITERAL_IDENTIFIER") {
+                if (e.node().getArgument(0).getArgument(0).getArgument(0) instanceof fl7c.FluoriteNodeTokenIdentifier) {
+                  key = e.node().getArgument(0).getArgument(0).getArgument(0).getValue();
+                  codeLeft = e.node().getArgument(0).getArgument(1).getCode(e.pc());
+                  iterate = false;
                 }
               }
             }
@@ -1434,7 +1447,8 @@
         }
 
         if (key === undefined) key = "_";
-        if (stream === undefined) stream = e.code(0);
+        if (codeLeft === undefined) codeLeft = e.code(0);
+        if (iterate === undefined) iterate = true;
 
         var alias = new fl7c.FluoriteAliasVariable(e.pc().allocateVariableId());
 
@@ -1443,7 +1457,12 @@
         var body = e.code(1);
         e.pc().popFrame();
 
-        return "(util.map(util.toStream(" + stream + ")," + alias.getRawCode(e.pc(), e.node().getLocation()) + "=>" + body + "))";
+        var codeVariable = alias.getRawCode(e.pc(), e.node().getLocation());
+        if (iterate) {
+          return "(util.map(util.toStream(" + codeLeft + ")," + codeVariable + "=>" + body + "))";
+        } else {
+          return "(function(){var " + codeVariable + "=" + codeLeft + ";return " + body + ";}())";
+        }
       });
       m("_EQUAL_GREATER", e => "(util.call(" + e.code(1) + ", [" + as2c2(e.pc(), e.node().getArgument(0)) + "]))");
   }
