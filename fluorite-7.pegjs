@@ -766,7 +766,7 @@
       },
 
       toStreamer: function(value) {
-        util.toStream(value);
+        return util.toStream(value);
       },
 
       add: function(a, b) {
