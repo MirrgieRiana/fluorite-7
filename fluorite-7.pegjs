@@ -1256,6 +1256,14 @@
         util.writeAsJson(value, string => outputs[outputs.length] = string);
         return outputs.join();
       }));
+      c("FROM_JSON", new fl7.FluoriteFunction(args => {
+        var value = args[0];
+        if (value === undefined) throw new Error("Illegal argument");
+        return JSON.parse(util.toString(value), (k, v) => {
+          if (typeof v === "object" && v !== null && !Array.isArray(v)) return util.createObject(null, v);
+          return v;
+        });
+      }));
       c("REVERSE", new fl7.FluoriteFunction(args => {
         var stream = args[0];
         if (stream === undefined) throw new Error("Illegal argument");
