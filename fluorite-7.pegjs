@@ -1445,7 +1445,11 @@ RootDemonstration
   }
 
 Root
-  = _ main:Expression _ { return new Fluorite7(main); }
+  = _ main:Expression _ { return {
+    fl7: fl7,
+    fl7c: fl7c,
+    node: main,
+  }; }
 
 //
 
