@@ -792,18 +792,15 @@
           return a * util.toNumber(b);
         }
         if (a instanceof Array) {
-          if (Number.isFinite(b)) {
-            var result = [];
-            for (var i = 0; i < b; i++) {
-              Array.prototype.push.apply(result, a);
-            }
-            return result;
+          b = util.toNumber(b);
+          var result = [];
+          for (var i = 0; i < b; i++) {
+            Array.prototype.push.apply(result, a);
           }
+          return result;
         }
         if (typeof a === 'string' || a instanceof String) {
-          if (Number.isFinite(b)) {
-            return a.repeat(b);
-          }
+          return a.repeat(util.toNumber(b));
         }
         throw new Error("Illegal argument: " + a + ", " + b);
       },
