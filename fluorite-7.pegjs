@@ -472,7 +472,14 @@
       }
 
       toJSON() {
-        return this.toArray();
+        var jsons = [];
+        var stream = this.start();
+        while (true) {
+          var item = stream.next();
+          if (item === undefined) break;
+          jsons.push(JSON.stringify(item));
+        }
+        return jsons.join(",");
       }
 
     }
