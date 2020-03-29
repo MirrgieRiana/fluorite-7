@@ -1,142 +1,973 @@
 
 {
 
-  class Fluorite7 {
-	constructor(node) {
-      this.node = node;
+  var fl7c = (() => {
+
+    function getLocationString(location) {
+      return "L:" + location.start.line + ",C:" + location.start.column;
     }
-	createParserContext() {
-      return new FluoriteParserContext();
+
+    function throwCompileError(location, message) {
+      throw new FluoriteCompileError(message + " (" + getLocationString(location) + ")");
     }
-	getNode() {
-      return this.node;
+
+    class FluoriteCompileError extends Error { // TODO -> FluoriteSyntaxError, FluoriteRuntimeError
+
+      constructor(...args) {
+        super(...args);
+        Object.defineProperty(this, 'name', {
+          configurable: true,
+          enumerable: false,
+          value: this.constructor.name,
+          writable: true,
+        });
+        if (Error.captureStackTrace) {
+          Error.captureStackTrace(this, FluoriteCompileError);
+        }
+      }
+
     }
-  }
+
+    //
+
+    class Environment { // TODO 全体の pc -> env
+
+      constructor() {
+        this._nextConstantId = 0;
+        this._nextVariableId = 0;
+        this._constants = [];
+        this._frameStack = [{}];
+      }
+
+      //
+
+      allocateConstantId() { // TODO システムの刷新
+        var result = this._nextConstantId;
+        this._nextConstantId++;
+        return result;
+      }
+
+      //
+
+      allocateVariableId() {
+        var result = this._nextVariableId;
+        this._nextVariableId++;
+        return result;
+      }
+
+      //
+
+      getConstants() {
+        return this._constants;
+      }
+
+      getConstant(constantId) {
+        return this._constants[constantId];
+      }
+
+      setConstant(constantId, value) {
+        this._constants[constantId] = value;
+      }
+
+      //
+
+      pushFrame() {
+        this._frameStack.push({});
+      }
+
+      popFrame() {
+        this._frameStack.pop();
+      }
+
+      getFrameStack() {
+        return this._frameStack;
+      }
+
+      setFrameStack(frameStack) {
+        this._frameStack = frameStack;
+      }
+
+      getFrame() {
+        return this._frameStack[this._frameStack.length - 1];
+      }
+
+      setAlias(key, value) {
+        this.getFrame()[key] = value;
+      }
+
+      getAlias(location, key) {
+        for (var i = this._frameStack.length - 1; i >= 0; i--) {
+          var alias = this._frameStack[i][key]; // TODO own property
+          if (alias !== undefined) {
+            return alias;
+          }
+        }
+        throwCompileError(location, "No such alias '" + key + "'");
+      }
+
+      getAliasOrUndefined(location, key) {
+        for (var i = this._frameStack.length - 1; i >= 0; i--) {
+          var alias = this._frameStack[i][key]; // TODO own property
+          if (alias !== undefined) {
+            return alias;
+          }
+        }
+        return undefined;
+      }
+
+    }
+
+    //
+
+    class FluoriteNode {
+
+      constructor(location) {
+        this._location = location;
+      }
+
+      getLocation() {
+        return this._location;
+      }
+
+      getCode(pc) {
+        throwCompileError(this._location, "Not Implemented");
+      }
+
+      getTree(pc) {
+        throwCompileError(this._location, "Not Implemented");
+      }
+
+    }
+
+    class FluoriteNodeVoid extends FluoriteNode {
+
+      constructor(location) {
+        super(location);
+      }
+
+      getCode(pc) {
+        throwCompileError(this._location, "Cannot stringify void node");
+      }
+
+      getTree(pc) {
+        return "VOID"; // TODO void演算子
+      }
+
+    }
+
+    class FluoriteNodeToken extends FluoriteNode {
+
+      constructor(location, value, source) {
+        super(location);
+        this._value = value;
+        this._source = source;
+      }
+
+      getValue() {
+        return this._value;
+      }
+
+      getCode(pc) {
+        Fluorite.throwCompileError(this.getLocation(), "Tried to stringify raw token");
+      }
+
+      getTree() {
+        return this._source;
+      }
+
+    }
+
+    class FluoriteNodeTokenInteger extends FluoriteNodeToken {
+
+      constructor(location, value, source) {
+        super(location, value, source);
+      }
+
+    }
+
+    class FluoriteNodeTokenBasedInteger extends FluoriteNodeToken {
+
+      constructor(location, value, source) {
+        super(location, value, source);
+      }
+
+    }
+
+    class FluoriteNodeTokenFloat extends FluoriteNodeToken {
+
+      constructor(location, value, source) {
+        super(location, value, source);
+      }
+
+    }
+
+    class FluoriteNodeTokenIdentifier extends FluoriteNodeToken {
+
+      constructor(location, value, source) {
+        super(location, value, source);
+      }
+
+    }
+
+    class FluoriteNodeTokenString extends FluoriteNodeToken {
+
+      constructor(location, value, source) {
+        super(location, value, source);
+      }
+
+    }
+
+    class FluoriteNodeMacro extends FluoriteNode {
+
+      constructor(location, key, args) {
+        super(location);
+        this._key = key;
+        this._args = args;
+      }
+
+      getKey() {
+        return this._key;
+      }
+
+      getArguments() {
+        return this._args;
+      }
+
+      getArgument(index) {
+        if (index >= this._args.length) {
+          Fluorite.throwCompileError(this.getLocation(), "Not enough arguments: " + (this._args.length) + " < " + (index + 1));
+        } else {
+          return this._args[index];
+        }
+      }
+
+      getArgumentCount() {
+        return this._args.length;
+      }
+
+      getCode(pc) {
+        var alias = pc.getAlias(this.getLocation(), this._key);
+        if (alias instanceof FluoriteAliasMacro) {
+          var result;
+          try {
+            result = alias.getMacro()(new FluoriteMacroEnvironment(pc, this));
+          } catch (e) {
+            if (e instanceof FluoriteCompileError) {
+              throw e;
+            } else {
+              throwCompileError(this.getLocation(), "" + e.message + " in macro '" + this._key + "'");
+            }
+          }
+          return result;
+        }
+        Fluorite.throwCompileError(this.getLocation(), "No such macro '" + this._key + "'");
+      }
+
+      getTree() {
+        return this._key + "[" + this._args.map(a => a.getTree()).join(",") + "]";
+      }
+
+    }
+
+    class FluoriteMacroEnvironment { // TODO 名称変更
+
+      constructor(pc, node) {
+        this._pc = pc;
+        this._node = node;
+      }
+
+      pc() {
+        return this._pc;
+      }
+
+      node() {
+        return this._node;
+      }
+
+      code(index) {
+        return this._node.getArgument(index).getCode(this._pc);
+      }
+
+    }
+
+    //
+
+    class FluoriteAlias {
+
+      constructor() {
+
+      }
+
+      getCode(pc, location) {
+        throw new Error("Not Implemented"); // TODO 全箇所でエラークラスを独自に
+      }
+
+    }
+
+    class FluoriteAliasMacro extends FluoriteAlias {
+
+      constructor(func) {
+        super();
+        this._func = func;
+      }
+
+      getMacro() {
+        return this._func;
+      }
+
+      getCode(pc, location) {
+        throw new Error("Cannot stringify a macro alias");
+      }
+
+    }
+
+    class FluoriteAliasVariable extends FluoriteAlias {
+
+      constructor(variableId) {
+        super();
+        this._variableId = variableId;
+      }
+
+      getRawCode(pc, location) {
+        return "v_" + this._variableId;
+      }
+
+      getCode(pc, location) {
+        return "(v_" + this._variableId + ")";
+      }
+
+    }
+
+    class FluoriteAliasConstant extends FluoriteAlias {
+
+      constructor(constantId) {
+        super();
+        this._constantId = constantId;
+      }
+
+      getCode(pc, location) {
+        return "(constants[" + this._constantId + "])";
+      }
+
+    }
+
+    class FluoriteAliasMember extends FluoriteAlias {
+
+      constructor(variableId, key) {
+        super();
+        this._variableId = variableId;
+        this._key = key;
+      }
+
+      getCode(pc, location) {
+        return "(util.getOwnValueFromObject(v_" + this._variableId + "," + JSON.stringify(this._key) + "))";
+      }
+
+    }
+
+    return {
+      FluoriteCompileError,
+      Environment,
+      FluoriteNode,
+      FluoriteNodeVoid,
+      FluoriteNodeToken,
+      FluoriteNodeTokenInteger,
+      FluoriteNodeTokenBasedInteger,
+      FluoriteNodeTokenFloat,
+      FluoriteNodeTokenIdentifier,
+      FluoriteNodeTokenString,
+      FluoriteNodeMacro,
+      FluoriteAlias,
+      FluoriteAliasMacro,
+      FluoriteAliasVariable,
+      FluoriteAliasConstant,
+      FluoriteAliasMember,
+    };
+  })();
 
   //
 
-  class Fluorite {
+  var fl7 = (() => {
 
-  }
-  Fluorite.getLocationString = function(location) {
-    return "L:" + location.start.line + ",C:" + location.start.column;
-  };
-  Fluorite.throwCompileError = function(location, message) {
-    throw new FluoriteError(message + " (" + Fluorite.getLocationString(location) + ")");
-  }
+    class FluoriteRuntimeError extends Error {
 
-  class FluoriteError extends Error {
-
-    constructor(...args) {
-      super(...args);
-      Object.defineProperty(this, 'name', {
-        configurable: true,
-        enumerable: false,
-        value: this.constructor.name,
-        writable: true,
-      });
-      if (Error.captureStackTrace) {
-        Error.captureStackTrace(this, FluoriteError);
+      constructor(...args) {
+        super(...args);
+        Object.defineProperty(this, 'name', {
+          configurable: true,
+          enumerable: false,
+          value: this.constructor.name,
+          writable: true,
+        });
+        if (Error.captureStackTrace) {
+          Error.captureStackTrace(this, FluoriteRuntimeError);
+        }
       }
+
     }
 
-  }
+    //
+
+    class FluoriteValue {
+
+      toNumber() {
+        return undefined;
+      }
+
+      toBoolean() {
+        return undefined;
+      }
+
+      toString() {
+        return undefined;
+      }
+
+      toJSON() {
+        return this.toString();
+      }
+
+    }
+
+    //
+
+    class FluoriteStreamer extends FluoriteValue {
+
+      constructor() {
+        super();
+      }
+
+      start() {
+          throw new FluoriteRuntimeError("Not Implemented");
+      }
+
+      toArray() {
+        var result = [];
+        var stream = this.start();
+        while (true) {
+          var item = stream.next();
+          if (item === undefined) break;
+          result.push(item);
+        }
+        return result;
+      }
+
+      toNumber() {
+        var t = 0;
+        this.toArray().forEach(value => t += util.toNumber(value));
+        return t;
+      }
+
+      toBoolean() {
+        var stream = this.start();
+        while (true) {
+          var item = stream.next();
+          if (item === undefined) break;
+          if (util.toBoolean(item)) return true;
+        }
+        return false;
+      }
+
+      toString() {
+        return this.toArray().map(value => util.toString(value)).join("\n");
+      }
+
+      toJSON() {
+        return this.toArray();
+      }
+
+    }
+
+    class FluoriteStreamerEmpty extends FluoriteStreamer {
+
+      constructor() {
+        super();
+      }
+
+      start() {
+        return this;
+      }
+
+      next() {
+        return undefined;
+      }
+
+    }
+    FluoriteStreamerEmpty.instance = new FluoriteStreamerEmpty();
+
+    class FluoriteStreamerRange extends FluoriteStreamer {
+
+      constructor(start, end, closed) {
+        super();
+        this._start = start;
+        this._end = end;
+        this._stepdown = end < start;
+        this._closed = closed;
+      }
+
+      start() {
+        var i = this._start;
+        if (this._closed) {
+          if (this._stepdown) {
+            return {
+              next: () => {
+                if (i < this._end) return undefined;
+                return i--;
+              },
+            };
+          } else {
+            return {
+              next: () => {
+                if (i > this._end) return undefined;
+                return i++;
+              },
+            };
+          }
+        } else {
+          if (this._stepdown) {
+            return {
+              next: () => {
+                if (i <= this._end) return undefined;
+                return i--;
+              },
+            };
+          } else {
+            return {
+              next: () => {
+                if (i >= this._end) return undefined;
+                return i++;
+              },
+            };
+          }
+        }
+      }
+
+    }
+
+    class FluoriteStreamerValues extends FluoriteStreamer {
+
+      constructor(values) {
+        super();
+        this._values = values;
+      }
+
+      start() {
+        var i = 0;
+        var currentStream = undefined;
+        return {
+          next: () => {
+            while (true) {
+              if (currentStream !== undefined) {
+                var result = currentStream.next();
+                if (result !== undefined) return result;
+                currentStream = undefined;
+              }
+
+              if (i >= this._values.length) return undefined;
+
+              var result = this._values[i];
+              i++;
+              if (result instanceof FluoriteStreamer) {
+                currentStream = result.start();
+                continue;
+              }
+              return result;
+            }
+          },
+        };
+      }
+
+    }
+
+    class FluoriteStreamerMap extends FluoriteStreamer {
+
+      constructor(streamer, func) {
+        super();
+        this._streamer = streamer;
+        this._func = func;
+      }
+
+      start() {
+        var stream = this._streamer.start();
+        return {
+          next: () => {
+            while (true) {
+              var result = stream.next();
+              if (result === undefined) return undefined;
+              result = this._func(result);
+              return result;
+            }
+          },
+        };
+      }
+
+    }
+
+    class FluoriteStreamerScalar extends FluoriteStreamer {
+
+      constructor(value) {
+        super();
+        this._value = value;
+      }
+
+      start() {
+        var used = false;
+        return {
+          next: () => {
+            if (used) return undefined;
+            used = true;
+            return this._value;
+          },
+        };
+      }
+
+    }
+
+    //
+
+    class FluoriteFunction extends FluoriteValue { // TODO 関数は独自クラスではなくネイティブ関数を使う
+
+      constructor(func) {
+        super();
+        this._func = func;
+      }
+
+      call(args) {
+        return this._func(args);
+      }
+
+      bind(value) {
+        return new FluoriteFunction(args => {
+          var newArgs = [value];
+          Array.prototype.push.apply(newArgs, args);
+          return this._func(newArgs);
+        });
+      }
+
+      bindLeft(values) {
+        return new FluoriteFunction(args => {
+          var newArgs = [];
+          Array.prototype.push.apply(newArgs, values);
+          Array.prototype.push.apply(newArgs, args);
+          return this._func(newArgs);
+        });
+      }
+
+      bindRight(values) {
+        return new FluoriteFunction(args => {
+          var newArgs = [];
+          Array.prototype.push.apply(newArgs, args);
+          Array.prototype.push.apply(newArgs, values);
+          return this._func(newArgs);
+        });
+      }
+
+      toString() {
+        return "[FluoriteFunction]";
+      }
+
+    }
+
+    //
+
+    // TODO FluoriteObjectの変数をprivateに
+    class FluoriteObject extends FluoriteValue {
+
+      constructor(parent, map) {
+        super();
+        this.parent = parent;
+        this.map = map;
+      }
+
+      toNumber() {
+        var res = util.getValueFromObject(this, "TO_NUMBER");
+        if (res !== null) return util.toNumber(util.call(res, [this]));
+        return undefined;
+      }
+
+      toBoolean() {
+        var res = util.getValueFromObject(this, "TO_BOOLEAN");
+        if (res !== null) return util.toBoolean(util.call(res, [this]));
+        return true;
+      }
+
+      toString() {
+        var res = util.getValueFromObject(this, "TO_STRING");
+        if (res !== null) return util.toString(util.call(res, [this]));
+
+        var strings = [];
+        for (var key in this.map) {
+          strings.push(key + ":" + util.toString(this.map[key]));
+        }
+        return "{" + strings.join(";") + "}";
+      }
+
+      toJSON() {
+        var res = util.getValueFromObject(this, "TO_JSON");
+        if (res !== null) return util.toJSON(util.call(res, [this]));
+        return this.map;
+      }
+
+    }
+
+    //
+
+    var util = {
+
+      toNumber: function(value) {
+        if (value === null) return 0;
+        if (Number.isFinite(value)) return value;
+        if (value === true) return 1;
+        if (value === false) return 0;
+        if (typeof value === 'string' || value instanceof String) {
+          var result = Number(value);
+          if (!Number.isNaN(result)) return result;
+        }
+        if (value instanceof Array) return value.length; // TODO 長さ取得専用の演算子
+        if (value instanceof FluoriteValue) {
+          var result = value.toNumber();
+          if (result !== undefined) return result;
+        }
+        throw new FluoriteRuntimeError("Cannot convert to number: " + value);
+      },
+
+      toBoolean: function(value) {
+        if (value === null) return false;
+        if (value === 0) return false;
+        if (value === false) return false;
+        if (value === "") return false;
+        if (value instanceof Array) return value.length != 0;
+        if (value instanceof FluoriteValue) {
+          var result = value.toBoolean();
+          if (result !== undefined) return result;
+        }
+        return true; // TODO その他の一般オブジェクトではエラー
+      },
+
+      toString: function(value) {
+        if (value === null) return "NULL";
+        if (value === true) return "TRUE";
+        if (value === false) return "FALSE";
+        if (value instanceof Array) return value.map(a => util.toString(a)).join(",");
+        if (value instanceof FluoriteValue) {
+          var result = value.toString();
+          if (result !== undefined) return result;
+        }
+        return value.toString(); // TODO その他の一般オブジェクトではエラー
+      },
+
+      toJSON: function(value) {
+        if (value.toJSON) return value.toJSON();
+        return value;
+      },
+
+      toStream: function(value) { // TODO toStreamer
+        if (value instanceof FluoriteStreamer) return value;
+        return new FluoriteStreamerScalar(value);
+      },
+
+      add: function(a, b) {
+        if (Number.isFinite(a)) {
+          return a + util.toNumber(b);
+        }
+        if (a instanceof Array) {
+          if (b instanceof Array) {
+            var result = [];
+            Array.prototype.push.apply(result, a);
+            Array.prototype.push.apply(result, b);
+            return result;
+          }
+        }
+        if (typeof a === 'string' || a instanceof String) {
+          return a + util.toString(b);
+        }
+        throw new Error("Illegal argument: " + a + ", " + b);
+      },
+
+      mul: function(a, b) {
+        if (Number.isFinite(a)) {
+          return a * util.toNumber(b);
+        }
+        if (a instanceof Array) {
+          if (Number.isFinite(b)) {
+            var result = [];
+            for (var i = 0; i < b; i++) {
+              Array.prototype.push.apply(result, a);
+            }
+            return result;
+          }
+        }
+        if (typeof a === 'string' || a instanceof String) {
+          if (Number.isFinite(b)) {
+            return a.repeat(b);
+          }
+        }
+        throw new Error("Illegal argument: " + a + ", " + b);
+      },
+
+      writeAsJson: function(value, out) {
+        out(JSON.stringify(value)); // TODO ストリーム方式に
+      },
+
+      //
+
+      empty: function() {
+        return FluoriteStreamerEmpty.instance;
+      },
+
+      rangeOpened: function(start, end) {
+        return new FluoriteStreamerRange(util.toNumber(start), util.toNumber(end), false);
+      },
+
+      rangeClosed: function(start, end) {
+        return new FluoriteStreamerRange(util.toNumber(start), util.toNumber(end), true);
+      },
+
+      toStreamFromValues: function(values) { // TODO 名称変更
+        return new FluoriteStreamerValues(values);
+      },
+
+      map: function(streamer, func) { // TODO 仕様変更対応：第一引数はstreamではなくstreamer
+        return new FluoriteStreamerMap(streamer, func);
+      },
+
+      //
+
+      toStreamFromArray: function(array) { // TODO 名称変更
+        if (array instanceof Array) {
+          return new FluoriteStreamerValues(array);
+        }
+        throw new Error("Illegal argument: " + array); // TODO utilの中のエラーを全部FluRuErrに
+      },
+
+      getFromArray: function(array, index) { // TODO 名称変更
+        if (array instanceof Array) {
+          return array[util.toNumber(index)];
+        }
+        if (array instanceof FluoriteObject) {
+          return util.getOwnValueFromObject(array, util.toString(index));
+        }
+        throw new Error("Illegal argument: " + array + ", " + index);
+      },
+
+      //
+
+      createLambda: function(func) { // TODO -> createFunction
+        return new FluoriteFunction(func);
+      },
+
+      call: function(func, args) {
+        if (func instanceof FluoriteFunction) {
+          return func.call(args);
+        }
+        throw new Error("Cannot call a non-function object: " + func);
+      },
+
+      bind: function(func, value) { // TODO -> bindLeft
+        if (func instanceof FluoriteFunction) {
+          return func.bind(value);
+        }
+        throw new Error("Cannot bind a non-function object: " + func);
+      },
+
+      curryLeft: function(func, values) { // TODO -> bindLeft
+        if (func instanceof FluoriteFunction) {
+          return func.bindLeft(values);
+        }
+        throw new Error("Cannot bind a non-function object: " + func);
+      },
+
+      curryRight: function(func, values) { // TODO -> bindRight
+        if (func instanceof FluoriteFunction) {
+          return func.bindRight(values);
+        }
+        throw new Error("Cannot bind a non-function object: " + func);
+      },
+
+      //
+
+      createObject: function(parent, map) {
+        if (parent === null) {
+          return new FluoriteObject(null, map);
+        }
+        if (parent instanceof FluoriteObject) {
+          return new FluoriteObject(parent, map);
+        }
+        throw new Error("Illegal argument: " + parent + ", " + map);
+      },
+
+      getOwnValueFromObject: function(object, key) {
+        if (object instanceof FluoriteObject) {
+          var descriptor = Object.getOwnPropertyDescriptor(object.map, key);
+          return descriptor !== undefined ? descriptor.value : null;
+        }
+        throw new Error("Illegal argument: " + object + ", " + key);
+      },
+
+      getValueFromObject: function(object, key) {
+        if (object instanceof FluoriteObject) {
+          var objectClass = object;
+          while (objectClass !== null) {
+            var descriptor = Object.getOwnPropertyDescriptor(objectClass.map, key);
+            if (descriptor !== undefined) {
+              return descriptor.value;
+            }
+            objectClass = objectClass.parent;
+          }
+          return null;
+        }
+        throw new Error("Illegal argument: " + object + ", " + key);
+      },
+
+      getDelegate: function(object, key) {
+        if (object instanceof FluoriteObject) {
+          var objectClass = object;
+          while (objectClass !== null) {
+            var descriptor = Object.getOwnPropertyDescriptor(objectClass.map, key);
+            if (descriptor !== undefined) {
+              var res = descriptor.value;
+              return util.bind(res, object);
+            }
+            objectClass = objectClass.parent;
+          }
+          throw new Error("No such method: " + key + " of " + object);
+        }
+        throw new Error("Illegal argument: " + object + ", " + key); // TODO エラーが起こったら引数をログに出す
+      },
+
+    };
+
+    return {
+      FluoriteRuntimeError,
+      FluoriteValue,
+      FluoriteStreamer,
+      FluoriteStreamerEmpty,
+      FluoriteStreamerRange,
+      FluoriteStreamerValues,
+      FluoriteStreamerMap,
+      FluoriteStreamerScalar,
+      FluoriteFunction,
+      FluoriteObject,
+      util,
+    };
+  })();
 
   //
 
-  class FluoriteParserContext {
-
-    constructor() {
-      this._nextConstantId = 0;
-      this._nextVariableId = 0;
-      this._constants = [];
-      this._frameStack = [{}];
-
-      this.loadAliases(); // TODO ここじゃなくてどこかで呼び出す
-    }
-
-    allocateConstantId() {
-      var result = this._nextConstantId;
-      this._nextConstantId++;
-      return result;
-    }
-
-    allocateVariableId() {
-      var result = this._nextVariableId;
-      this._nextVariableId++;
-      return result;
-    }
-
-    getConstant(constantId) {
-      return this._constants[constantId];
-    }
-
-    setConstant(constantId, value) {
-      this._constants[constantId] = value;
-    }
-
-    pushFrame() {
-      this._frameStack.push({});
-    }
-
-    popFrame() {
-      this._frameStack.pop();
-    }
-
-    getFrameStack() {
-      return this._frameStack;
-    }
-
-    setFrameStack(frameStack) {
-      this._frameStack = frameStack;
-    }
-
-    getFrame() {
-      return this._frameStack[this._frameStack.length - 1];
-    }
-
-    setAlias(key, value) {
-      this.getFrame()[key] = value;
-    }
-
-    getAlias(location, key) {
-      for (var i = this._frameStack.length - 1; i >= 0; i--) {
-        var alias = this._frameStack[i][key];
-        if (alias != undefined) {
-          return alias;
-        }
-      }
-      Fluorite.throwCompileError(location, "No such alias '" + key + "'");
-    }
-
-    getAliasOrUndefined(location, key) {
-      for (var i = this._frameStack.length - 1; i >= 0; i--) {
-        var alias = this._frameStack[i][key];
-        if (alias != undefined) {
-          return alias;
-        }
-      }
-      return undefined;
-    }
-
-    createVirtualMachine() {
-      return new FluoriteVirtualMachine(this._constants);
-    }
-
-    loadAliases() { // TODO どこかもってく
+  function loadAliases(env) { // TODO
+      var util = fl7.util;
       var c = (key, value) => {
-        var constantId = this.allocateConstantId();
-        this.setAlias(key, new FluoriteAliasConstant(constantId));
-        this.setConstant(constantId, value);
+        var constantId = env.allocateConstantId();
+        env.setAlias(key, new fl7c.FluoriteAliasConstant(constantId));
+        env.setConstant(constantId, value);
       };
       var m = (key, func) => {
-        this.setAlias(key, new FluoriteAliasMacro(func));
+        env.setAlias(key, new fl7c.FluoriteAliasMacro(func));
       };
       var as2c = (pc, arg) => {
-        if (arg instanceof FluoriteNodeMacro) {
+        if (arg instanceof fl7c.FluoriteNodeMacro) {
           if (arg.getKey() === "_SEMICOLON") {
             return arg.getArguments()
-              .filter(a => !(a instanceof FluoriteNodeVoid))
+              .filter(a => !(a instanceof fl7c.FluoriteNodeVoid))
               .map(a => a.getCode(pc))
               .join(",");
           }
@@ -144,12 +975,12 @@
         return arg.getCode(pc);
       };
       var as2c2 = (pc, arg) => {
-        if (arg instanceof FluoriteNodeMacro) {
+        if (arg instanceof fl7c.FluoriteNodeMacro) {
           if (arg.getKey() === "_ROUND") {
-            if (arg.getArgument(0) instanceof FluoriteNodeMacro) {
+            if (arg.getArgument(0) instanceof fl7c.FluoriteNodeMacro) {
               if (arg.getArgument(0).getKey() === "_SEMICOLON") {
                 return arg.getArgument(0).getArguments()
-                  .filter(a => !(a instanceof FluoriteNodeVoid))
+                  .filter(a => !(a instanceof fl7c.FluoriteNodeVoid))
                   .map(a => a.getCode(pc))
                   .join(",");
               }
@@ -173,7 +1004,7 @@
         if (nodeMap === null) {
           nodesEntry = [];
         }
-        if (nodeMap instanceof FluoriteNodeMacro) {
+        if (nodeMap instanceof fl7c.FluoriteNodeMacro) {
           if (nodeMap.getKey() === "_SEMICOLON") {
             nodesEntry = nodeMap.getArguments();
           }
@@ -187,14 +1018,14 @@
           var nodeEntry = nodesEntry[i];
 
           // 宣言文
-          if (nodeEntry instanceof FluoriteNodeMacro) {
+          if (nodeEntry instanceof fl7c.FluoriteNodeMacro) {
             if (nodeEntry.getKey() === "_COLON") {
 
               var nodeKey = nodeEntry.getArgument(0);
               var key = undefined;
-              if (nodeKey instanceof FluoriteNodeMacro) {
+              if (nodeKey instanceof fl7c.FluoriteNodeMacro) {
                 if (nodeKey.getKey() === "_LITERAL_IDENTIFIER") {
-                  if (nodeKey.getArgument(0) instanceof FluoriteNodeTokenIdentifier) {
+                  if (nodeKey.getArgument(0) instanceof fl7c.FluoriteNodeTokenIdentifier) {
                     key = nodeKey.getArgument(0).getValue();
                   }
                 }
@@ -210,14 +1041,14 @@
           }
 
           // 代入文
-          if (nodeEntry instanceof FluoriteNodeMacro) {
+          if (nodeEntry instanceof fl7c.FluoriteNodeMacro) {
             if (nodeEntry.getKey() === "_EQUAL") {
 
               var nodeKey = nodeEntry.getArgument(0);
               var key = undefined;
-              if (nodeKey instanceof FluoriteNodeMacro) {
+              if (nodeKey instanceof fl7c.FluoriteNodeMacro) {
                 if (nodeKey.getKey() === "_LITERAL_IDENTIFIER") {
-                  if (nodeKey.getArgument(0) instanceof FluoriteNodeTokenIdentifier) {
+                  if (nodeKey.getArgument(0) instanceof fl7c.FluoriteNodeTokenIdentifier) {
                     key = nodeKey.getArgument(0).getValue();
                   }
                 }
@@ -232,9 +1063,9 @@
           }
 
           // 即席代入文
-          if (nodeEntry instanceof FluoriteNodeMacro) {
+          if (nodeEntry instanceof fl7c.FluoriteNodeMacro) {
             if (nodeEntry.getKey() === "_LITERAL_IDENTIFIER") {
-              if (nodeEntry.getArgument(0) instanceof FluoriteNodeTokenIdentifier) {
+              if (nodeEntry.getArgument(0) instanceof fl7c.FluoriteNodeTokenIdentifier) {
                 entries.push([nodeEntry.getArgument(0).getValue(), nodeEntry]);
                 continue;
               }
@@ -242,7 +1073,7 @@
           }
 
           // 空文
-          if (nodeEntry instanceof FluoriteNodeVoid) {
+          if (nodeEntry instanceof fl7c.FluoriteNodeVoid) {
             continue;
           }
 
@@ -254,7 +1085,7 @@
         pc.pushFrame();
         for (var i = 0; i < keys.length; i++) {
           var key = keys[i];
-          pc.getFrame()[key] = new FluoriteAliasMember(variableId2, key);
+          pc.getFrame()[key] = new fl7c.FluoriteAliasMember(variableId2, key);
         }
         var codes = [];
         for (var i = 0; i < entries.length; i++) {
@@ -264,41 +1095,41 @@
         pc.popFrame();
 
         var code1 = "var v_" + variableId1 + "={};";
-        var code2 = "var v_" + variableId2 + "=vm.createObject(" + codeParent + ",v_" + variableId1 + ");";
+        var code2 = "var v_" + variableId2 + "=util.createObject(" + codeParent + ",v_" + variableId1 + ");";
         var code3 = codes.join("");
         var code4 = "return v_" + variableId2;
         return "(function(){" + code1 + code2 + code3 + code4 + "}())";
       };
       c("PI", Math.PI);
       c("E", Math.E);
-      c("SIN", new FluoriteLambda((vm, args) => {
+      c("SIN", new fl7.FluoriteFunction(args => {
         if (args.length == 1) {
-          return Math.sin(vm.toNumber(args[0]));
+          return Math.sin(util.toNumber(args[0]));
         }
         throw new Error("Illegal argument");
       }));
-      c("COS", new FluoriteLambda((vm, args) => {
+      c("COS", new fl7.FluoriteFunction(args => {
         if (args.length == 1) {
-          return Math.cos(vm.toNumber(args[0]));
+          return Math.cos(util.toNumber(args[0]));
         }
         throw new Error("Illegal argument");
       }));
-      c("LOG", new FluoriteLambda((vm, args) => {
+      c("LOG", new fl7.FluoriteFunction(args => {
         if (args.length == 1) {
-          return Math.log(vm.toNumber(args[0]));
+          return Math.log(util.toNumber(args[0]));
         }
         if (args.length == 2) {
-          return Math.log(vm.toNumber(args[0])) / Math.log(vm.toNumber(args[1]));
+          return Math.log(util.toNumber(args[0])) / Math.log(util.toNumber(args[1]));
         }
         throw new Error("Illegal argument");
       }));
-      c("OUT", new FluoriteLambda((vm, args) => {
+      c("OUT", new fl7.FluoriteFunction(args => {
         if (args.length == 1) {
-          var stream = vm.toStream(args[0]).start();
+          var stream = util.toStream(args[0]).start();
           while (true) {
             var next = stream.next();
             if (next === undefined) break;
-            console.log(vm.toString(next));
+            console.log(util.toString(next));
           }
           return null;
         }
@@ -307,114 +1138,114 @@
       c("TRUE", true);
       c("FALSE", false);
       c("NULL", null);
-      c("RAND", new FluoriteLambda((vm, args) => {
+      c("RAND", new fl7.FluoriteFunction(args => {
         if (args.length == 0) {
           return Math.random();
         }
         if (args.length == 1) {
-          var max = vm.toNumber(args[0]);
+          var max = util.toNumber(args[0]);
           return Math.floor(Math.random() * max);
         }
         if (args.length == 2) {
-          var min = vm.toNumber(args[0]);
-          var max = vm.toNumber(args[1]);
+          var min = util.toNumber(args[0]);
+          var max = util.toNumber(args[1]);
           return Math.floor(Math.random() * (max - min)) + min;
         }
         throw new Error("Illegal argument");
       }));
-      c("ADD", new FluoriteLambda((vm, args) => {
+      c("ADD", new fl7.FluoriteFunction(args => {
         var stream = args[0];
         if (stream === undefined) throw new Error("Illegal argument");
-        stream = vm.toStream(stream).start();
+        stream = util.toStream(stream).start();
         var result = 0;
         while (true) {
           var next = stream.next();
           if (next === undefined) break;
-          result += vm.toNumber(next);
+          result += util.toNumber(next);
         }
         return result;
       }));
-      c("MUL", new FluoriteLambda((vm, args) => {
+      c("MUL", new fl7.FluoriteFunction(args => {
         var stream = args[0];
         if (stream === undefined) throw new Error("Illegal argument");
-        stream = vm.toStream(stream).start();
+        stream = util.toStream(stream).start();
         var result = 1;
         while (true) {
           var next = stream.next();
           if (next === undefined) break;
-          result *= vm.toNumber(next);
+          result *= util.toNumber(next);
         }
         return result;
       }));
-      c("ARRAY", new FluoriteLambda((vm, args) => {
+      c("ARRAY", new fl7.FluoriteFunction(args => {
         var value = args[0];
         if (value === undefined) throw new Error("Illegal argument");
-        return vm.toStream(value).toArray();
+        return util.toStream(value).toArray();
       }));
-      c("STRING", new FluoriteLambda((vm, args) => {
+      c("STRING", new fl7.FluoriteFunction(args => {
         var value = args[0];
         if (value === undefined) throw new Error("Illegal argument");
-        return vm.toString(value);
+        return util.toString(value);
       }));
-      c("NUMBER", new FluoriteLambda((vm, args) => {
+      c("NUMBER", new fl7.FluoriteFunction(args => {
         var value = args[0];
         if (value === undefined) throw new Error("Illegal argument");
-        return vm.toNumber(value);
+        return util.toNumber(value);
       }));
-      c("BOOLEAN", new FluoriteLambda((vm, args) => {
+      c("BOOLEAN", new fl7.FluoriteFunction(args => {
         var value = args[0];
         if (value === undefined) throw new Error("Illegal argument");
-        return vm.toBoolean(value);
+        return util.toBoolean(value);
       }));
-      c("JOIN", new FluoriteLambda((vm, args) => {
+      c("JOIN", new fl7.FluoriteFunction(args => {
         var delimiter = args[1];
         if (delimiter === undefined) delimiter = ",";
-        delimiter = vm.toString(delimiter);
+        delimiter = util.toString(delimiter);
 
         var stream = args[0];
         if (stream === undefined) throw new Error("Illegal argument");
-        stream = vm.toStream(stream);
+        stream = util.toStream(stream);
 
         return stream.toArray().join(delimiter);
       }));
-      c("JSON", new FluoriteLambda((vm, args) => {
+      c("JSON", new fl7.FluoriteFunction(args => {
         var value = args[0];
         if (value === undefined) throw new Error("Illegal argument");
         var outputs = [];
-        vm.writeAsJson(value, string => outputs[outputs.length] = string);
+        util.writeAsJson(value, string => outputs[outputs.length] = string);
         return outputs.join();
       }));
-      c("REVERSE", new FluoriteLambda((vm, args) => {
+      c("REVERSE", new fl7.FluoriteFunction(args => {
         var stream = args[0];
         if (stream === undefined) throw new Error("Illegal argument");
-        return vm.toStreamFromValues(vm.toStream(stream).toArray().reverse());
+        return util.toStreamFromValues(util.toStream(stream).toArray().reverse());
       }));
       m("_LITERAL_INTEGER", e => {
-        if (!(e.node().getArgument(0) instanceof FluoriteNodeTokenInteger)) throw new Error("Illegal argument");
+        if (!(e.node().getArgument(0) instanceof fl7c.FluoriteNodeTokenInteger)) throw new Error("Illegal argument");
         return "(" + e.node().getArgument(0).getValue() + ")";
       });
       m("_LITERAL_BASED_INTEGER", e => {
-        if (!(e.node().getArgument(0) instanceof FluoriteNodeTokenBasedInteger)) throw new Error("Illegal argument");
+        if (!(e.node().getArgument(0) instanceof fl7c.FluoriteNodeTokenBasedInteger)) throw new Error("Illegal argument");
         return "(" + e.node().getArgument(0).getValue() + ")";
       });
       m("_LITERAL_FLOAT", e => {
-        if (!(e.node().getArgument(0) instanceof FluoriteNodeTokenFloat)) throw new Error("Illegal argument");
+        if (!(e.node().getArgument(0) instanceof fl7c.FluoriteNodeTokenFloat)) throw new Error("Illegal argument");
         return "(" + e.node().getArgument(0).getValue() + ")";
       });
       m("_LITERAL_IDENTIFIER", e => {
-        if (!(e.node().getArgument(0) instanceof FluoriteNodeTokenIdentifier)) throw new Error("Illegal argument");
+        if (!(e.node().getArgument(0) instanceof fl7c.FluoriteNodeTokenIdentifier)) throw new Error("Illegal argument");
         var key = e.node().getArgument(0).getValue();
         var alias = e.pc().getAliasOrUndefined(e.node().getLocation(), key);
         if (alias === undefined) return JSON.stringify(key); // throw new Error("No such alias '" + key + "'");
         return alias.getCode(e.pc(), e.node().getLocation());
       });
       m("_LITERAL_STRING", e => {
-        if (!(e.node().getArgument(0) instanceof FluoriteNodeTokenString)) throw new Error("Illegal argument");
+        if (!(e.node().getArgument(0) instanceof fl7c.FluoriteNodeTokenString)) throw new Error("Illegal argument");
         return "(" + JSON.stringify(e.node().getArgument(0).getValue()) + ")";
       });
       m("_ROUND", e => e.code(0));
-      m("_EMPTY_ROUND", e => "(vm.empty())");
-      m("_SQUARE", e => "(vm.toStream(" + e.code(0) + ").toArray())");
+      m("_EMPTY_ROUND", e => "(util.empty())");
+      m("_SQUARE", e => "(util.toStream(" + e.code(0) + ").toArray())");
       m("_EMPTY_SQUARE", e => "[]");
       m("_CURLY", e => getCodeToCreateFluoriteObject(e.pc(), null, e.node().getArgument(0)));
       m("_EMPTY_CURLY", e => getCodeToCreateFluoriteObject(e.pc(), null, null));
@@ -424,16 +1255,16 @@
         var nodeKey = e.node().getArgument(1);
 
         var key = undefined;
-        if (nodeKey instanceof FluoriteNodeMacro) {
+        if (nodeKey instanceof fl7c.FluoriteNodeMacro) {
           if (nodeKey.getKey() === "_LITERAL_IDENTIFIER") {
-            if (nodeKey.getArgument(0) instanceof FluoriteNodeTokenIdentifier) {
+            if (nodeKey.getArgument(0) instanceof fl7c.FluoriteNodeTokenIdentifier) {
               key = nodeKey.getArgument(0).getValue();
             }
           }
         }
         if (key === undefined) throw new Error("Illegal member access key");
 
-        return "(vm.getValueFromObject(" + nodeObject.getCode(e.pc()) + "," + JSON.stringify(key) + "))"
+        return "(util.getValueFromObject(" + nodeObject.getCode(e.pc()) + "," + JSON.stringify(key) + "))"
       });
       m("_COLON2", e => {
 
@@ -441,48 +1272,48 @@
         var nodeKey = e.node().getArgument(1);
 
         var key = undefined;
-        if (nodeKey instanceof FluoriteNodeMacro) {
+        if (nodeKey instanceof fl7c.FluoriteNodeMacro) {
           if (nodeKey.getKey() === "_LITERAL_IDENTIFIER") {
-            if (nodeKey.getArgument(0) instanceof FluoriteNodeTokenIdentifier) {
+            if (nodeKey.getArgument(0) instanceof fl7c.FluoriteNodeTokenIdentifier) {
               key = nodeKey.getArgument(0).getValue();
             }
           }
         }
         if (key === undefined) throw new Error("Illegal member access key");
 
-        return "(vm.getDelegate(" + nodeObject.getCode(e.pc()) + "," + JSON.stringify(key) + "))";
+        return "(util.getDelegate(" + nodeObject.getCode(e.pc()) + "," + JSON.stringify(key) + "))";
       });
-      m("_RIGHT_ROUND", e => "(vm.call(" + e.code(0) + ", [" + as2c(e.pc(), e.node().getArgument(1)) + "]))");
-      m("_RIGHT_EMPTY_ROUND", e => "(vm.call(" + e.code(0) + ", []))");
-      m("_RIGHT_SQUARE", e => "(vm.getFromArray(" + e.code(0) + "," + e.code(1) + "))");
-      m("_RIGHT_EMPTY_SQUARE", e => "(vm.toStreamFromArray(" + e.code(0) + "))");
+      m("_RIGHT_ROUND", e => "(util.call(" + e.code(0) + ", [" + as2c(e.pc(), e.node().getArgument(1)) + "]))");
+      m("_RIGHT_EMPTY_ROUND", e => "(util.call(" + e.code(0) + ", []))");
+      m("_RIGHT_SQUARE", e => "(util.getFromArray(" + e.code(0) + "," + e.code(1) + "))");
+      m("_RIGHT_EMPTY_SQUARE", e => "(util.toStreamFromArray(" + e.code(0) + "))");
       m("_RIGHT_CURLY", e => getCodeToCreateFluoriteObject(e.pc(), e.node().getArgument(0), e.node().getArgument(1)));
       m("_RIGHT_EMPTY_CURLY", e => getCodeToCreateFluoriteObject(e.pc(), e.node().getArgument(0), null));
-      m("_LEFT_PLUS", e => "(vm.toNumber(" + e.code(0) + "))");
-      m("_LEFT_MINUS", e => "(-vm.toNumber(" + e.code(0) + "))");
-      m("_LEFT_QUESTION", e => "(vm.toBoolean(" + e.code(0) + "))");
-      m("_LEFT_EXCLAMATION", e => "(!vm.toBoolean(" + e.code(0) + "))");
-      m("_LEFT_AMPERSAND", e => "(vm.toString(" + e.code(0) + "))");
+      m("_LEFT_PLUS", e => "(util.toNumber(" + e.code(0) + "))");
+      m("_LEFT_MINUS", e => "(-util.toNumber(" + e.code(0) + "))");
+      m("_LEFT_QUESTION", e => "(util.toBoolean(" + e.code(0) + "))");
+      m("_LEFT_EXCLAMATION", e => "(!util.toBoolean(" + e.code(0) + "))");
+      m("_LEFT_AMPERSAND", e => "(util.toString(" + e.code(0) + "))");
       m("_CIRCUMFLEX", e => "(Math.pow(" + e.code(0) + "," + e.code(1) + "))");
-      m("_ASTERISK", e => "(vm.mul(" + e.code(0) + "," + e.code(1) + "))");
+      m("_ASTERISK", e => "(util.mul(" + e.code(0) + "," + e.code(1) + "))");
       m("_SLASH", e => "(" + e.code(0) + "/" + e.code(1) + ")");
       m("_PERCENT", e => "(" + e.code(0) + "%" + e.code(1) + ")");
-      m("_PLUS", e => "(vm.add(" + e.code(0) + "," + e.code(1) + "))");
+      m("_PLUS", e => "(util.add(" + e.code(0) + "," + e.code(1) + "))");
       m("_MINUS", e => "(" + e.code(0) + "-" + e.code(1) + ")");
-      m("_AMPERSAND", e => "(vm.toString(" + e.code(0) + ")+vm.toString(" + e.code(1) + "))");
-      m("_TILDE", e => "(vm.rangeOpened(" + e.code(0) + "," + e.code(1) + "))");
-      m("_PERIOD2", e => "(vm.rangeClosed(" + e.code(0) + "," + e.code(1) + "))");
-      m("_LESS2", e => "(vm.curryLeft(" + e.code(0) + ",[" + as2c2(e.pc(), e.node().getArgument(1)) + "]))");
-      m("_GREATER2", e => "(vm.curryRight(" + e.code(0) + ",[" + as2c2(e.pc(), e.node().getArgument(1)) + "]))");
-      m("_AMPERSAND2", e => "(function(){var a=" + e.code(0) + ";return !vm.toBoolean(a)?a:" + e.code(1) + "}())");
-      m("_PIPE2", e => "(function(){var a=" + e.code(0) + ";return vm.toBoolean(a)?a:" + e.code(1) + "}())");
-      m("_TERNARY_QUESTION_COLON", e => "(vm.toBoolean(" + e.code(0) + ")?" + e.code(1) + ":" + e.code(2) + ")");
+      m("_AMPERSAND", e => "(util.toString(" + e.code(0) + ")+util.toString(" + e.code(1) + "))");
+      m("_TILDE", e => "(util.rangeOpened(" + e.code(0) + "," + e.code(1) + "))");
+      m("_PERIOD2", e => "(util.rangeClosed(" + e.code(0) + "," + e.code(1) + "))");
+      m("_LESS2", e => "(util.curryLeft(" + e.code(0) + ",[" + as2c2(e.pc(), e.node().getArgument(1)) + "]))");
+      m("_GREATER2", e => "(util.curryRight(" + e.code(0) + ",[" + as2c2(e.pc(), e.node().getArgument(1)) + "]))");
+      m("_AMPERSAND2", e => "(function(){var a=" + e.code(0) + ";return !util.toBoolean(a)?a:" + e.code(1) + "}())");
+      m("_PIPE2", e => "(function(){var a=" + e.code(0) + ";return util.toBoolean(a)?a:" + e.code(1) + "}())");
+      m("_TERNARY_QUESTION_COLON", e => "(util.toBoolean(" + e.code(0) + ")?" + e.code(1) + ":" + e.code(2) + ")");
       m("_QUESTION_COLON", e => "(function(){var a=" + e.code(0) + ";return a!==null?a:" + e.code(1) + "}())");
       m("_MINUS_GREATER", e => {
 
         // 引数部全体を括弧で囲んでもよい
         var nodeArgs = e.node().getArgument(0);
-        if (nodeArgs instanceof FluoriteNodeMacro) {
+        if (nodeArgs instanceof fl7c.FluoriteNodeMacro) {
           if (nodeArgs.getKey() === "_ROUND") {
             nodeArgs = nodeArgs.getArgument(0);
           }
@@ -490,7 +1321,7 @@
 
         // 引数部はコロン、セミコロン、空括弧であってもよい
         var nodesArg = undefined;
-        if (nodeArgs instanceof FluoriteNodeMacro) {
+        if (nodeArgs instanceof fl7c.FluoriteNodeMacro) {
           if (nodeArgs.getKey() === "_SEMICOLON") {
             nodesArg = nodeArgs.getArguments();
           } else if (nodeArgs.getKey() === "_COMMA") {
@@ -507,9 +1338,9 @@
         var args = [];
         for (var i = 0; i < nodesArg.length; i++) {
           var nodeArg = nodesArg[i];
-          if (nodeArg instanceof FluoriteNodeMacro) {
+          if (nodeArg instanceof fl7c.FluoriteNodeMacro) {
             if (nodeArg.getKey() === "_LITERAL_IDENTIFIER") {
-              if (nodeArg.getArgument(0) instanceof FluoriteNodeTokenIdentifier) {
+              if (nodeArg.getArgument(0) instanceof fl7c.FluoriteNodeTokenIdentifier) {
                 args.push(nodeArg.getArgument(0).getValue());
                 continue;
               }
@@ -518,7 +1349,7 @@
           throw new Error("Illegal lambda argument: " + nodeArg);
         }
 
-        var aliases = args.map(a => new FluoriteAliasVariable(e.pc().allocateVariableId()));
+        var aliases = args.map(a => new fl7c.FluoriteAliasVariable(e.pc().allocateVariableId()));
 
         var check = "if(args.length!=" + args.length + ")throw new Error(\"Number of lambda arguments do not match: \" + args.length + \" != " + args.length + "\");";
 
@@ -531,28 +1362,28 @@
         var body = e.code(1);
         e.pc().popFrame();
 
-        return "(vm.createLambda((vm,args)=>{" + check + vars + "return " + body + ";}))";
+        return "(util.createLambda(args=>{" + check + vars + "return " + body + ";}))";
       });
       m("_COMMA", e => {
         var nodes = [];
         var limit = e.node().getArgumentCount();
         for (var i = 0; i < limit; i++) {
           var node = e.node().getArgument(i);
-          if (!(node instanceof FluoriteNodeVoid)) {
+          if (!(node instanceof fl7c.FluoriteNodeVoid)) {
             nodes.push(node.getCode(e.pc()));
           }
         }
-        return "(vm.toStreamFromValues([" + nodes.join(",") + "]))";
+        return "(util.toStreamFromValues([" + nodes.join(",") + "]))";
       });
       m("_PIPE", e => {
         var key = undefined;
         var stream = undefined;
 
-        if (e.node().getArgument(0) instanceof FluoriteNodeMacro) {
+        if (e.node().getArgument(0) instanceof fl7c.FluoriteNodeMacro) {
           if (e.node().getArgument(0).getKey() === "_COLON") {
-            if (e.node().getArgument(0).getArgument(0) instanceof FluoriteNodeMacro) {
+            if (e.node().getArgument(0).getArgument(0) instanceof fl7c.FluoriteNodeMacro) {
               if (e.node().getArgument(0).getArgument(0).getKey() === "_LITERAL_IDENTIFIER") {
-                if (e.node().getArgument(0).getArgument(0).getArgument(0) instanceof FluoriteNodeTokenIdentifier) {
+                if (e.node().getArgument(0).getArgument(0).getArgument(0) instanceof fl7c.FluoriteNodeTokenIdentifier) {
                   key = e.node().getArgument(0).getArgument(0).getArgument(0).getValue();
                   stream = e.node().getArgument(0).getArgument(1).getCode(e.pc());
                 }
@@ -564,746 +1395,16 @@
         if (key === undefined) key = "_";
         if (stream === undefined) stream = e.code(0);
 
-        var alias = new FluoriteAliasVariable(e.pc().allocateVariableId());
+        var alias = new fl7c.FluoriteAliasVariable(e.pc().allocateVariableId());
 
         e.pc().pushFrame();
         e.pc().getFrame()[key] = alias;
         var body = e.code(1);
         e.pc().popFrame();
 
-        return "(vm.map(vm.toStream(" + stream + ")," + alias.getRawCode(e.pc(), e.node().getLocation()) + "=>" + body + "))";
+        return "(util.map(util.toStream(" + stream + ")," + alias.getRawCode(e.pc(), e.node().getLocation()) + "=>" + body + "))";
       });
-      m("_EQUAL_GREATER", e => "(vm.call(" + e.code(1) + ", [" + as2c2(e.pc(), e.node().getArgument(0)) + "]))");
-    }
-
-  }
-
-  class FluoriteVirtualMachine {
-
-    constructor(constants) {
-      this.constants = constants;
-    }
-
-    toNumber(value) {
-      if (Number.isFinite(value)) return value;
-      if (value === null) return 0;
-      if (value === true) return 1;
-      if (value === false) return 0;
-      if (value instanceof Array) return value.length;
-      if (typeof value === 'string' || value instanceof String) {
-        var result = Number(value);
-        if (!Number.isNaN(result)) return result;
-      }
-      if (value instanceof FluoriteObject) {
-        var res = this.getValueFromObject(value, "TO_NUMBER");
-        if (res !== null) return this.toNumber(this.call(res, [value]));
-      }
-      throw new Error("Cannot convert to number: " + value);
-    }
-
-    toBoolean(value) {
-      if (value === 0) return false;
-      if (value === null) return false;
-      if (value === false) return false;
-      if (value === "") return false;
-      if (value instanceof Array) return value.length != 0;
-      if (value instanceof FluoriteStream) throw new Error("Cannot convert to boolean: " + value);
-      if (value instanceof FluoriteObject) {
-        var res = this.getValueFromObject(value, "TO_BOOLEAN");
-        if (res !== null) return this.toBoolean(this.call(res, [value]));
-      }
-      return true;
-    }
-
-    toString(value) {
-      if (value === undefined) return super.toString(); // VMを文字列化する
-      if (value === null) return "NULL";
-      if (value === true) return "TRUE";
-      if (value === false) return "FALSE";
-      if (value instanceof Array) return value.map(a => this.toString(a)).join(",");
-      if (value instanceof FluoriteObject) {
-        var res = this.getValueFromObject(value, "TO_STRING");
-        if (res !== null) return this.toString(this.call(res, [value]));
-      }
-      return value.toString();
-    }
-
-    toStream(value) {
-      if (value instanceof FluoriteStream) return value;
-      return new FluoriteStreamScalar(this, value);
-    }
-
-    add(a, b) {
-      if (Number.isFinite(a)) {
-        return a + this.toNumber(b);
-      }
-      if (a instanceof Array) {
-        if (b instanceof Array) {
-          var result = [];
-          Array.prototype.push.apply(result, a);
-          Array.prototype.push.apply(result, b);
-          return result;
-        }
-      }
-      if (typeof a === 'string' || a instanceof String) {
-        return a + this.toString(b);
-      }
-      throw new Error("Illegal argument: " + a + ", " + b);
-    }
-
-    mul(a, b) {
-      if (Number.isFinite(a)) {
-        return a * this.toNumber(b);
-      }
-      if (a instanceof Array) {
-        var result = [];
-        b = this.toNumber(b);
-        for (var i = 0; i < b; i++) {
-          Array.prototype.push.apply(result, a);
-        }
-        return result;
-      }
-      if (typeof a === 'string' || a instanceof String) {
-        return a.repeat(this.toNumber(b));
-      }
-      throw new Error("Illegal argument: " + a + ", " + b);
-    }
-
-    writeAsJson(value, out) {
-      out(JSON.stringify(value)); // TODO
-    }
-
-    //
-
-    empty() {
-      return new FluoriteStreamEmpty(this);
-    }
-
-    rangeOpened(start, end) {
-      return new FluoriteStreamRangeOpened(this, this.toNumber(start), this.toNumber(end));
-    }
-
-    rangeClosed(start, end) {
-      return new FluoriteStreamRangeClosed(this, this.toNumber(start), this.toNumber(end));
-    }
-
-    toStreamFromValues(values) {
-      return new FluoriteStreamValues(this, values);
-    }
-
-    map(stream, func) {
-      return new FluoriteStreamMap(this, stream, func);
-    }
-
-    //
-
-    toStreamFromArray(array) {
-      if (array instanceof Array) {
-        return new FluoriteStreamValues(this, array);
-      }
-      throw new Error("Illegal argument: " + array);
-    }
-
-    getFromArray(array, index) {
-      if (array instanceof Array) {
-        return array[this.toNumber(index)];
-      }
-      throw new Error("Illegal argument: " + array + ", " + index);
-    }
-
-    //
-
-    createLambda(func) {
-      return new FluoriteLambda(func);
-    }
-
-    call(lambda, args) {
-      if (lambda instanceof FluoriteLambda) {
-        return lambda.call(this, args);
-      }
-      throw new Error("Cannot call a non-lambda object: " + lambda);
-    }
-
-    curryLeft(lambda, values) {
-      if (lambda instanceof FluoriteLambda) {
-        return lambda.curryLeft(values);
-      }
-      throw new Error("Cannot curry a non-lambda object: " + lambda);
-    }
-
-    curryRight(lambda, values) {
-      if (lambda instanceof FluoriteLambda) {
-        return lambda.curryRight(values);
-      }
-      throw new Error("Cannot curry a non-lambda object: " + lambda);
-    }
-
-    //
-
-    createObject(parent, map) {
-      if (parent === null) {
-        return new FluoriteObject(this, null, map);
-      }
-      if (parent instanceof FluoriteObject) {
-        return new FluoriteObject(this, parent, map);
-      }
-      throw new Error("Illegal argument: " + parent + ", " + map);
-    }
-
-    getOwnValueFromObject(object, key) {
-      if (object instanceof FluoriteObject) {
-        var descriptor = Object.getOwnPropertyDescriptor(object.map, key);
-        return descriptor !== undefined ? descriptor.value : null;
-      }
-      throw new Error("Illegal argument: " + object + ", " + key);
-    }
-
-    getValueFromObject(object, key) {
-      if (object instanceof FluoriteObject) {
-        var objectClass = object;
-        while (objectClass !== null) {
-          var descriptor = Object.getOwnPropertyDescriptor(objectClass.map, key);
-          if (descriptor !== undefined) {
-            return descriptor.value;
-          }
-          objectClass = objectClass.parent;
-        }
-        return null;
-      }
-      throw new Error("Illegal argument: " + object + ", " + key);
-    }
-
-    getDelegate(object, key) {
-      if (object instanceof FluoriteObject) {
-        var objectClass = object;
-        while (objectClass !== null) {
-          var descriptor = Object.getOwnPropertyDescriptor(objectClass.map, key);
-          if (descriptor !== undefined) {
-            var res = descriptor.value;
-            if (res instanceof FluoriteLambda) {
-              return res.curryLeft([object]);
-            } else {
-              throw new Error("'" + key + "' of " + object + " is not a function");
-            }
-          }
-          objectClass = objectClass.parent;
-        }
-        throw new Error("No such method: " + key + " of " + object);
-      }
-      throw new Error("Illegal argument: " + object + ", " + key);
-    }
-
-  }
-
-  //
-
-  class FluoriteNode {
-
-    constructor(location) {
-      this._location = location;
-    }
-
-    getLocation() {
-      return this._location;
-    }
-
-    getCode(pc) {
-      Fluorite.throwCompileError(this._location, "Not Implemented");
-    }
-
-    getTree(pc) {
-      Fluorite.throwCompileError(this._location, "Not Implemented");
-    }
-
-  }
-
-  class FluoriteNodeVoid extends FluoriteNode {
-
-    constructor(location) {
-      super(location);
-    }
-
-    getCode(pc) {
-      Fluorite.throwCompileError(this._location, "Cannot stringify void node");
-    }
-
-    getTree(pc) {
-      return "VOID";
-    }
-
-  }
-
-  class FluoriteNodeToken extends FluoriteNode {
-
-    constructor(location, value, source) {
-      super(location);
-      this._value = value;
-      this._source = source;
-    }
-
-    getValue() {
-      return this._value;
-    }
-
-    getCode(pc) {
-      Fluorite.throwCompileError(this.getLocation(), "Tried to stringify raw token");
-    }
-
-    getTree() {
-      return this._source;
-    }
-
-  }
-
-  class FluoriteNodeTokenInteger extends FluoriteNodeToken {
-
-    constructor(location, value, source) {
-      super(location, value, source);
-    }
-
-  }
-
-  class FluoriteNodeTokenBasedInteger extends FluoriteNodeToken {
-
-    constructor(location, value, source) {
-      super(location, value, source);
-    }
-
-  }
-
-  class FluoriteNodeTokenFloat extends FluoriteNodeToken {
-
-    constructor(location, value, source) {
-      super(location, value, source);
-    }
-
-  }
-
-  class FluoriteNodeTokenIdentifier extends FluoriteNodeToken {
-
-    constructor(location, value, source) {
-      super(location, value, source);
-    }
-
-  }
-
-  class FluoriteNodeTokenString extends FluoriteNodeToken {
-
-    constructor(location, value, source) {
-      super(location, value, source);
-    }
-
-  }
-
-  class FluoriteNodeMacro extends FluoriteNode {
-
-    constructor(location, key, args) {
-      super(location);
-      this._key = key;
-      this._args = args;
-    }
-
-    getKey() {
-      return this._key;
-    }
-
-    getArguments() {
-      return this._args;
-    }
-
-    getArgument(index) {
-      if (index >= this._args.length) {
-        Fluorite.throwCompileError(this.getLocation(), "Not enough arguments: " + (this._args.length) + " < " + (index + 1));
-      } else {
-        return this._args[index];
-      }
-    }
-
-    getArgumentCount() {
-      return this._args.length;
-    }
-
-    getCode(pc) {
-      var alias = pc.getAlias(this.getLocation(), this._key);
-      if (alias instanceof FluoriteAliasMacro) {
-        var result;
-        try {
-          result = alias.getMacro()(new FluoriteMacroEnvironment(pc, this));
-        } catch (e) {
-          if (e instanceof FluoriteError) {
-            throw e;
-          } else {
-            Fluorite.throwCompileError(this.getLocation(), "" + e.message + " in macro '" + this._key + "'");
-          }
-        }
-        return result;
-      }
-      Fluorite.throwCompileError(this.getLocation(), "No such macro '" + this._key + "'");
-    }
-
-    getTree() {
-      return this._key + "[" + this._args.map(a => a.getTree()).join(",") + "]";
-    }
-
-  }
-
-  class FluoriteMacroEnvironment {
-
-    constructor(pc, node) {
-      this._pc = pc;
-      this._node = node;
-    }
-
-    pc() {
-      return this._pc;
-    }
-
-    node() {
-      return this._node;
-    }
-
-    code(index) {
-      return this._node.getArgument(index).getCode(this._pc);
-    }
-
-  }
-
-  //
-
-  class FluoriteAlias {
-
-    constructor() {
-
-    }
-
-    getCode(pc, location) {
-      throw new Error("Not Implemented");
-    }
-
-  }
-
-  class FluoriteAliasMacro extends FluoriteAlias {
-
-    constructor(func) {
-      super();
-      this._func = func;
-    }
-
-    getMacro() {
-      return this._func;
-    }
-
-    getCode(pc, location) {
-      throw new Error("Cannot stringify a macro alias");
-    }
-
-  }
-
-  class FluoriteAliasVariable extends FluoriteAlias {
-
-    constructor(variableId) {
-      super();
-      this._variableId = variableId;
-    }
-
-    getRawCode(pc, location) {
-      return "v_" + this._variableId;
-    }
-
-    getCode(pc, location) {
-      return "(v_" + this._variableId + ")";
-    }
-
-  }
-
-  class FluoriteAliasConstant extends FluoriteAlias {
-
-    constructor(constantId) {
-      super();
-      this._constantId = constantId;
-    }
-
-    getCode(pc, location) {
-      return "(vm.constants[" + this._constantId + "])";
-    }
-
-  }
-
-  class FluoriteAliasMember extends FluoriteAlias {
-
-    constructor(variableId, key) {
-      super();
-      this._variableId = variableId;
-      this._key = key;
-    }
-
-    getCode(pc, location) {
-      return "(vm.getOwnValueFromObject(v_" + this._variableId + "," + JSON.stringify(this._key) + "))";
-    }
-
-  }
-
-  //
-
-  class FluoriteValue {
-
-    toString() {
-      throw new Error("Not Implemented");
-    }
-
-    toJSON() {
-      throw new Error("Not Implemented");
-    }
-
-  }
-
-  //
-
-  class FluoriteStream extends FluoriteValue {
-
-    constructor(vm) {
-      super();
-      this._vm = vm;
-    }
-
-    toArray() {
-      var result = [];
-      var stream = this.start();
-      while (true) {
-        var item = stream.next();
-        if (item === undefined) break;
-        result.push(item);
-      }
-      return result;
-    }
-
-    start() {
-      return "[FluoriteStream]";
-    }
-
-    next() {
-      throw new Error("Not Implemented");
-    }
-
-    toString() {
-      return this.toArray().map(value => this._vm.toString(value)).join("\n");
-    }
-
-    toJSON() {
-      return this.toArray();
-    }
-
-  }
-
-  class FluoriteStreamEmpty extends FluoriteStream {
-
-    constructor(vm) {
-      super(vm);
-    }
-
-    next() {
-      return undefined;
-    }
-
-  }
-
-  class FluoriteStreamRange extends FluoriteStream {
-
-    constructor(vm, start, end) {
-      super(vm);
-      this._start = start;
-      this._end = end;
-      this._stepdown = end < start;
-      this._i = start;
-    }
-
-  }
-
-  class FluoriteStreamRangeOpened extends FluoriteStreamRange {
-
-    constructor(vm, start, end) {
-      super(vm, start, end);
-    }
-
-    next() {
-      var result = this._i;
-
-      if (this._stepdown) {
-        if (this._i <= this._end) return undefined;
-        this._i--;
-      } else {
-        if (this._i >= this._end) return undefined;
-        this._i++;
-      }
-      
-      return result;
-    }
-
-  }
-
-  class FluoriteStreamRangeClosed extends FluoriteStreamRange {
-
-    constructor(vm, start, end) {
-      super(vm, start, end);
-    }
-
-    next() {
-      var result = this._i;
-
-      if (this._stepdown) {
-        if (this._i < this._end) return undefined;
-        this._i--;
-      } else {
-        if (this._i > this._end) return undefined;
-        this._i++;
-      }
-      
-      return result;
-    }
-
-  }
-
-  class FluoriteStreamValues extends FluoriteStream {
-
-    constructor(vm, values) {
-      super(vm);
-      this._values = values;
-      this._i = 0;
-      this._currentStream = undefined;
-    }
-
-    next() {
-      while (true) {
-        if (this._currentStream !== undefined) {
-          var result = this._currentStream.next();
-          if (result !== undefined) return result;
-          this._currentStream = undefined;
-        }
-
-        if (this._i >= this._values.length) return undefined;
-
-        var result = this._values[this._i];
-        this._i++;
-        if (result instanceof FluoriteStream) {
-          this._currentStream = result.start();
-          continue;
-        }
-        return result;
-      }
-    }
-
-  }
-
-  class FluoriteStreamMap extends FluoriteStream {
-
-    constructor(vm, stream, func) {
-      super(vm);
-      this._stream = stream;
-      this._func = func;
-      this._currentStream = undefined;
-    }
-
-    next() {
-      while (true) {
-        if (this._currentStream !== undefined) {
-          var result = this._currentStream.next();
-          if (result !== undefined) return result;
-          this._currentStream = undefined;
-        }
-
-        var result = this._stream.next();
-        if (result === undefined) return undefined;
-        result = this._func(result);
-        if (result instanceof FluoriteStream) {
-          this._currentStream = result.start();
-          continue;
-        }
-        return result;
-      }
-    }
-
-  }
-
-  class FluoriteStreamScalar extends FluoriteStream {
-
-    constructor(vm, value) {
-      super(vm);
-      this._value = value;
-      this._used = false;
-    }
-
-    next() {
-      if (this._used) return undefined;
-      this._used = true;
-      return this._value;
-    }
-
-  }
-
-  //
-
-  class FluoriteLambda extends FluoriteValue {
-
-    constructor(func) {
-      super();
-      this._func = func;
-    }
-
-    call(vm, args) {
-      return this._func(vm, args);
-    }
-
-    curryLeft(values) {
-      return new FluoriteLambda((vm, args) => {
-        var newArgs = [];
-        Array.prototype.push.apply(newArgs, values);
-        Array.prototype.push.apply(newArgs, args);
-        return this._func(vm, newArgs);
-      });
-    }
-
-    curryRight(values) {
-      return new FluoriteLambda((vm, args) => {
-        var newArgs = [];
-        Array.prototype.push.apply(newArgs, args);
-        Array.prototype.push.apply(newArgs, values);
-        return this._func(vm, newArgs);
-      });
-    }
-
-    toString() {
-      return "[FluoriteLambda]";
-    }
-
-    toJSON() {
-      return "[FluoriteLambda]";
-    }
-
-  }
-
-  //
-
-  class FluoriteObject extends FluoriteValue {
-
-    constructor(vm, parent, map) {
-      super();
-      this.vm = vm;
-      this.parent = parent;
-      this.map = map;
-    }
-
-    toString() {
-      var strings = [];
-      for (var key in this.map) {
-        strings.push(key + ":" + this.vm.toString(this.map[key]));
-      }
-      return "{" + strings.join(";") + "}";
-    }
-
-    toJSON() {
-      return this.map;
-    }
-
+      m("_EQUAL_GREATER", e => "(util.call(" + e.code(1) + ", [" + as2c2(e.pc(), e.node().getArgument(0)) + "]))");
   }
 
 }
@@ -1313,25 +1414,34 @@
 RootDemonstration
   = _ main:Expression _ {
 
-    var pc = new FluoriteParserContext();
+    var pc = new fl7c.Environment();
+
+    loadAliases(pc);
 
     var code;
     try {
       code = main.getCode(pc);
     } catch (e) {
-      return ["Compile Error", "" + e, main.getTree()];
+      var result = ["Compile Error", "" + e, main.getTree()];
+      console.log(result);
+      return result;
     }
 
     var result;
     var resultString;
     try {
-      var vm = pc.createVirtualMachine();
-      result = vm.toStream(eval(code)).toArray();
-      resultString = result.map(a => vm.toString(a) + "\n").join("");
+      var util = fl7.util;
+      var constants = pc.getConstants();
+      result = util.toStream(eval(code)).toArray();
+      resultString = result.map(a => util.toString(a) + "\n").join("");
     } catch (e) {
-      return ["Runtime Error", "" + e, code, main.getTree()];
+      var result = ["Runtime Error", "" + e, code, main.getTree()];
+      console.log(result);
+      return result;
     }
-    return ["OK", resultString, result, code, main.getTree()];
+    var result = ["OK", resultString, result, code, main.getTree()];
+    console.log(result);
+    return result;
   }
 
 Root
@@ -1352,7 +1462,7 @@ _ "Comment"
   )*
 
 TokenInteger "Integer"
-  = [0-9] [0-9_]* { return new FluoriteNodeTokenInteger(location(), parseInt(text().replace(/_/g, ""), 10), text()); }
+  = [0-9] [0-9_]* { return new fl7c.FluoriteNodeTokenInteger(location(), parseInt(text().replace(/_/g, ""), 10), text()); }
 
 TokenBasedInteger "BasedInteger"
   = base:
@@ -1364,42 +1474,42 @@ TokenBasedInteger "BasedInteger"
     if (base < 2) throw new Error("Illegal base: " + base);
     if (base > 36) throw new Error("Illegal base: " + base);
     var number = parseInt(body.replace(/_/g, ""), base);
-    if (Number.isNaN(number)) throw Fluorite.throwCompileError(location(), "Illegal based integer body: '" + body + "' (base=" + base + ")");
-    return new FluoriteNodeTokenBasedInteger(location(), number, text());
+    if (Number.isNaN(number)) throw new Error(location(), "Illegal based integer body: '" + body + "' (base=" + base + ")");
+    return new fl7c.FluoriteNodeTokenBasedInteger(location(), number, text());
   }
 
 TokenFloat "Float"
   = ( [0-9] [0-9_]* [.] [0-9] [0-9_]* [eE] [+-]? [0-9]+
     / [0-9] [0-9_]* [.] [0-9] [0-9_]*
     / [0-9] [0-9_]* [eE] [+-]? [0-9]+
-  ) { return new FluoriteNodeTokenFloat(location(), parseFloat(text().replace(/_/g, "")), text()); }
+  ) { return new fl7c.FluoriteNodeTokenFloat(location(), parseFloat(text().replace(/_/g, "")), text()); }
 
 TokenIdentifier "Identifier"
-  = [a-zA-Z_] [a-zA-Z0-9_]* { return new FluoriteNodeTokenIdentifier(location(), text(), text()); }
+  = [a-zA-Z_] [a-zA-Z0-9_]* { return new fl7c.FluoriteNodeTokenIdentifier(location(), text(), text()); }
 
 TokenStringCharacter
   = [^'\\]
   / "\\" main:. { return main; }
 
 TokenString "String"
-  = "'" main:TokenStringCharacter* "'" { return new FluoriteNodeTokenString(location(), main.join(""), text()); }
+  = "'" main:TokenStringCharacter* "'" { return new fl7c.FluoriteNodeTokenString(location(), main.join(""), text()); }
 
 //
 
 LiteralInteger
-  = main:TokenInteger { return new FluoriteNodeMacro(location(), "_LITERAL_INTEGER", [main]); }
+  = main:TokenInteger { return new fl7c.FluoriteNodeMacro(location(), "_LITERAL_INTEGER", [main]); }
 
 LiteralBasedInteger
-  = main:TokenBasedInteger { return new FluoriteNodeMacro(location(), "_LITERAL_BASED_INTEGER", [main]); }
+  = main:TokenBasedInteger { return new fl7c.FluoriteNodeMacro(location(), "_LITERAL_BASED_INTEGER", [main]); }
 
 LiteralFloat
-  = main:TokenFloat { return new FluoriteNodeMacro(location(), "_LITERAL_FLOAT", [main]); }
+  = main:TokenFloat { return new fl7c.FluoriteNodeMacro(location(), "_LITERAL_FLOAT", [main]); }
 
 LiteralIdentifier
-  = main:TokenIdentifier { return new FluoriteNodeMacro(location(), "_LITERAL_IDENTIFIER", [main]); }
+  = main:TokenIdentifier { return new fl7c.FluoriteNodeMacro(location(), "_LITERAL_IDENTIFIER", [main]); }
 
 LiteralString
-  = main:TokenString { return new FluoriteNodeMacro(location(), "_LITERAL_STRING", [main]); }
+  = main:TokenString { return new fl7c.FluoriteNodeMacro(location(), "_LITERAL_STRING", [main]); }
 
 Literal
   = LiteralFloat
@@ -1423,7 +1533,7 @@ ExecutionExpression
   / TokenBasedInteger
   / TokenInteger
   / key:TokenIdentifier _ args:ExecutionArguments {
-    return new FluoriteNodeMacro(location(), key.getValue(), args);
+    return new fl7c.FluoriteNodeMacro(location(), key.getValue(), args);
   }
   / TokenIdentifier
   / "{" _ main:ExecutionExpression _ "}" { return main; }
@@ -1440,7 +1550,7 @@ Brackets
     / "(" _ ")" { return [location(), "_EMPTY_ROUND", null]; }
     / "[" _ "]" { return [location(), "_EMPTY_SQUARE", null]; }
     / "{" _ "}" { return [location(), "_EMPTY_CURLY", null]; }
-  ) { return new FluoriteNodeMacro(main[0], main[1], main[2] != null ? [main[2]] : []); }
+  ) { return new fl7c.FluoriteNodeMacro(main[0], main[1], main[2] != null ? [main[2]] : []); }
 
 Factor
   = Literal
@@ -1463,7 +1573,7 @@ Right
     var result = head;
     for (var i = 0; i < tail.length; i++) {
       var t = tail[i][1];
-      result = new FluoriteNodeMacro(t[0], t[1], t[2] != null ? [result, t[2]] : [result]);
+      result = new fl7c.FluoriteNodeMacro(t[0], t[1], t[2] != null ? [result, t[2]] : [result]);
     }
     return result;
   }
@@ -1477,7 +1587,7 @@ Left
     / "!" !"!" { return [location(), "_LEFT_EXCLAMATION"]; }
     / "&" { return [location(), "_LEFT_AMPERSAND"]; }
   ) _ tail:Left {
-    return new FluoriteNodeMacro(head[0], head[1], [tail]);
+    return new fl7c.FluoriteNodeMacro(head[0], head[1], [tail]);
   }
 
 Pow
@@ -1488,7 +1598,7 @@ Pow
     var result = tail;
     for (var i = head.length - 1; i >= 0; i--) {
       var h = head[i];
-      result = new FluoriteNodeMacro(h[2][0], h[2][1], [h[0], result]);
+      result = new fl7c.FluoriteNodeMacro(h[2][0], h[2][1], [h[0], result]);
     }
     return result;
   }
@@ -1502,7 +1612,7 @@ Mul
     var result = head;
     for (var i = 0; i < tail.length; i++) {
       var t = tail[i];
-      result = new FluoriteNodeMacro(t[1][0], t[1][1], [result, t[3]]);
+      result = new fl7c.FluoriteNodeMacro(t[1][0], t[1][1], [result, t[3]]);
     }
     return result;
   }
@@ -1515,7 +1625,7 @@ Add
     var result = head;
     for (var i = 0; i < tail.length; i++) {
       var t = tail[i];
-      result = new FluoriteNodeMacro(t[1][0], t[1][1], [result, t[3]]);
+      result = new fl7c.FluoriteNodeMacro(t[1][0], t[1][1], [result, t[3]]);
     }
     return result;
   }
@@ -1527,7 +1637,7 @@ Join
     var result = head;
     for (var i = 0; i < tail.length; i++) {
       var t = tail[i];
-      result = new FluoriteNodeMacro(t[1][0], t[1][1], [result, t[3]]);
+      result = new fl7c.FluoriteNodeMacro(t[1][0], t[1][1], [result, t[3]]);
     }
     return result;
   }
@@ -1540,7 +1650,7 @@ Range
     var result = head;
     for (var i = 0; i < tail.length; i++) {
       var t = tail[i];
-      result = new FluoriteNodeMacro(t[1][0], t[1][1], [result, t[3]]);
+      result = new fl7c.FluoriteNodeMacro(t[1][0], t[1][1], [result, t[3]]);
     }
     return result;
   }
@@ -1553,7 +1663,7 @@ Shift
     var result = head;
     for (var i = 0; i < tail.length; i++) {
       var t = tail[i];
-      result = new FluoriteNodeMacro(t[1][0], t[1][1], [result, t[3]]);
+      result = new fl7c.FluoriteNodeMacro(t[1][0], t[1][1], [result, t[3]]);
     }
     return result;
   }
@@ -1565,7 +1675,7 @@ And
     var result = head;
     for (var i = 0; i < tail.length; i++) {
       var t = tail[i];
-      result = new FluoriteNodeMacro(t[1][0], t[1][1], [result, t[3]]);
+      result = new fl7c.FluoriteNodeMacro(t[1][0], t[1][1], [result, t[3]]);
     }
     return result;
   }
@@ -1577,17 +1687,17 @@ Or
     var result = head;
     for (var i = 0; i < tail.length; i++) {
       var t = tail[i];
-      result = new FluoriteNodeMacro(t[1][0], t[1][1], [result, t[3]]);
+      result = new fl7c.FluoriteNodeMacro(t[1][0], t[1][1], [result, t[3]]);
     }
     return result;
   }
 
 Condition
   = head:Or _ op:("?" { return location(); }) _ a:Condition _ ":" _ b:Condition {
-    return new FluoriteNodeMacro(op, "_TERNARY_QUESTION_COLON", [head, a, b]);
+    return new fl7c.FluoriteNodeMacro(op, "_TERNARY_QUESTION_COLON", [head, a, b]);
   }
   / head:Or _ op:("?:" { return location(); }) _ b:Condition {
-    return new FluoriteNodeMacro(op, "_QUESTION_COLON", [head, b]);
+    return new fl7c.FluoriteNodeMacro(op, "_QUESTION_COLON", [head, b]);
   }
   / Or
 
@@ -1597,13 +1707,13 @@ Stream
     / _ "," { return null; }
   )* last:(_ Condition)? {
     var result = [];
-    result.push(head != null ? head[0] : new FluoriteNodeVoid(location()));
+    result.push(head != null ? head[0] : new fl7c.FluoriteNodeVoid(location()));
     for (var i = 0; i < tail.length; i++) {
       var t = tail[i];
-      result.push(t != null ? t : new FluoriteNodeVoid(location()));
+      result.push(t != null ? t : new fl7c.FluoriteNodeVoid(location()));
     }
-    result.push(last != null ? last[1] : new FluoriteNodeVoid(location()));
-    return new FluoriteNodeMacro(location(), "_COMMA", result);
+    result.push(last != null ? last[1] : new fl7c.FluoriteNodeVoid(location()));
+    return new fl7c.FluoriteNodeMacro(location(), "_COMMA", result);
   }
   / Condition
 
@@ -1616,7 +1726,7 @@ Assignment
     var result = tail;
     for (var i = head.length - 1; i >= 0; i--) {
       var h = head[i];
-      result = new FluoriteNodeMacro(h[2][0], h[2][1], [h[0], result]);
+      result = new fl7c.FluoriteNodeMacro(h[2][0], h[2][1], [h[0], result]);
     }
     return result;
   }
@@ -1628,7 +1738,7 @@ Pipe
     var result = tail;
     for (var i = head.length - 1; i >= 0; i--) {
       var h = head[i];
-      result = new FluoriteNodeMacro(h[2][0], h[2][1], [h[0], result]);
+      result = new fl7c.FluoriteNodeMacro(h[2][0], h[2][1], [h[0], result]);
     }
     return result;
   }
@@ -1641,7 +1751,7 @@ Arrow
     var result = head;
     for (var i = 0; i < tail.length; i++) {
       var t = tail[i];
-      result = new FluoriteNodeMacro(t[1][0], t[1][1], [result, t[3]]);
+      result = new fl7c.FluoriteNodeMacro(t[1][0], t[1][1], [result, t[3]]);
     }
     return result;
   }
@@ -1652,13 +1762,13 @@ Arguments
     / _ ";" { return null; }
   )* last:(_ Arrow)? {
     var result = [];
-    result.push(head != null ? head[0] : new FluoriteNodeVoid(location()));
+    result.push(head != null ? head[0] : new fl7c.FluoriteNodeVoid(location()));
     for (var i = 0; i < tail.length; i++) {
       var t = tail[i];
-      result.push(t != null ? t : new FluoriteNodeVoid(location()));
+      result.push(t != null ? t : new fl7c.FluoriteNodeVoid(location()));
     }
-    result.push(last != null ? last[1] : new FluoriteNodeVoid(location()));
-    return new FluoriteNodeMacro(location(), "_SEMICOLON", result);
+    result.push(last != null ? last[1] : new fl7c.FluoriteNodeVoid(location()));
+    return new fl7c.FluoriteNodeMacro(location(), "_SEMICOLON", result);
   }
   / Arrow
 
