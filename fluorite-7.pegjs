@@ -678,6 +678,14 @@
         this.map = map;
       }
 
+      initialize(object) {
+        for (var key in this.map) {
+          if (this.map[key] instanceof FluoriteObjectInitializer) {
+            this.map[key] = this.map[key].get();
+          }
+        }
+      }
+
       toNumber() {
         var res = util.getValueFromObject(this, "TO_NUMBER");
         if (res !== null) return util.toNumber(util.call(res, [this]));
@@ -705,6 +713,18 @@
         var res = util.getValueFromObject(this, "TO_JSON");
         if (res !== null) return util.toJSON(util.call(res, [this]));
         return this.map;
+      }
+
+    }
+
+    class FluoriteObjectInitializer {
+
+      constructor(func) {
+        this._func = func;
+      }
+
+      get() {
+        return this._func();
       }
 
     }
@@ -896,10 +916,20 @@
         throw new Error("Illegal argument: " + parent + ", " + map);
       },
 
+      initializer: function(func) {
+        return new FluoriteObjectInitializer(func);
+      },
+
       getOwnValueFromObject: function(object, key) {
         if (object instanceof FluoriteObject) {
           var descriptor = Object.getOwnPropertyDescriptor(object.map, key);
-          return descriptor !== undefined ? descriptor.value : null;
+          if (descriptor !== undefined) {
+            if (descriptor.value instanceof FluoriteObjectInitializer) {
+              descriptor.value = descriptor.value.get();
+            }
+            return descriptor.value;
+          }
+          return null;
         }
         throw new Error("Illegal argument: " + object + ", " + key);
       },
@@ -910,6 +940,9 @@
           while (objectClass !== null) {
             var descriptor = Object.getOwnPropertyDescriptor(objectClass.map, key);
             if (descriptor !== undefined) {
+              if (descriptor.value instanceof FluoriteObjectInitializer) {
+                descriptor.value = descriptor.value.get();
+              }
               return descriptor.value;
             }
             objectClass = objectClass.parent;
@@ -925,8 +958,10 @@
           while (objectClass !== null) {
             var descriptor = Object.getOwnPropertyDescriptor(objectClass.map, key);
             if (descriptor !== undefined) {
-              var res = descriptor.value;
-              return util.bind(res, object);
+              if (descriptor.value instanceof FluoriteObjectInitializer) {
+                descriptor.value = descriptor.value.get();
+              }
+              return util.bind(descriptor.value, object);
             }
             objectClass = objectClass.parent;
           }
@@ -1014,7 +1049,7 @@
 
         // エントリー列の変換
         var keys = []; // [key : string...]
-        var entries = []; // [[key : string, node : Node]...]
+        var entries = []; // [[key : string, node : Node, delay : boolean]...]
         for (var i = 0; i < nodesEntry.length; i++) {
           var nodeEntry = nodesEntry[i];
 
@@ -1036,7 +1071,7 @@
               var nodeValue = nodeEntry.getArgument(1);
 
               keys.push(key);
-              entries.push([key, nodeValue]);
+              entries.push([key, nodeValue, true]);
               continue;
             }
           }
@@ -1058,7 +1093,7 @@
 
               var nodeValue = nodeEntry.getArgument(1);
 
-              entries.push([key, nodeValue]);
+              entries.push([key, nodeValue, false]);
               continue;
             }
           }
@@ -1067,7 +1102,7 @@
           if (nodeEntry instanceof fl7c.FluoriteNodeMacro) {
             if (nodeEntry.getKey() === "_LITERAL_IDENTIFIER") {
               if (nodeEntry.getArgument(0) instanceof fl7c.FluoriteNodeTokenIdentifier) {
-                entries.push([nodeEntry.getArgument(0).getValue(), nodeEntry]);
+                entries.push([nodeEntry.getArgument(0).getValue(), nodeEntry, false]);
                 continue;
               }
             }
@@ -1081,25 +1116,30 @@
           throw new Error("Illegal object pair");
         }
 
-        var variableId1 = pc.allocateVariableId();
-        var variableId2 = pc.allocateVariableId();
+        var variableIdMap = pc.allocateVariableId();
+        var variableIdObject = pc.allocateVariableId();
         pc.pushFrame();
         for (var i = 0; i < keys.length; i++) {
           var key = keys[i];
-          pc.getFrame()[key] = new fl7c.FluoriteAliasMember(variableId2, key);
+          pc.getFrame()[key] = new fl7c.FluoriteAliasMember(variableIdObject, key);
         }
         var codes = [];
         for (var i = 0; i < entries.length; i++) {
           var entry = entries[i];
-          codes.push("v_" + variableId1 + "[" + JSON.stringify(entry[0]) + "]=" + entry[1].getCode(pc) + ";");
+          if (entry[2]) {
+            codes.push("v_" + variableIdMap + "[" + JSON.stringify(entry[0]) + "]=util.initializer(function(){return " + entry[1].getCode(pc) + ";});");
+          } else {
+            codes.push("v_" + variableIdMap + "[" + JSON.stringify(entry[0]) + "]=" + entry[1].getCode(pc) + ";");
+          }
         }
         pc.popFrame();
 
-        var code1 = "var v_" + variableId1 + "={};";
-        var code2 = "var v_" + variableId2 + "=util.createObject(" + codeParent + ",v_" + variableId1 + ");";
+        var code1 = "var v_" + variableIdMap + "={};";
+        var code2 = "var v_" + variableIdObject + "=util.createObject(" + codeParent + ",v_" + variableIdMap + ");";
         var code3 = codes.join("");
-        var code4 = "return v_" + variableId2;
-        return "(function(){" + code1 + code2 + code3 + code4 + "}())";
+        var code4 = "v_" + variableIdObject + ".initialize();";
+        var code5 = "return v_" + variableIdObject;
+        return "(function(){" + code1 + code2 + code3 + code4 + code5 + "}())";
       };
       c("PI", Math.PI);
       c("E", Math.E);
