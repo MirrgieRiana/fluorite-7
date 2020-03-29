@@ -40,7 +40,7 @@ result.loadAliases(env);
 
 var code = result.node.getCode(env);
 
-var util = result.fl7c.util;
+var util = result.fl7.util;
 var constants = env.getConstants();
 var stream = util.toStreamer(eval(code)).start();
 
