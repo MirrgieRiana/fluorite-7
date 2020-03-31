@@ -598,12 +598,23 @@
 
       start() {
         var stream = this._streamer.start();
+        var currentStream = undefined;
         return {
           next: () => {
             while (true) {
+              if (currentStream !== undefined) {
+                var result = currentStream.next();
+                if (result !== undefined) return result;
+                currentStream = undefined;
+              }
+
               var result = stream.next();
               if (result === undefined) return undefined;
               result = this._func(result);
+              if (result instanceof FluoriteStreamer) {
+                currentStream = result.start();
+                continue;
+              }
               return result;
             }
           },
