@@ -168,7 +168,7 @@
       }
 
       getCode(pc) {
-        Fluorite.throwCompileError(this.getLocation(), "Tried to stringify raw token");
+        throwCompileError(this.getLocation(), "Tried to stringify raw token");
       }
 
       getTree() {
@@ -235,7 +235,7 @@
 
       getArgument(index) {
         if (index >= this._args.length) {
-          Fluorite.throwCompileError(this.getLocation(), "Not enough arguments: " + (this._args.length) + " < " + (index + 1));
+          throwCompileError(this.getLocation(), "Not enough arguments: " + (this._args.length) + " < " + (index + 1));
         } else {
           return this._args[index];
         }
@@ -260,7 +260,7 @@
           }
           return result;
         }
-        Fluorite.throwCompileError(this.getLocation(), "No such macro '" + this._key + "'");
+        throwCompileError(this.getLocation(), "No such macro '" + this._key + "'");
       }
 
       getTree() {
@@ -1292,6 +1292,19 @@
         if (!(e.node().getArgument(0) instanceof fl7c.FluoriteNodeTokenString)) throw new Error("Illegal argument");
         return "(" + JSON.stringify(e.node().getArgument(0).getValue()) + ")";
       });
+      m("_LITERAL_EMBEDDED_STRING", e => {
+        var codes = [];
+        var nodes = e.node().getArguments();
+        for (var i = 0; i < nodes.length; i++) {
+          var node = nodes[i];
+          if (node instanceof fl7c.FluoriteNodeTokenString) {
+            codes.push(JSON.stringify(node.getValue()));
+            continue;
+          }
+          codes.push("util.toString(" + node.getCode(e.pc()) + ")");
+        }
+        return "([" + codes.join(",") + "].join(\"\"))";
+      });
       m("_ROUND", e => e.code(0));
       m("_EMPTY_ROUND", e => "(util.empty())");
       m("_SQUARE", e => "(util.toStream(" + e.code(0) + ").toArray())");
@@ -1567,6 +1580,28 @@ TokenStringCharacter
 TokenString "String"
   = "'" main:TokenStringCharacter* "'" { return new fl7c.FluoriteNodeTokenString(location(), main.join(""), text()); }
 
+TokenEmbeddedStringCharacter
+  = [^"\\$]
+  / "\\" "\\" { return "\\"; }
+  / "\\" "\"" { return "\""; }
+  / "\\" "$" { return "$"; }
+  / "\\" "b" { return "\x08"; }
+  / "\\" "f" { return "\x0C"; }
+  / "\\" "n" { return "\x0A"; }
+  / "\\" "r" { return "\x0D"; }
+  / "\\" "t" { return "\x09"; }
+  / "\\" "0" { return "\x00"; }
+  / "\\" "x" main:$([0-9a-fA-f] [0-9a-fA-f]) { return String.fromCharCode(parseInt(main, 16)); }
+  / "\\" "u" main:$([0-9a-fA-f] [0-9a-fA-f] [0-9a-fA-f] [0-9a-fA-f]) { return String.fromCharCode(parseInt(main, 16)); }
+
+TokenEmbeddedStringSection
+  = main:TokenEmbeddedStringCharacter+ { return new fl7c.FluoriteNodeTokenString(location(), main.join(""), "\"" + text() + "\""); }
+  / "$" "(" _ main:Expression _ ")" { return main; }
+  / "$" main:LiteralIdentifier { return main; }
+
+TokenEmbeddedString "EmbeddedString"
+  = "\"" main:TokenEmbeddedStringSection* "\"" { return main; }
+
 //
 
 LiteralInteger
@@ -1584,12 +1619,16 @@ LiteralIdentifier
 LiteralString
   = main:TokenString { return new fl7c.FluoriteNodeMacro(location(), "_LITERAL_STRING", [main]); }
 
+LiteralEmbeddedString
+  = main:TokenEmbeddedString { return new fl7c.FluoriteNodeMacro(location(), "_LITERAL_EMBEDDED_STRING", main); }
+
 Literal
   = LiteralFloat
   / LiteralBasedInteger
   / LiteralInteger
   / LiteralIdentifier
   / LiteralString
+  / LiteralEmbeddedString
 
 //
 
