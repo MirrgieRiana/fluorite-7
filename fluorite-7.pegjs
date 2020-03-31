@@ -1596,8 +1596,7 @@ TokenEmbeddedStringCharacter
 
 TokenEmbeddedStringSection
   = main:TokenEmbeddedStringCharacter+ { return new fl7c.FluoriteNodeTokenString(location(), main.join(""), "\"" + text() + "\""); }
-  / "$" "(" _ main:Expression _ ")" { return main; }
-  / "$" main:LiteralIdentifier { return main; }
+  / "$" main:Factor { return main; }
 
 TokenEmbeddedString "EmbeddedString"
   = "\"" main:TokenEmbeddedStringSection* "\"" { return main; }
