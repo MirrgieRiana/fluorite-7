@@ -217,6 +217,15 @@
 
     }
 
+    class FluoriteNodeTokenFormat extends FluoriteNodeToken {
+
+      constructor(location, value, source) {
+        super(location, value, source);
+      }
+
+    }
+
+
     class FluoriteNodeMacro extends FluoriteNode {
 
       constructor(location, key, args) {
@@ -376,6 +385,7 @@
       FluoriteNodeTokenFloat,
       FluoriteNodeTokenIdentifier,
       FluoriteNodeTokenString,
+      FluoriteNodeTokenFormat,
       FluoriteNodeMacro,
       FluoriteAlias,
       FluoriteAliasMacro,
@@ -827,6 +837,22 @@
 
       writeAsJson: function(value, out) {
         out(JSON.stringify(value)); // TODO ストリーム方式に
+      },
+
+      format: function(format, value) {
+        if (format.conversion === "d" || format.conversion === "s") {
+          var string = String(value);
+          if (string.length < format.width) {
+            var filler = format.zero ? "0" : " ";
+            if (format.left) {
+              string = string + filler.repeat(format.width - string.length);
+            } else {
+              string = filler.repeat(format.width - string.length) + string;
+            }
+          }
+          return string;
+        }
+        throw new Error("Unknown conversion: " + format.conversion);
       },
 
       //
@@ -1305,6 +1331,18 @@
         }
         return "([" + codes.join(",") + "].join(\"\"))";
       });
+      m("_STRING_FORMAT", e => {
+
+        var format = undefined
+        if (e.node().getArgument(0) instanceof fl7c.FluoriteNodeTokenFormat) {
+          format = e.node().getArgument(0).getValue();
+        }
+        if (format === undefined) throw new Error("Illegal argument");
+
+        var node = e.node().getArgument(1);
+
+        return "(util.format(" + JSON.stringify(format) + "," + node.getCode(e.pc()) + "))";
+      });
       m("_ROUND", e => e.code(0));
       m("_EMPTY_ROUND", e => "(util.empty())");
       m("_SQUARE", e => "(util.toStream(" + e.code(0) + ").toArray())");
@@ -1595,12 +1633,31 @@ TokenEmbeddedStringCharacter
   / "\\" "x" main:$([0-9a-fA-f] [0-9a-fA-f]) { return String.fromCharCode(parseInt(main, 16)); }
   / "\\" "u" main:$([0-9a-fA-f] [0-9a-fA-f] [0-9a-fA-f] [0-9a-fA-f]) { return String.fromCharCode(parseInt(main, 16)); }
 
+TokenEmbeddedStringFormat
+  = "%" flags:
+    ( "0" { return "zero";}
+    / "-" { return "left";}
+  )* width:($([1-9] [0-9]*))? conversion:
+    ( "d"
+    / "s"
+  ) {
+    var result = {
+      width: parseInt(width, 10),
+      conversion,
+    };
+    flags.forEach(flag => result[flag] = true);
+    return new fl7c.FluoriteNodeTokenFormat(location(), result, "%" + text());
+  }
+
 TokenEmbeddedStringSection
   = main:TokenEmbeddedStringCharacter+ { return new fl7c.FluoriteNodeTokenString(location(), main.join(""), "\"" + text() + "\""); }
   / "$" main:Right { return main; }
   / "\\" "(" _ main:Expression _ ")" { return main; }
+  / "\\" format:TokenEmbeddedStringFormat "(" _ main:Expression _ ")" {
+    return new fl7c.FluoriteNodeMacro(location(), "_STRING_FORMAT", [format, main]);
+  }
 
-TokenEmbeddedString "EmbeddedString"
+TokenEmbeddedString
   = "\"" main:TokenEmbeddedStringSection* "\"" { return main; }
 
 //
