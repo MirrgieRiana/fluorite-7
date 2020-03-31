@@ -1584,6 +1584,7 @@ TokenEmbeddedStringCharacter
   = [^"\\$]
   / "\\" "\\" { return "\\"; }
   / "\\" "\"" { return "\""; }
+  / "\\" "\'" { return "\'"; }
   / "\\" "$" { return "$"; }
   / "\\" "b" { return "\x08"; }
   / "\\" "f" { return "\x0C"; }
