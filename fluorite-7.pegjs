@@ -841,7 +841,7 @@
 
       format: function(format, value) {
         if (format.conversion === "d" || format.conversion === "s") {
-          var string = String(value);
+          var string = String(util.toString(value));
           if (string.length < format.width) {
             var filler = format.zero ? "0" : " ";
             if (format.left) {
