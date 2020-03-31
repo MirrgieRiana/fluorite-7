@@ -855,6 +855,21 @@
         throw new Error("Unknown conversion: " + format.conversion);
       },
 
+      compare: function(a, b)  { // TODO
+        if (Number.isFinite(a)) {
+          if (Number.isFinite(b)) {
+            if (a > b) return 1;
+            if (a < b) return -1
+            return 0;
+          }
+        }
+        throw new Error("Illegal argument: " + a + ", " + b);
+      },
+
+      equal: function(a, b)  { // TODO
+        return a === b;
+      },
+
       //
 
       empty: function() {
@@ -1405,6 +1420,12 @@
       m("_PERIOD2", e => "(util.rangeClosed(" + e.code(0) + "," + e.code(1) + "))");
       m("_LESS2", e => "(util.curryLeft(" + e.code(0) + ",[" + as2c2(e.pc(), e.node().getArgument(1)) + "]))");
       m("_GREATER2", e => "(util.curryRight(" + e.code(0) + ",[" + as2c2(e.pc(), e.node().getArgument(1)) + "]))");
+      m("_GREATER_EQUAL", e => "(util.compare(" + e.code(0) + "," + e.code(1) + ")>=0)"); // TODO 同時評価
+      m("_LESS_EQUAL", e => "(util.compare(" + e.code(0) + "," + e.code(1) + ")<=0)");
+      m("_GREATER", e => "(util.compare(" + e.code(0) + "," + e.code(1) + ")>0)");
+      m("_LESS", e => "(util.compare(" + e.code(0) + "," + e.code(1) + ")<0)");
+      m("_EQUAL2", e => "(util.equal(" + e.code(0) + "," + e.code(1) + "))");
+      m("_EXCLAMATION_EQUAL", e => "(!util.equal(" + e.code(0) + "," + e.code(1) + "))");
       m("_AMPERSAND2", e => "(function(){var a=" + e.code(0) + ";return !util.toBoolean(a)?a:" + e.code(1) + "}())");
       m("_PIPE2", e => "(function(){var a=" + e.code(0) + ";return util.toBoolean(a)?a:" + e.code(1) + "}())");
       m("_TERNARY_QUESTION_COLON", e => "(util.toBoolean(" + e.code(0) + ")?" + e.code(1) + ":" + e.code(2) + ")");
@@ -1827,8 +1848,8 @@ Range
 
 Shift
   = head:Range tail:(_
-    ( "<<" { return [location(), "_LESS2"]; }
-    / ">>" { return [location(), "_GREATER2"]; }
+    ( ">>" { return [location(), "_GREATER2"]; }
+    / "<<" { return [location(), "_LESS2"]; }
   ) _ Range)* {
     var result = head;
     for (var i = 0; i < tail.length; i++) {
@@ -1838,10 +1859,29 @@ Shift
     return result;
   }
 
-And
+Compare
   = head:Shift tail:(_
-    ( "&&" { return [location(), "_AMPERSAND2"]; }
+    ( ">=" { return [location(), "_GREATER_EQUAL"]; }
+    / "<=" { return [location(), "_LESS_EQUAL"]; }
+    / ">" { return [location(), "_GREATER"]; }
+    / "<" { return [location(), "_LESS"]; }
+    / "===" { return [location(), "_EQUAL3"]; }
+    / "==" { return [location(), "_EQUAL2"]; }
+    / "!==" { return [location(), "_EXCLAMATION_EQUAL2"]; }
+    / "!=" { return [location(), "_EXCLAMATION_EQUAL"]; }
   ) _ Shift)* {
+    var result = head;
+    for (var i = 0; i < tail.length; i++) {
+      var t = tail[i];
+      result = new fl7c.FluoriteNodeMacro(t[1][0], t[1][1], [result, t[3]]);
+    }
+    return result;
+  }
+
+And
+  = head:Compare tail:(_
+    ( "&&" { return [location(), "_AMPERSAND2"]; }
+  ) _ Compare)* {
     var result = head;
     for (var i = 0; i < tail.length; i++) {
       var t = tail[i];
