@@ -757,6 +757,7 @@
         var res = util.getValueFromObject(this, "EQUALS");
         if (res !== null) return util.toBoolean(util.call(res, [this, actual]));
         if (actual instanceof FluoriteObject) {
+          if (actual.parent !== this.parent) return false;
           var keysExpected = Object.getOwnPropertyNames(this.map).sort();
           var keysActual = Object.getOwnPropertyNames(actual.map).sort();
           if (keysActual.length !== keysExpected.length) return false;
