@@ -994,7 +994,9 @@
 
       getFromArray: function(array, index) { // TODO 名称変更
         if (array instanceof Array) {
-          return array[util.toNumber(index)];
+          var result = array[util.toNumber(index)];
+          if (result === undefined) return null;
+          return result;
         }
         if (array instanceof FluoriteObject) {
           return util.getOwnValueFromObject(array, util.toString(index));
@@ -1380,6 +1382,38 @@
         stream = util.toStream(stream);
 
         return stream.toArray().join(delimiter);
+      }));
+      c("SPLIT", new fl7.FluoriteFunction(args => {
+        var delimiter = args[1];
+        if (delimiter === undefined) delimiter = ",";
+        delimiter = util.toString(delimiter);
+
+        var string = args[0];
+        if (string === undefined) throw new Error("Illegal argument");
+        string = util.toString(string);
+
+        return util.toStreamFromValues(string.split(delimiter));
+      }));
+      c("SORT_BY", new fl7.FluoriteFunction(args => {
+        var keySelector = args[1];
+        if (keySelector === undefined) throw new Error("Illegal argument");
+
+        var stream = args[0];
+        if (stream === undefined) throw new Error("Illegal argument");
+        stream = util.toStream(stream);
+
+        var array = stream.toArray().map((item, i) => [i, item, undefined]);
+        array = array.sort((a, b) => {
+          if (a[2] === undefined) a[2] = util.call(keySelector, [a[1]]); // TODO アルゴリズム
+          if (b[2] === undefined) b[2] = util.call(keySelector, [b[1]]);
+          if (a[2] > b[2]) return 1;
+          if (a[2] < b[2]) return -1;
+          if (a[0] > b[0]) return 1;
+          if (a[0] < b[0]) return -1;
+          return 0;
+        });
+
+        return util.toStreamFromValues(array.map(item => item[1]));
       }));
       c("JSON", new fl7.FluoriteFunction(args => {
         var value = args[0];
