@@ -436,6 +436,10 @@
         return this.toString();
       }
 
+      equals(actual) {
+        return actual === this;
+      }
+
     }
 
     //
@@ -483,6 +487,19 @@
 
       toJSON() {
         throw new Error("Cannot convert streamer to json ");
+      }
+
+      equals(actual) {
+        var streamExpected = this.start();
+        var streamActual = util.toStream(actual).start();
+        while (true) {
+          var nextExpected = streamExpected.next();
+          var nextActual = streamActual.next();
+          if ((nextActual === undefined) !== (nextExpected === undefined)) return false;
+          if (nextExpected === undefined) break;
+          if (util.equal(nextActual, nextExpected)) return false;
+        }
+        return true;
       }
 
     }
@@ -736,6 +753,24 @@
         return this.map;
       }
 
+      equals(actual) {
+        var res = util.getValueFromObject(this, "EQUALS");
+        if (res !== null) return util.toBoolean(util.call(res, [this, actual]));
+        if (actual instanceof FluoriteObject) {
+          var keysExpected = Object.getOwnPropertyNames(this.map).sort();
+          var keysActual = Object.getOwnPropertyNames(actual.map).sort();
+          if (keysActual.length !== keysExpected.length) return false;
+          for (var i = 0; i < keysExpected.length; i++) {
+            if (keysActual[i] !== keysExpected[i]) return false;
+          }
+          for (var i = 0; i < keysExpected.length; i++) {
+            var key = keysExpected[i];
+            if (!util.equal(actual.map[key], this.map[key])) return false;
+          }
+          return true;
+        }
+      }
+
     }
 
     class FluoriteObjectInitializer {
@@ -754,7 +789,7 @@
 
     var util = {
 
-      toNumber: function(value) {
+      toNumberOrUndefined: function(value) {
         if (value === null) return 0;
         if (Number.isFinite(value)) return value;
         if (value === true) return 1;
@@ -768,10 +803,16 @@
           var result = value.toNumber();
           if (result !== undefined) return result;
         }
+        return undefined;
+      },
+
+      toNumber: function(value) {
+        var result = util.toNumberOrUndefined(value);
+        if (result !== undefined) return result;
         throw new FluoriteRuntimeError("Cannot convert to number: " + value);
       },
 
-      toBoolean: function(value) {
+      toBooleanOrUndefined: function(value) {
         if (value === null) return false;
         if (value === 0) return false;
         if (value === false) return false;
@@ -781,10 +822,16 @@
           var result = value.toBoolean();
           if (result !== undefined) return result;
         }
+        return undefined;
+      },
+
+      toBoolean: function(value) {
+        var result = util.toBooleanOrUndefined(value);
+        if (result !== undefined) return result;
         return true; // TODO その他の一般オブジェクトではエラー
       },
 
-      toString: function(value) {
+      toStringOrUndefined: function(value) {
         if (value === null) return "NULL";
         if (value === true) return "TRUE";
         if (value === false) return "FALSE";
@@ -793,6 +840,12 @@
           var result = value.toString();
           if (result !== undefined) return result;
         }
+        return undefined;
+      },
+
+      toString: function(value) {
+        var result = util.toStringOrUndefined(value);
+        if (result !== undefined) return result;
         return value.toString(); // TODO その他の一般オブジェクトではエラー
       },
 
@@ -877,8 +930,33 @@
         throw new Error("Illegal argument: " + a + ", " + b);
       },
 
-      equal: function(a, b)  { // TODO
-        return a === b;
+      equal: function(actual, expected)  {
+        if (actual === expected) return true;
+        if (expected === null) return actual === null;
+        if (Number.isFinite(expected)) {
+          return util.toNumberOrUndefined(actual) === expected;
+        }
+        if (expected === true) return util.toBoolean(actual) === true;
+        if (expected === false) return util.toBoolean(actual) === false;
+        if (typeof expected === 'string' || expected instanceof String) {
+          return util.toString(actual) === expected;
+        }
+        if (expected instanceof Array) {
+          if (!(actual instanceof Array)) return false;
+          if (actual.length !== expected.length) return false;
+          for (var i = 0; i < expected.length; i++) {
+            if (!util.equal(actual[i], expected[i])) return false;
+          }
+          return true;
+        }
+        if (expected instanceof FluoriteValue) {
+          return expected.equals(actual);
+        }
+        return actual === expected;
+      },
+
+      equalStict: function(actual, expected) {
+        return actual === expected;
       },
 
       //
@@ -1437,6 +1515,8 @@
       m("_LESS", e => "(util.compare(" + e.code(0) + "," + e.code(1) + ")<0)");
       m("_EQUAL2", e => "(util.equal(" + e.code(0) + "," + e.code(1) + "))");
       m("_EXCLAMATION_EQUAL", e => "(!util.equal(" + e.code(0) + "," + e.code(1) + "))");
+      m("_EQUAL3", e => "(util.equalStict(" + e.code(0) + "," + e.code(1) + "))");
+      m("_EXCLAMATION_EQUAL2", e => "(!util.equalStict(" + e.code(0) + "," + e.code(1) + "))");
       m("_AMPERSAND2", e => "(function(){var a=" + e.code(0) + ";return !util.toBoolean(a)?a:" + e.code(1) + "}())");
       m("_PIPE2", e => "(function(){var a=" + e.code(0) + ";return util.toBoolean(a)?a:" + e.code(1) + "}())");
       m("_TERNARY_QUESTION_COLON", e => "(util.toBoolean(" + e.code(0) + ")?" + e.code(1) + ":" + e.code(2) + ")");
