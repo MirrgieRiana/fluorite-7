@@ -1277,6 +1277,30 @@
       };
       c("PI", Math.PI);
       c("E", Math.E);
+      c("FLOOR", new fl7.FluoriteFunction(args => {
+        if (args.length == 1) {
+          return Math.floor(util.toNumber(args[0]));
+        }
+        throw new Error("Illegal argument");
+      }));
+      c("CEIL", new fl7.FluoriteFunction(args => {
+        if (args.length == 1) {
+          return Math.ceil(util.toNumber(args[0]));
+        }
+        throw new Error("Illegal argument");
+      }));
+      c("EXP", new fl7.FluoriteFunction(args => {
+        if (args.length == 1) {
+          return Math.exp(util.toNumber(args[0]));
+        }
+        throw new Error("Illegal argument");
+      }));
+      c("SQRT", new fl7.FluoriteFunction(args => {
+        if (args.length == 1) {
+          return Math.sqrt(util.toNumber(args[0]));
+        }
+        throw new Error("Illegal argument");
+      }));
       c("SIN", new fl7.FluoriteFunction(args => {
         if (args.length == 1) {
           return Math.sin(util.toNumber(args[0]));
@@ -1550,6 +1574,25 @@
       m("_LEFT_QUESTION", e => "(util.toBoolean(" + e.code(0) + "))");
       m("_LEFT_EXCLAMATION", e => "(!util.toBoolean(" + e.code(0) + "))");
       m("_LEFT_AMPERSAND", e => "(util.toString(" + e.code(0) + "))");
+      
+      m("_LEFT_ASTERISK", e => {
+        var alias = e.pc().getAlias(e.node().getLocation(), "_");
+        var codeAlias = alias.getCode(e.pc(), e.node().getLocation());
+        return "(util.call(" + e.code(0) + ",[" + codeAlias + "]))";
+      });
+      m("_LEFT_BACKSLASH", e => {
+        var alias = new fl7c.FluoriteAliasVariable(e.pc().allocateVariableId())
+        var check = "if(args.length!=" + 1 + ")throw new Error(\"Number of lambda arguments do not match: \" + args.length + \" != " + 1 + "\");";
+        var vars = "var " + alias.getRawCode(e.pc(), e.node().getLocation()) + "=args[" + 0 + "];";
+
+        e.pc().pushFrame();
+        e.pc().getFrame()["_"] = alias;
+        var body = e.code(0);
+        e.pc().popFrame();
+
+        return "(util.createLambda(args=>{" + check + vars + "return " + body + ";}))";
+      });
+      
       m("_CIRCUMFLEX", e => "(Math.pow(" + e.code(0) + "," + e.code(1) + "))");
       m("_ASTERISK", e => "(util.mul(" + e.code(0) + "," + e.code(1) + "))");
       m("_SLASH", e => "(" + e.code(0) + "/" + e.code(1) + ")");
@@ -1920,6 +1963,8 @@ Left
     / "?" { return [location(), "_LEFT_QUESTION"]; }
     / "!" !"!" { return [location(), "_LEFT_EXCLAMATION"]; }
     / "&" { return [location(), "_LEFT_AMPERSAND"]; }
+    / "*" { return [location(), "_LEFT_ASTERISK"]; }
+    / "\\" { return [location(), "_LEFT_BACKSLASH"]; }
   ) _ tail:Left {
     return new fl7c.FluoriteNodeMacro(head[0], head[1], [tail]);
   }
