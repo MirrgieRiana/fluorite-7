@@ -818,7 +818,7 @@
         if (value === 0) return false;
         if (value === false) return false;
         if (value === "") return false;
-        if (value instanceof Array) return value.length != 0;
+        if (value instanceof Array) return true;
         if (value instanceof FluoriteValue) {
           var result = value.toBoolean();
           if (result !== undefined) return result;
