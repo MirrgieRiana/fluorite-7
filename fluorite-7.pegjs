@@ -497,7 +497,7 @@
           var nextActual = streamActual.next();
           if ((nextActual === undefined) !== (nextExpected === undefined)) return false;
           if (nextExpected === undefined) break;
-          if (util.equal(nextActual, nextExpected)) return false;
+          if (!util.equal(nextActual, nextExpected)) return false;
         }
         return true;
       }
