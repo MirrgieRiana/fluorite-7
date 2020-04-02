@@ -1394,6 +1394,22 @@
 
         return util.toStreamFromValues(string.split(delimiter));
       }));
+      c("SORT", new fl7.FluoriteFunction(args => { // TODO comparator
+        var stream = args[0];
+        if (stream === undefined) throw new Error("Illegal argument");
+        stream = util.toStream(stream);
+
+        var array = stream.toArray().map((item, i) => [i, item]);
+        array = array.sort((a, b) => {
+          if (a[1] > b[1]) return 1; // TODO 型に応じた比較
+          if (a[1] < b[1]) return -1;
+          if (a[0] > b[0]) return 1;
+          if (a[0] < b[0]) return -1;
+          return 0;
+        });
+
+        return util.toStreamFromValues(array.map(item => item[1]));
+      }));
       c("SORT_BY", new fl7.FluoriteFunction(args => {
         var keySelector = args[1];
         if (keySelector === undefined) throw new Error("Illegal argument");
@@ -1406,7 +1422,7 @@
         array = array.sort((a, b) => {
           if (a[2] === undefined) a[2] = util.call(keySelector, [a[1]]); // TODO アルゴリズム
           if (b[2] === undefined) b[2] = util.call(keySelector, [b[1]]);
-          if (a[2] > b[2]) return 1;
+          if (a[2] > b[2]) return 1; // TODO 型に応じた比較
           if (a[2] < b[2]) return -1;
           if (a[0] > b[0]) return 1;
           if (a[0] < b[0]) return -1;
