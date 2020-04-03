@@ -901,6 +901,20 @@
         throw new Error("Illegal argument: " + a + ", " + b);
       },
 
+      slice: function(value, start, end) {
+        start = start === null ? 0 : Math.trunc(util.toNumber(start));
+        end = end === null ? undefined : Math.trunc(util.toNumber(end));
+        if (value instanceof Array) {
+          return value.slice(start, end);
+        }
+        if (typeof value === 'string' || value instanceof String) {
+          if (start < 0) start = value.length + start;
+          if (end < 0) end = value.length + end;
+          return value.substring(start, end);
+        }
+        throw new Error("Illegal argument: " + value + ", " + start + ", " + end);
+      },
+
       writeAsJson: function(value, out) {
         out(JSON.stringify(value)); // TODO ストリーム方式に
       },
@@ -1605,7 +1619,38 @@
       });
       m("_RIGHT_ROUND", e => "(util.call(" + e.code(0) + ", [" + as2c(e.pc(), e.node().getArgument(1)) + "]))");
       m("_RIGHT_EMPTY_ROUND", e => "(util.call(" + e.code(0) + ", []))");
-      m("_RIGHT_SQUARE", e => "(util.getFromArray(" + e.code(0) + "," + e.code(1) + "))");
+      m("_RIGHT_SQUARE", e => {
+
+        {
+          var nodeRight = e.node().getArgument(1);
+          if (nodeRight instanceof fl7c.FluoriteNodeMacro) {
+            if (nodeRight.getKey() == "_SEMICOLON") {
+              if (nodeRight.getArgumentCount() == 2) {
+                var nodeStart = nodeRight.getArgument(0);
+                var nodeEnd = nodeRight.getArgument(1);
+
+                var codeStart = undefined;
+                if (nodeStart instanceof fl7c.FluoriteNodeVoid) {
+                  codeStart = "null";
+                } else {
+                  codeStart = nodeStart.getCode(e.pc());
+                }
+
+                var codeEnd = undefined;
+                if (nodeEnd instanceof fl7c.FluoriteNodeVoid) {
+                  codeEnd = "null";
+                } else {
+                  codeEnd = nodeEnd.getCode(e.pc());
+                }
+
+                return "(util.slice(" + e.code(0) + "," + codeStart + "," + codeEnd + "))";
+              }
+            }
+          }
+        }
+
+        return "(util.getFromArray(" + e.code(0) + "," + e.code(1) + "))";
+      });
       m("_RIGHT_EMPTY_SQUARE", e => "(util.toStreamFromArray(" + e.code(0) + "))");
       m("_RIGHT_CURLY", e => getCodeToCreateFluoriteObject(e.pc(), e.node().getArgument(0), e.node().getArgument(1)));
       m("_RIGHT_EMPTY_CURLY", e => getCodeToCreateFluoriteObject(e.pc(), e.node().getArgument(0), null));
