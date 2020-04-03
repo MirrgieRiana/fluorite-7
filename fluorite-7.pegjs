@@ -910,6 +910,7 @@
         if (typeof value === 'string' || value instanceof String) {
           if (start < 0) start = value.length + start;
           if (end < 0) end = value.length + end;
+          if (start > end) return "";
           return value.substring(start, end);
         }
         throw new Error("Illegal argument: " + value + ", " + start + ", " + end);
