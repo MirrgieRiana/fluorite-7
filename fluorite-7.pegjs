@@ -906,19 +906,59 @@
       },
 
       format: function(format, value) {
-        if (format.conversion === "d" || format.conversion === "s") {
-          var string = String(util.toString(value));
-          if (string.length < format.width) {
-            var filler = format.zero ? "0" : " ";
-            if (format.left) {
-              string = string + filler.repeat(format.width - string.length);
-            } else {
-              string = filler.repeat(format.width - string.length) + string;
-            }
+
+        var sign = undefined;
+        var body;
+        if (format.conversion === "d") {
+          value = util.toNumber(value);
+
+          if (Math.sign(value) === -1) {
+            sign = "-";
+            body = Number.prototype.toFixed.call(Math.round(-value), 0);
+          } else {
+            sign = "";
+            body = Number.prototype.toFixed.call(Math.round(value), 0);
           }
-          return string;
+        } else if (format.conversion === "f") {
+          value = util.toNumber(value);
+
+          var precision = format.precision;
+          if (precision === undefined) precision = 6;
+
+          if (Math.sign(value) === -1) {
+            sign = "-";
+            body = Number.prototype.toFixed.call(-value, precision);
+          } else {
+            sign = "";
+            body = Number.prototype.toFixed.call(value, precision);
+          }
+        } else if (format.conversion === "s") {
+          value = util.toString(value);
+
+          sign = "";
+          body = value;
+        } else {
+          throw new Error("Unknown conversion: " + format.conversion);
         }
-        throw new Error("Unknown conversion: " + format.conversion);
+        var lengthSign = sign.length;
+        var lengthBody = body.length;
+
+        if (lengthSign + lengthBody >= format.width) {
+          return sign + body;
+        }
+
+        var charFiller = format.zero ? "0" : " ";
+        var filler =  charFiller.repeat(format.width - lengthSign - lengthBody);
+
+        if (format.left) {
+          return sign + body + filler;
+        } else {
+          if (format.zero) {
+            return sign + filler + body;
+          } else {
+            return filler + sign + body;
+          }
+        }
       },
 
       compare: function(a, b)  { // TODO
@@ -1841,18 +1881,24 @@ TokenEmbeddedStringCharacter
   / "\\" "u" main:$([0-9a-fA-f] [0-9a-fA-f] [0-9a-fA-f] [0-9a-fA-f]) { return String.fromCharCode(parseInt(main, 16)); }
 
 TokenEmbeddedStringFormat
-  = "%" flags:
-    ( "0" { return "zero";}
-    / "-" { return "left";}
-  )* width:($([1-9] [0-9]*))? conversion:
+  = "%" left:
+    ( "0" { return result => result.zero = true;}
+    / "-" { return result => result.left = true;}
+  )* width:
+    ( width:$([1-9] [0-9]*) { return result => result.width = parseInt(width, 10) }
+  )? precision:
+    ( "." precision:$("0" / [1-9] [0-9]*) { return result => result.precision = parseInt(precision, 10);}
+  )? conversion:
     ( "d"
     / "s"
+    / "f"
   ) {
     var result = {
-      width: parseInt(width, 10),
       conversion,
     };
-    flags.forEach(flag => result[flag] = true);
+    left.forEach(flag => flag(result));
+    if (width !== null) width(result);
+    if (precision !== null) precision(result);
     return new fl7c.FluoriteNodeTokenFormat(location(), result, "%" + text());
   }
 
