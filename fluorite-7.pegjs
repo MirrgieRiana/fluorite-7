@@ -987,14 +987,14 @@
       },
 
       compare: function(a, b)  { // TODO
-        if (Number.isFinite(a)) {
-          if (Number.isFinite(b)) {
-            if (a > b) return 1;
-            if (a < b) return -1
-            return 0;
-          }
-        }
-        throw new Error("Illegal argument: " + a + ", " + b);
+        //if (Number.isFinite(a)) {
+        //  if (Number.isFinite(b)) {
+        if (a > b) return 1;
+        if (a < b) return -1
+        return 0;
+        //  }
+        //}
+        //throw new Error("Illegal argument: " + a + ", " + b);
       },
 
       equal: function(actual, expected)  {
@@ -1502,51 +1502,33 @@
 
         return util.toStreamFromValues(string.split(delimiter));
       }));
-      c("SORT", new fl7.FluoriteFunction(args => {
-
-        var streamer = args[0];
-        if (streamer === undefined) throw new Error("Illegal argument");
-        streamer = util.toStream(streamer);
-
-        var keySelector = args[1];
-        if (keySelector === undefined) keySelector = null;
-
-        var array = streamer.toArray().map((item, i) => [i, item, undefined]);
-        array = array.sort((a, b) => {
-          if (a[2] === undefined) a[2] = keySelector !== null ? util.call(keySelector, [a[1]]) : a[1];
-          if (b[2] === undefined) b[2] = keySelector !== null ? util.call(keySelector, [b[1]]) : b[1];
-          if (a[2] > b[2]) return 1; // TODO 型に応じた比較
-          if (a[2] < b[2]) return -1;
-          if (a[0] > b[0]) return 1;
-          if (a[0] < b[0]) return -1;
-          return 0;
-        });
-
-        return util.toStreamFromValues(array.map(item => item[1]));
-      }));
-      c("SORTR", new fl7.FluoriteFunction(args => {
-
-        var streamer = args[0];
-        if (streamer === undefined) throw new Error("Illegal argument");
-        streamer = util.toStream(streamer);
-
-        var keySelector = args[1];
-        if (keySelector === undefined) keySelector = null;
-
-        var array = streamer.toArray().map((item, i) => [i, item, undefined]);
-        array = array.sort((a, b) => {
-          if (a[2] === undefined) a[2] = keySelector !== null ? util.call(keySelector, [a[1]]) : a[1];
-          if (b[2] === undefined) b[2] = keySelector !== null ? util.call(keySelector, [b[1]]) : b[1];
-          if (a[2] < b[2]) return 1; // TODO 型に応じた比較
-          if (a[2] > b[2]) return -1;
-          if (a[0] > b[0]) return 1;
-          if (a[0] < b[0]) return -1;
-          return 0;
-        });
-
-        return util.toStreamFromValues(array.map(item => item[1]));
-      }));
       c("MAX", new fl7.FluoriteFunction(args => {
+
+        var streamer = args[0];
+        if (streamer === undefined) throw new Error("Illegal argument");
+        streamer = util.toStream(streamer);
+
+        var comparator = args[1];
+        if (comparator === undefined) comparator = null;
+
+        var max = undefined;
+        var stream = streamer.start();
+        while (true) {
+          var item = stream.next();
+          if (item === undefined) break;
+          if (max === undefined) {
+            max = item;
+          } else {
+            var i = comparator !== null ? util.toNumber(util.call(comparator, [item, max])) : util.compare(item, max);
+            if (i > 0) {
+              max = item;
+            }
+          }
+        }
+
+        return max === undefined ? null : max;
+      }));
+      c("MAX_BY", new fl7.FluoriteFunction(args => {
 
         var streamer = args[0];
         if (streamer === undefined) throw new Error("Illegal argument");
@@ -1566,7 +1548,7 @@
             maxKey = keySelector !== null ? util.call(keySelector, [item]) : item;
           } else {
             var key = keySelector !== null ? util.call(keySelector, [item]) : item;
-            if (key > maxKey) { // TODO 型に応じた比較
+            if (util.compare(key, maxKey) > 0) {
               max = item;
               maxKey = key;
             }
@@ -1581,6 +1563,32 @@
         if (streamer === undefined) throw new Error("Illegal argument");
         streamer = util.toStream(streamer);
 
+        var comparator = args[1];
+        if (comparator === undefined) comparator = null;
+
+        var max = undefined;
+        var stream = streamer.start();
+        while (true) {
+          var item = stream.next();
+          if (item === undefined) break;
+          if (max === undefined) {
+            max = item;
+          } else {
+            var i = comparator !== null ? util.toNumber(util.call(comparator, [item, max])) : util.compare(item, max);
+            if (i < 0) {
+              max = item;
+            }
+          }
+        }
+
+        return max === undefined ? null : max;
+      }));
+      c("MIN_BY", new fl7.FluoriteFunction(args => {
+
+        var streamer = args[0];
+        if (streamer === undefined) throw new Error("Illegal argument");
+        streamer = util.toStream(streamer);
+
         var keySelector = args[1];
         if (keySelector === undefined) keySelector = null;
 
@@ -1595,7 +1603,7 @@
             maxKey = keySelector !== null ? util.call(keySelector, [item]) : item;
           } else {
             var key = keySelector !== null ? util.call(keySelector, [item]) : item;
-            if (key < maxKey) { // TODO 型に応じた比較
+            if (util.compare(key, maxKey) < 0) {
               max = item;
               maxKey = key;
             }
@@ -1603,6 +1611,94 @@
         }
 
         return max === undefined ? null : max;
+      }));
+      c("SORT", new fl7.FluoriteFunction(args => {
+
+        var streamer = args[0];
+        if (streamer === undefined) throw new Error("Illegal argument");
+        streamer = util.toStream(streamer);
+
+        var comparator = args[1];
+        if (comparator === undefined) comparator = null;
+
+        var array = streamer.toArray().map((item, i) => [i, item]);
+        array = array.sort((a, b) => {
+          var i = comparator !== null ? util.toNumber(util.call(comparator, [a[1], b[1]])) : util.compare(a[1], b[1]);
+          if (i > 0) return 1;
+          if (i < 0) return -1;
+          if (a[0] > b[0]) return 1;
+          if (a[0] < b[0]) return -1;
+          return 0;
+        });
+
+        return util.toStreamFromValues(array.map(item => item[1]));
+      }));
+      c("SORT_BY", new fl7.FluoriteFunction(args => {
+
+        var streamer = args[0];
+        if (streamer === undefined) throw new Error("Illegal argument");
+        streamer = util.toStream(streamer);
+
+        var keySelector = args[1];
+        if (keySelector === undefined) keySelector = null;
+
+        var array = streamer.toArray().map((item, i) => [i, item, undefined]);
+        array = array.sort((a, b) => {
+          if (a[2] === undefined) a[2] = keySelector !== null ? util.call(keySelector, [a[1]]) : a[1];
+          if (b[2] === undefined) b[2] = keySelector !== null ? util.call(keySelector, [b[1]]) : b[1];
+          var i = util.compare(a[2], b[2]);
+          if (i > 0) return 1;
+          if (i < 0) return -1;
+          if (a[0] > b[0]) return 1;
+          if (a[0] < b[0]) return -1;
+          return 0;
+        });
+
+        return util.toStreamFromValues(array.map(item => item[1]));
+      }));
+      c("SORTR", new fl7.FluoriteFunction(args => {
+
+        var streamer = args[0];
+        if (streamer === undefined) throw new Error("Illegal argument");
+        streamer = util.toStream(streamer);
+
+        var comparator = args[1];
+        if (comparator === undefined) comparator = null;
+
+        var array = streamer.toArray().map((item, i) => [i, item]);
+        array = array.sort((a, b) => {
+          var i = comparator !== null ? util.toNumber(util.call(comparator, [a[1], b[1]])) : util.compare(a[1], b[1]);
+          if (i < 0) return 1;
+          if (i > 0) return -1;
+          if (a[0] > b[0]) return 1;
+          if (a[0] < b[0]) return -1;
+          return 0;
+        });
+
+        return util.toStreamFromValues(array.map(item => item[1]));
+      }));
+      c("SORTR_BY", new fl7.FluoriteFunction(args => {
+
+        var streamer = args[0];
+        if (streamer === undefined) throw new Error("Illegal argument");
+        streamer = util.toStream(streamer);
+
+        var keySelector = args[1];
+        if (keySelector === undefined) keySelector = null;
+
+        var array = streamer.toArray().map((item, i) => [i, item, undefined]);
+        array = array.sort((a, b) => {
+          if (a[2] === undefined) a[2] = keySelector !== null ? util.call(keySelector, [a[1]]) : a[1];
+          if (b[2] === undefined) b[2] = keySelector !== null ? util.call(keySelector, [b[1]]) : b[1];
+          var i = util.compare(a[2], b[2]);
+          if (i < 0) return 1;
+          if (i > 0) return -1;
+          if (a[0] > b[0]) return 1;
+          if (a[0] < b[0]) return -1;
+          return 0;
+        });
+
+        return util.toStreamFromValues(array.map(item => item[1]));
       }));
       c("JSON", new fl7.FluoriteFunction(args => {
         var value = args[0];
@@ -1785,6 +1881,7 @@
       m("_PERIOD2", e => "(util.rangeClosed(" + e.code(0) + "," + e.code(1) + "))");
       m("_LESS2", e => "(util.curryLeft(" + e.code(0) + ",[" + as2c2(e.pc(), e.node().getArgument(1)) + "]))");
       m("_GREATER2", e => "(util.curryRight(" + e.code(0) + ",[" + as2c2(e.pc(), e.node().getArgument(1)) + "]))");
+      m("_LESS_EQUAL_GREATER", e => "(util.compare(" + e.code(0) + "," + e.code(1) + "))");
       m("_GREATER_EQUAL", e => "(util.compare(" + e.code(0) + "," + e.code(1) + ")>=0)"); // TODO 同時評価
       m("_LESS_EQUAL", e => "(util.compare(" + e.code(0) + "," + e.code(1) + ")<=0)");
       m("_GREATER", e => "(util.compare(" + e.code(0) + "," + e.code(1) + ")>0)");
@@ -2235,8 +2332,20 @@ Shift
     return result;
   }
 
-Compare
+Spaceship
   = head:Shift tail:(_
+    ( "<=>" { return [location(), "_LESS_EQUAL_GREATER"]; }
+  ) _ Shift)* {
+    var result = head;
+    for (var i = 0; i < tail.length; i++) {
+      var t = tail[i];
+      result = new fl7c.FluoriteNodeMacro(t[1][0], t[1][1], [result, t[3]]);
+    }
+    return result
+  }
+
+Compare
+  = head:Spaceship tail:(_
     ( ">=" { return [location(), "_GREATER_EQUAL"]; }
     / "<=" { return [location(), "_LESS_EQUAL"]; }
     / ">" { return [location(), "_GREATER"]; }
@@ -2245,7 +2354,7 @@ Compare
     / "==" { return [location(), "_EQUAL2"]; }
     / "!==" { return [location(), "_EXCLAMATION_EQUAL2"]; }
     / "!=" { return [location(), "_EXCLAMATION_EQUAL"]; }
-  ) _ Shift)* {
+  ) _ Spaceship)* {
     var result = head;
     for (var i = 0; i < tail.length; i++) {
       var t = tail[i];
