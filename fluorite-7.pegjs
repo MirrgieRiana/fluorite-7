@@ -1373,6 +1373,12 @@
         }
         throw new Error("Illegal argument");
       }));
+      c("ABS", new fl7.FluoriteFunction(args => {
+        if (args.length == 1) {
+          return Math.abs(util.toNumber(args[0]));
+        }
+        throw new Error("Illegal argument");
+      }));
       c("SIN", new fl7.FluoriteFunction(args => {
         if (args.length == 1) {
           return Math.sin(util.toNumber(args[0]));
@@ -1382,6 +1388,12 @@
       c("COS", new fl7.FluoriteFunction(args => {
         if (args.length == 1) {
           return Math.cos(util.toNumber(args[0]));
+        }
+        throw new Error("Illegal argument");
+      }));
+      c("TAN", new fl7.FluoriteFunction(args => {
+        if (args.length == 1) {
+          return Math.tan(util.toNumber(args[0]));
         }
         throw new Error("Illegal argument");
       }));
@@ -1490,34 +1502,19 @@
 
         return util.toStreamFromValues(string.split(delimiter));
       }));
-      c("SORT", new fl7.FluoriteFunction(args => { // TODO comparator
-        var stream = args[0];
-        if (stream === undefined) throw new Error("Illegal argument");
-        stream = util.toStream(stream);
+      c("SORT", new fl7.FluoriteFunction(args => {
 
-        var array = stream.toArray().map((item, i) => [i, item]);
-        array = array.sort((a, b) => {
-          if (a[1] > b[1]) return 1; // TODO 型に応じた比較
-          if (a[1] < b[1]) return -1;
-          if (a[0] > b[0]) return 1;
-          if (a[0] < b[0]) return -1;
-          return 0;
-        });
+        var streamer = args[0];
+        if (streamer === undefined) throw new Error("Illegal argument");
+        streamer = util.toStream(streamer);
 
-        return util.toStreamFromValues(array.map(item => item[1]));
-      }));
-      c("SORT_BY", new fl7.FluoriteFunction(args => {
         var keySelector = args[1];
-        if (keySelector === undefined) throw new Error("Illegal argument");
+        if (keySelector === undefined) keySelector = null;
 
-        var stream = args[0];
-        if (stream === undefined) throw new Error("Illegal argument");
-        stream = util.toStream(stream);
-
-        var array = stream.toArray().map((item, i) => [i, item, undefined]);
+        var array = streamer.toArray().map((item, i) => [i, item, undefined]);
         array = array.sort((a, b) => {
-          if (a[2] === undefined) a[2] = util.call(keySelector, [a[1]]); // TODO アルゴリズム
-          if (b[2] === undefined) b[2] = util.call(keySelector, [b[1]]);
+          if (a[2] === undefined) a[2] = keySelector !== null ? util.call(keySelector, [a[1]]) : a[1];
+          if (b[2] === undefined) b[2] = keySelector !== null ? util.call(keySelector, [b[1]]) : b[1];
           if (a[2] > b[2]) return 1; // TODO 型に応じた比較
           if (a[2] < b[2]) return -1;
           if (a[0] > b[0]) return 1;
@@ -1526,6 +1523,86 @@
         });
 
         return util.toStreamFromValues(array.map(item => item[1]));
+      }));
+      c("SORTR", new fl7.FluoriteFunction(args => {
+
+        var streamer = args[0];
+        if (streamer === undefined) throw new Error("Illegal argument");
+        streamer = util.toStream(streamer);
+
+        var keySelector = args[1];
+        if (keySelector === undefined) keySelector = null;
+
+        var array = streamer.toArray().map((item, i) => [i, item, undefined]);
+        array = array.sort((a, b) => {
+          if (a[2] === undefined) a[2] = keySelector !== null ? util.call(keySelector, [a[1]]) : a[1];
+          if (b[2] === undefined) b[2] = keySelector !== null ? util.call(keySelector, [b[1]]) : b[1];
+          if (a[2] < b[2]) return 1; // TODO 型に応じた比較
+          if (a[2] > b[2]) return -1;
+          if (a[0] > b[0]) return 1;
+          if (a[0] < b[0]) return -1;
+          return 0;
+        });
+
+        return util.toStreamFromValues(array.map(item => item[1]));
+      }));
+      c("MAX", new fl7.FluoriteFunction(args => {
+
+        var streamer = args[0];
+        if (streamer === undefined) throw new Error("Illegal argument");
+        streamer = util.toStream(streamer);
+
+        var keySelector = args[1];
+        if (keySelector === undefined) keySelector = null;
+
+        var max = undefined;
+        var maxKey = undefined;
+        var stream = streamer.start();
+        while (true) {
+          var item = stream.next();
+          if (item === undefined) break;
+          if (maxKey === undefined) {
+            max = item;
+            maxKey = keySelector !== null ? util.call(keySelector, [item]) : item;
+          } else {
+            var key = keySelector !== null ? util.call(keySelector, [item]) : item;
+            if (key > maxKey) { // TODO 型に応じた比較
+              max = item;
+              maxKey = key;
+            }
+          }
+        }
+
+        return max === undefined ? null : max;
+      }));
+      c("MIN", new fl7.FluoriteFunction(args => {
+
+        var streamer = args[0];
+        if (streamer === undefined) throw new Error("Illegal argument");
+        streamer = util.toStream(streamer);
+
+        var keySelector = args[1];
+        if (keySelector === undefined) keySelector = null;
+
+        var max = undefined;
+        var maxKey = undefined;
+        var stream = streamer.start();
+        while (true) {
+          var item = stream.next();
+          if (item === undefined) break;
+          if (maxKey === undefined) {
+            max = item;
+            maxKey = keySelector !== null ? util.call(keySelector, [item]) : item;
+          } else {
+            var key = keySelector !== null ? util.call(keySelector, [item]) : item;
+            if (key < maxKey) { // TODO 型に応じた比較
+              max = item;
+              maxKey = key;
+            }
+          }
+        }
+
+        return max === undefined ? null : max;
       }));
       c("JSON", new fl7.FluoriteFunction(args => {
         var value = args[0];
