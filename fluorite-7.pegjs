@@ -800,7 +800,7 @@
           var result = Number(value);
           if (!Number.isNaN(result)) return result;
         }
-        if (value instanceof Array) return value.length; // TODO 長さ取得専用の演算子
+        if (value instanceof Array) return value.length;
         if (value instanceof FluoriteValue) {
           var result = value.toNumber();
           if (result !== undefined) return result;
@@ -818,8 +818,8 @@
         if (value === null) return false;
         if (value === 0) return false;
         if (value === false) return false;
-        if (value === "") return false;
-        if (value instanceof Array) return true;
+        if (typeof value === 'string' || value instanceof String) return value.length > 0;
+        if (value instanceof Array) return value.length > 0;
         if (value instanceof FluoriteValue) {
           var result = value.toBoolean();
           if (result !== undefined) return result;
@@ -914,6 +914,16 @@
           return value.substring(start, end);
         }
         throw new Error("Illegal argument: " + value + ", " + start + ", " + end);
+      },
+
+      getLength: function(value) {
+        if (value instanceof Array) {
+          return value.length;
+        }
+        if (typeof value === 'string' || value instanceof String) {
+          return value.length;
+        }
+        throw new Error("Illegal argument: " + value);
       },
 
       writeAsJson: function(value, out) {
@@ -1679,6 +1689,7 @@
         return "(util.createLambda(args=>{" + check + vars + "return " + body + ";}))";
       });
       
+      m("_LEFT_DOLLAR_HASH", e => "(util.getLength(" + e.code(0) + "))");
       m("_CIRCUMFLEX", e => "(Math.pow(" + e.code(0) + "," + e.code(1) + "))");
       m("_ASTERISK", e => "(util.mul(" + e.code(0) + "," + e.code(1) + "))");
       m("_SLASH", e => "(" + e.code(0) + "/" + e.code(1) + ")");
@@ -2057,6 +2068,7 @@ Left
     / "&" { return [location(), "_LEFT_AMPERSAND"]; }
     / "*" { return [location(), "_LEFT_ASTERISK"]; }
     / "\\" { return [location(), "_LEFT_BACKSLASH"]; }
+    / "$#" { return [location(), "_LEFT_DOLLAR_HASH"]; }
   ) _ tail:Left {
     return new fl7c.FluoriteNodeMacro(head[0], head[1], [tail]);
   }
