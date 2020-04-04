@@ -1059,9 +1059,16 @@
 
       getFromArray: function(array, index) { // TODO 名称変更
         if (array instanceof Array) {
-          var result = array[util.toNumber(index)];
+          index = util.toNumber(index);
+          if (index < 0) index = array.length + index;
+          var result = array[index];
           if (result === undefined) return null;
           return result;
+        }
+        if (typeof array === 'string' || array instanceof String) {
+          index = util.toNumber(index);
+          if (index < 0) index = array.length + index;
+          return array.charAt(index);
         }
         if (array instanceof FluoriteObject) {
           return util.getOwnValueFromObject(array, util.toString(index));
