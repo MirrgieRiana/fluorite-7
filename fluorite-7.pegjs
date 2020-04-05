@@ -2379,7 +2379,7 @@ RightWithoutComment
   )* {
     var result = head;
     for (var i = 0; i < tail.length; i++) {
-      var t = tail[i][1];
+      var t = tail[i];
       result = new fl7c.FluoriteNodeMacro(t[0], t[1], t[2] != null ? [result, t[2]] : [result]);
     }
     return result;
