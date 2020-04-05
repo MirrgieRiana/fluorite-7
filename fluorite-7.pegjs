@@ -2132,7 +2132,7 @@
         if (iterate) {
           return "(util.grep(util.toStream(" + codeLeft + ")," + codeVariable + "=>!util.toBoolean(" + body + ")))";
         } else {
-          return "(function(){var " + codeVariable + "=" + codeLeft + ";return util.toBoolean(" + body + ")?util.toStreamFromValues([" + codeVariable2 + "]):util.empty()}())";
+          return "(function(){var " + codeVariable + "=" + codeLeft + ";return !util.toBoolean(" + body + ")?util.toStreamFromValues([" + codeVariable2 + "]):util.empty()}())";
         }
       });
       m("_EQUAL_GREATER", e => "(util.call(" + e.code(1) + ", [" + as2c2(e.pc(), e.node().getArgument(0)) + "]))");
