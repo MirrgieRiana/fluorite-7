@@ -2269,7 +2269,7 @@ TokenEmbeddedStringFormat
 
 TokenEmbeddedStringSection
   = main:TokenEmbeddedStringCharacter+ { return new fl7c.FluoriteNodeTokenString(location(), main.join(""), "\"" + text() + "\""); }
-  / "$" main:Right { return main; }
+  / "$" main:RightWithoutComment { return main; }
   / "\\" "(" _ main:Expression _ ")" { return main; }
   / "\\" format:TokenEmbeddedStringFormat "(" _ main:Expression _ ")" {
     return new fl7c.FluoriteNodeMacro(location(), "_STRING_FORMAT", [format, main]);
@@ -2358,6 +2358,25 @@ Right
     / "." _ main:Factor { return [location(), "_PERIOD", main]; }
     / "::" _ main:Factor { return [location(), "_COLON2", main]; }
   ))* {
+    var result = head;
+    for (var i = 0; i < tail.length; i++) {
+      var t = tail[i][1];
+      result = new fl7c.FluoriteNodeMacro(t[0], t[1], t[2] != null ? [result, t[2]] : [result]);
+    }
+    return result;
+  }
+
+RightWithoutComment
+  = head:Factor tail:
+    ( "(" _ main:Expression _ ")" { return [location(), "_RIGHT_ROUND", main]; }
+    / "[" _ main:Expression _ "]" { return [location(), "_RIGHT_SQUARE", main]; }
+    / "{" _ main:Expression _ "}" { return [location(), "_RIGHT_CURLY", main]; }
+    / "(" _ ")" { return [location(), "_RIGHT_EMPTY_ROUND", null]; }
+    / "[" _ "]" { return [location(), "_RIGHT_EMPTY_SQUARE", null]; }
+    / "{" _ "}" { return [location(), "_RIGHT_EMPTY_CURLY", null]; }
+    / "." _ main:Factor { return [location(), "_PERIOD", main]; }
+    / "::" _ main:Factor { return [location(), "_COLON2", main]; }
+  )* {
     var result = head;
     for (var i = 0; i < tail.length; i++) {
       var t = tail[i][1];
