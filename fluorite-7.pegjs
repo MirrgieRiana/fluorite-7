@@ -1406,7 +1406,7 @@
           if (nodeMap.getKey() === "_SEMICOLON") {
             return fromInitializer(nodeMap.getArguments());
           }
-          if (nodeMap.getKey() === "_ROUND") {
+          if (nodeMap.getKey() === "_SQUARE") {
             return fromStream(nodeMap.getArgument(0));
           }
         }
