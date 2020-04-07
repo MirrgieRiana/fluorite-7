@@ -436,6 +436,10 @@
         return this.toString();
       }
 
+      getStream() {
+        throw new Error("Illegal operation: getStream of '" + this + "'");
+      }
+
       equals(actual) {
         return actual === this;
       }
@@ -778,6 +782,14 @@
         return this.map;
       }
 
+      getStream() {
+        var array = [];
+        for (var key in this.map) {
+          array.push([key, this.map[key]]);
+        }
+        return util.toStreamFromValues(array);
+      }
+
       equals(actual) {
         var res = util.getValueFromObject(this, "EQUALS");
         if (res !== null) return util.toBoolean(util.call(res, [this, actual]));
@@ -1083,6 +1095,9 @@
         if (array instanceof Array) {
           return new FluoriteStreamerValues(array);
         }
+        if (array instanceof FluoriteValue) {
+          return array.getStream();
+        }
         throw new Error("Illegal argument: " + array); // TODO utilの中のエラーを全部FluRuErrに
       },
 
@@ -1149,6 +1164,18 @@
           return new FluoriteObject(parent, map);
         }
         throw new Error("Illegal argument: " + parent + ", " + map);
+      },
+      
+      createObjectFromEntries: function(parent, entries) {
+        var map = {};
+        for (var i in entries) {
+          var key = util.toString(entries[i][0]);
+          var value = entries[i][1];
+          if (key === undefined) throw new Error("Illegal entry: " + key + ", " + value);
+          if (value === undefined) throw new Error("Illegal entry: " + key + ", " + value);
+          map[key] = value;
+        }
+        return util.createObject(parent, map);
       },
 
       initializer: function(func) {
@@ -1270,111 +1297,120 @@
           codeParent = nodeParent.getCode(pc);
         }
 
-        // エントリー列の取得
-        var nodesEntry = undefined;
-        if (nodeMap === null) {
-          nodesEntry = [];
-        }
-        if (nodeMap instanceof fl7c.FluoriteNodeMacro) {
-          if (nodeMap.getKey() === "_SEMICOLON") {
-            nodesEntry = nodeMap.getArguments();
-          }
-        }
-        if (nodesEntry === undefined) nodesEntry = [nodeMap];
+        var fromInitializer = function(nodesEntry) {
+          
+          // エントリー列の変換
+          var keys = []; // [key : string...]
+          var entries = []; // [[key : string, node : Node, delay : boolean]...]
+          for (var i = 0; i < nodesEntry.length; i++) {
+            var nodeEntry = nodesEntry[i];
 
-        // エントリー列の変換
-        var keys = []; // [key : string...]
-        var entries = []; // [[key : string, node : Node, delay : boolean]...]
-        for (var i = 0; i < nodesEntry.length; i++) {
-          var nodeEntry = nodesEntry[i];
+            // 宣言文
+            if (nodeEntry instanceof fl7c.FluoriteNodeMacro) {
+              if (nodeEntry.getKey() === "_COLON") {
 
-          // 宣言文
-          if (nodeEntry instanceof fl7c.FluoriteNodeMacro) {
-            if (nodeEntry.getKey() === "_COLON") {
-
-              var nodeKey = nodeEntry.getArgument(0);
-              var key = undefined;
-              if (nodeKey instanceof fl7c.FluoriteNodeMacro) {
-                if (nodeKey.getKey() === "_LITERAL_IDENTIFIER") {
-                  if (nodeKey.getArgument(0) instanceof fl7c.FluoriteNodeTokenIdentifier) {
-                    key = nodeKey.getArgument(0).getValue();
+                var nodeKey = nodeEntry.getArgument(0);
+                var key = undefined;
+                if (nodeKey instanceof fl7c.FluoriteNodeMacro) {
+                  if (nodeKey.getKey() === "_LITERAL_IDENTIFIER") {
+                    if (nodeKey.getArgument(0) instanceof fl7c.FluoriteNodeTokenIdentifier) {
+                      key = nodeKey.getArgument(0).getValue();
+                    }
                   }
                 }
-              }
-              if (key === undefined) throw new Error("Illegal object key");
+                if (key === undefined) throw new Error("Illegal object key");
 
-              var nodeValue = nodeEntry.getArgument(1);
+                var nodeValue = nodeEntry.getArgument(1);
 
-              keys.push(key);
-              entries.push([key, nodeValue, true]);
-              continue;
-            }
-          }
-
-          // 代入文
-          if (nodeEntry instanceof fl7c.FluoriteNodeMacro) {
-            if (nodeEntry.getKey() === "_EQUAL") {
-
-              var nodeKey = nodeEntry.getArgument(0);
-              var key = undefined;
-              if (nodeKey instanceof fl7c.FluoriteNodeMacro) {
-                if (nodeKey.getKey() === "_LITERAL_IDENTIFIER") {
-                  if (nodeKey.getArgument(0) instanceof fl7c.FluoriteNodeTokenIdentifier) {
-                    key = nodeKey.getArgument(0).getValue();
-                  }
-                }
-              }
-              if (key === undefined) throw new Error("Illegal object key");
-
-              var nodeValue = nodeEntry.getArgument(1);
-
-              entries.push([key, nodeValue, false]);
-              continue;
-            }
-          }
-
-          // 即席代入文
-          if (nodeEntry instanceof fl7c.FluoriteNodeMacro) {
-            if (nodeEntry.getKey() === "_LITERAL_IDENTIFIER") {
-              if (nodeEntry.getArgument(0) instanceof fl7c.FluoriteNodeTokenIdentifier) {
-                entries.push([nodeEntry.getArgument(0).getValue(), nodeEntry, false]);
+                keys.push(key);
+                entries.push([key, nodeValue, true]);
                 continue;
               }
             }
+
+            // 代入文
+            if (nodeEntry instanceof fl7c.FluoriteNodeMacro) {
+              if (nodeEntry.getKey() === "_EQUAL") {
+
+                var nodeKey = nodeEntry.getArgument(0);
+                var key = undefined;
+                if (nodeKey instanceof fl7c.FluoriteNodeMacro) {
+                  if (nodeKey.getKey() === "_LITERAL_IDENTIFIER") {
+                    if (nodeKey.getArgument(0) instanceof fl7c.FluoriteNodeTokenIdentifier) {
+                      key = nodeKey.getArgument(0).getValue();
+                    }
+                  }
+                }
+                if (key === undefined) throw new Error("Illegal object key");
+
+                var nodeValue = nodeEntry.getArgument(1);
+
+                entries.push([key, nodeValue, false]);
+                continue;
+              }
+            }
+
+            // 即席代入文
+            if (nodeEntry instanceof fl7c.FluoriteNodeMacro) {
+              if (nodeEntry.getKey() === "_LITERAL_IDENTIFIER") {
+                if (nodeEntry.getArgument(0) instanceof fl7c.FluoriteNodeTokenIdentifier) {
+                  entries.push([nodeEntry.getArgument(0).getValue(), nodeEntry, false]);
+                  continue;
+                }
+              }
+            }
+
+            // 空文
+            if (nodeEntry instanceof fl7c.FluoriteNodeVoid) {
+              continue;
+            }
+
+            throw new Error("Illegal object pair");
           }
 
-          // 空文
-          if (nodeEntry instanceof fl7c.FluoriteNodeVoid) {
-            continue;
+          var variableIdMap = pc.allocateVariableId();
+          var variableIdObject = pc.allocateVariableId();
+          pc.pushFrame();
+          for (var i = 0; i < keys.length; i++) {
+            var key = keys[i];
+            pc.getFrame()[key] = new fl7c.FluoriteAliasMember(variableIdObject, key);
           }
+          var codes = [];
+          for (var i = 0; i < entries.length; i++) {
+            var entry = entries[i];
+            if (entry[2]) {
+              codes.push("v_" + variableIdMap + "[" + JSON.stringify(entry[0]) + "]=util.initializer(function(){return " + entry[1].getCode(pc) + ";});");
+            } else {
+              codes.push("v_" + variableIdMap + "[" + JSON.stringify(entry[0]) + "]=" + entry[1].getCode(pc) + ";");
+            }
+          }
+          pc.popFrame();
 
-          throw new Error("Illegal object pair");
-        }
+          var code1 = "var v_" + variableIdMap + "={};";
+          var code2 = "var v_" + variableIdObject + "=util.createObject(" + codeParent + ",v_" + variableIdMap + ");";
+          var code3 = codes.join("");
+          var code4 = "v_" + variableIdObject + ".initialize();";
+          var code5 = "return v_" + variableIdObject;
+          return "(function(){" + code1 + code2 + code3 + code4 + code5 + "}())";
+        };
+        var fromStream = function(nodeStreamer) {
+          return "(util.createObjectFromEntries(" + codeParent + ",util.toStream(" + nodeStreamer.getCode(pc) + ").toArray()))";
+        };
 
-        var variableIdMap = pc.allocateVariableId();
-        var variableIdObject = pc.allocateVariableId();
-        pc.pushFrame();
-        for (var i = 0; i < keys.length; i++) {
-          var key = keys[i];
-          pc.getFrame()[key] = new fl7c.FluoriteAliasMember(variableIdObject, key);
+        //
+
+        if (nodeMap === null) {
+          return fromInitializer([]);
         }
-        var codes = [];
-        for (var i = 0; i < entries.length; i++) {
-          var entry = entries[i];
-          if (entry[2]) {
-            codes.push("v_" + variableIdMap + "[" + JSON.stringify(entry[0]) + "]=util.initializer(function(){return " + entry[1].getCode(pc) + ";});");
-          } else {
-            codes.push("v_" + variableIdMap + "[" + JSON.stringify(entry[0]) + "]=" + entry[1].getCode(pc) + ";");
+        if (nodeMap instanceof fl7c.FluoriteNodeMacro) {
+          if (nodeMap.getKey() === "_SEMICOLON") {
+            return fromInitializer(nodeMap.getArguments());
+          }
+          if (nodeMap.getKey() === "_ROUND") {
+            return fromStream(nodeMap.getArgument(0));
           }
         }
-        pc.popFrame();
-
-        var code1 = "var v_" + variableIdMap + "={};";
-        var code2 = "var v_" + variableIdObject + "=util.createObject(" + codeParent + ",v_" + variableIdMap + ");";
-        var code3 = codes.join("");
-        var code4 = "v_" + variableIdObject + ".initialize();";
-        var code5 = "return v_" + variableIdObject;
-        return "(function(){" + code1 + code2 + code3 + code4 + code5 + "}())";
+        return fromInitializer([nodeMap]);
       };
       c("PI", Math.PI);
       c("E", Math.E);
