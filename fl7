@@ -53,8 +53,7 @@ c("IN", (function(){
 
     start() { // TODO 徐々に読み込む
       var fd = process.stdin.fd;
-      var buffers = [];
-      var length = 0;
+      var strings = [];
       while (true) {
         var buffer = new Buffer(4096);
         var bytesRead;
@@ -71,11 +70,9 @@ c("IN", (function(){
           break;
         }
         if (bytesRead === 0) break;
-        buffers.push(buffer);
-        length += bytesRead;
+        strings.push(buffer.toString('utf8', 0, bytesRead));
       }
-      var buffer = Buffer.concat(buffers);
-      var input = buffer.toString('utf8', 0, length);
+      var input = strings.join("");
       var inputs = input.split("\n");
       var i = 0;
       return {
