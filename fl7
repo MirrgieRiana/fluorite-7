@@ -58,7 +58,6 @@ c("IN", (function(){
       var length = 0;
       while (true) {
         var buffer = new Buffer(4096);
-        var bytesRead = fs.readSync(fd, buffer, 0, 4096, null);
         var bytesRead = deasync(cb => {
           fs.read(fd, buffer, 0, 4096, null, (err, bytesRead, buffer) => {
             cb(err, bytesRead);
