@@ -4,7 +4,8 @@
   "description": "",
   "main": "fluorite-7.js",
   "dependencies": {
-    "pegjs": "0.10.0"
+    "pegjs": "0.10.0",
+    "deasync": "0.1.19"
   },
   "devDependencies": {},
   "scripts": {
