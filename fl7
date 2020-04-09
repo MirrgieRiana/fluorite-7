@@ -21,19 +21,24 @@ shift
 
 #
 
-cd "$(cd "$(dirname "$0")"; pwd)"
+app_dir=$(cd "$(dirname "$0")"; pwd)
 
-if [ ! -f ./fluorite-7.js ]
+if [ ! -f "$app_dir"/fluorite-7.js ]
 then
-	./compile.bash || exit 2
+  (
+    cd "$app_dir"
+    ./compile.bash
+  ) || exit 2
 fi
 
 export exec
 export output_json
+export app_dir
+export NODE_PATH="$NODE_PATH:$app_dir"
 node -e "$(cat << 'END'
 const fs = require("fs");
 const source = process.env.exec;
-const parser = require("./fluorite-7.js");
+const parser = require(process.env.app_dir + "/fluorite-7.js");
 const result = parser.parse(source);
 
 const env = new result.fl7c.Environment();
@@ -93,6 +98,62 @@ c("IN", (function(){
 
   }
   return new FluoriteStreamerStdin();
+})());
+c("READ", (function(){
+  class FluoriteStreamerRead extends result.fl7.FluoriteStreamer {
+
+    constructor (filename) {
+      super();
+      this._filename = filename;
+    }
+
+    start() { // TODO 徐々に読み込む
+      var fd = fs.openSync(this._filename, "r");
+      var strings = [];
+      while (true) {
+        var buffer = new Buffer(4096);
+        var bytesRead;
+        while (true) {
+          try {
+            bytesRead = fs.readSync(fd, buffer, 0, 4096, null);
+          } catch (e) {
+            if (e.code === "EAGAIN") {
+              continue;
+            } else {
+              throw e;
+            }
+          }
+          break;
+        }
+        if (bytesRead === 0) break;
+        strings.push(buffer.toString('utf8', 0, bytesRead));
+      }
+      fs.closeSync(fd);
+      var input = strings.join("");
+      var inputs = input.split("\n");
+      var i = 0;
+      return {
+        next: () => {
+          if (i >= inputs.length) return undefined;
+          if (i == inputs.length - 1) {
+            if (inputs[i] === "") {
+              i++;
+              return undefined;
+            }
+          }
+          var result = inputs[i];
+          i++;
+          return result;
+        },
+      };
+    }
+
+  }
+  return new result.fl7.FluoriteFunction(args => {
+    var filename = args[0];
+    if (filename === undefined) throw new Error("Illegal argument");
+    return new FluoriteStreamerRead(filename);
+  });
 })());
 
 const code = result.node.getCode(env);
