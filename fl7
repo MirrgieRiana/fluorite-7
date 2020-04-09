@@ -32,6 +32,7 @@ export exec
 export output_json
 node -e "$(cat << 'END'
 const fs = require("fs");
+const deasync = require("deasync");
 const source = process.env.exec;
 const parser = require("./fluorite-7.js");
 const result = parser.parse(source);
@@ -51,13 +52,18 @@ c("IN", (function(){
       super();
     }
 
-    start() { // TODO 1行ずつ読み込む
+    start() { // TODO 徐々に読み込む
       var fd = process.stdin.fd;
       var buffers = [];
       var length = 0;
       while (true) {
         var buffer = new Buffer(4096);
         var bytesRead = fs.readSync(fd, buffer, 0, 4096, null);
+        var bytesRead = deasync(cb => {
+          fs.read(fd, buffer, 0, 4096, null, (err, bytesRead, buffer) => {
+            cb(err, bytesRead);
+          });
+        })();
         if (bytesRead === 0) break;
         buffers.push(buffer);
         length += bytesRead;
