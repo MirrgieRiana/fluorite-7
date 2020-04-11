@@ -2696,7 +2696,7 @@ Assignment
 LeftAssignment
   = Assignment
   / head:
-    ( ":=" { return [location(), "_COLON_EQUAL"]; }
+    ( ":=" { return [location(), "_LEFT_COLON_EQUAL"]; }
   ) _ tail:LeftAssignment {
     return new fl7c.FluoriteNodeMacro(head[0], head[1], [tail]);
   }
