@@ -1344,6 +1344,13 @@
         env.setAlias(key, new fl7c.FluoriteAliasMacro(func));
       };
       var inline = code => ["", code];
+      var wrap = (pc, node, func) => {
+        var codes = node.getCodeGetter(pc);
+        return [
+          codes[0],
+          func(codes[1]),
+        ];
+      };
       var as2c = (pc, node) => {
         if (node instanceof fl7c.FluoriteNodeMacro) {
           if (node.getKey() === "_SEMICOLON") {
@@ -1945,11 +1952,7 @@
 
         var node = e.node().getArgument(1);
 
-        var codes = node.getCodeGetter(e.pc());
-        return [
-          codes[0],
-          "(util.format(" + JSON.stringify(format) + ", " + codes[1] + "))",
-        ];
+        return wrap(e.pc(), node, c => "(util.format(" + JSON.stringify(format) + ", " + c + "))");
       });
       m("_ROUND", e => {
 
@@ -1960,13 +1963,7 @@
         return codes;
       });
       m("_EMPTY_ROUND", e => inline("(util.empty())"));
-      m("_SQUARE", e => {
-        var codes = e.node().getArgument(0).getCodeGetter(e.pc());
-        return [
-          codes[0],
-          "(util.toStream(" + codes[1] + ").toArray())",
-        ];
-      });
+      m("_SQUARE", e => wrap(e.pc(), e.node().getArgument(0), c => "(util.toStream(" + c + ").toArray())"));
       m("_EMPTY_SQUARE", e => inline("([])"));
       m("_CURLY", e => getCodeToCreateFluoriteObject(e.pc(), null, e.node().getArgument(0)));
       m("_EMPTY_CURLY", e => getCodeToCreateFluoriteObject(e.pc(), null, null));
@@ -1985,11 +1982,7 @@
         }
         if (key === undefined) throw new Error("Illegal member access key");
 
-        var codes = nodeObject.getCodeGetter(e.pc());
-        return [
-          codes[0],
-          "(util.getValueFromObject(" + codes[1] + ", " + JSON.stringify(key) + "))",
-        ];
+        return wrap(e.pc(), nodeObject, c => "(util.getValueFromObject(" + c + ", " + JSON.stringify(key) + "))");
       });
       m("_COLON2", e => {
 
@@ -2006,11 +1999,7 @@
         }
         if (key === undefined) throw new Error("Illegal member access key");
 
-        var codes = nodeObject.getCodeGetter(e.pc());
-        return [
-          codes[0],
-          "(util.getDelegate(" + codes[1] + ", " + JSON.stringify(key) + "))",
-        ];
+        return wrap(e.pc(), nodeObject, c => "(util.getDelegate(" + c + ", " + JSON.stringify(key) + "))");
       });
       m("_RIGHT_ROUND", e => {
         var codesFunction = e.node().getArgument(0).getCodeGetter(e.pc());
@@ -2020,13 +2009,7 @@
           "(util.call(" + codesFunction[1] + ", [" + codesArguments[1] + "]))",
         ];
       });
-      m("_RIGHT_EMPTY_ROUND", e => {
-        var codesFunction = e.node().getArgument(0).getCodeGetter(e.pc());
-        return [
-          codesFunction[0],
-          "(util.call(" + codesFunction[1] + ", []))",
-        ];
-      });
+      m("_RIGHT_EMPTY_ROUND", e => wrap(e.pc(), e.node().getArgument(0), c => "(util.call(" + c + ", []))"));
       m("_RIGHT_SQUARE", e => {
 
         {
@@ -2037,29 +2020,38 @@
                 var nodeStart = nodeRight.getArgument(0);
                 var nodeEnd = nodeRight.getArgument(1);
 
-                var codeStart = undefined;
+                var codesStart = undefined;
                 if (nodeStart instanceof fl7c.FluoriteNodeVoid) {
-                  codeStart = "null";
+                  codesStart = inline("(null)");
                 } else {
-                  codeStart = nodeStart.getCode(e.pc());
+                  codesStart = nodeStart.getCodeGetter(e.pc());
                 }
 
-                var codeEnd = undefined;
+                var codesEnd = undefined;
                 if (nodeEnd instanceof fl7c.FluoriteNodeVoid) {
-                  codeEnd = "null";
+                  codesEnd = inline("(null)");
                 } else {
-                  codeEnd = nodeEnd.getCode(e.pc());
+                  codesEnd = nodeEnd.getCodeGetter(e.pc());
                 }
 
-                return "(util.slice(" + e.code(0) + "," + codeStart + "," + codeEnd + "))";
+                var codesLeft = e.node().getArgument(0).getCodeGetter(e.pc());
+                return [
+                  codesLeft[0] + codesStart[0] + codesEnd[0],
+                  "(util.slice(" + codesLeft[1] + ", " + codesStart[1] + ", " + codesEnd[1] + "))",
+                ];
               }
             }
           }
         }
 
-        return "(util.getFromArray(" + e.code(0) + "," + e.code(1) + "))";
+        var codesLeft = e.node().getArgument(0).getCodeGetter(e.pc());
+        var codesRight = e.node().getArgument(1).getCodeGetter(e.pc());
+        return [
+          codesLeft[0] + codesRight[0],
+          "(util.getFromArray(" + codesLeft[1] + ", " + codesRight[1] + "))",
+        ];
       });
-      m("_RIGHT_EMPTY_SQUARE", e => "(util.toStreamFromArray(" + e.code(0) + "))");
+      m("_RIGHT_EMPTY_SQUARE", e => wrap(e.pc(), e.node().getArgument(0), c => "(util.toStreamFromArray(" + c + "))"));
       m("_RIGHT_CURLY", e => getCodeToCreateFluoriteObject(e.pc(), e.node().getArgument(0), e.node().getArgument(1)));
       m("_RIGHT_EMPTY_CURLY", e => getCodeToCreateFluoriteObject(e.pc(), e.node().getArgument(0), null));
       m("_LEFT_PLUS", e => "(util.toNumber(" + e.code(0) + "))");
