@@ -398,7 +398,7 @@
       getCodeGetter(pc, location) {
         return [
           "",
-          "v_" + this._variableId,
+          "(v_" + this._variableId + ")",
         ];
       }
 
@@ -418,7 +418,7 @@
       getCodeGetter(pc, location) {
         return [
           "",
-          "constants[" + this._constantId + "]",
+          "(constants[" + this._constantId + "])",
         ];
       }
 
@@ -439,7 +439,7 @@
       getCodeGetter(pc, location) {
         return [
           "",
-          "util.getOwnValueFromObject(v_" + this._variableId + ", " + JSON.stringify(this._key) + ")",
+          "(util.getOwnValueFromObject(v_" + this._variableId + ", " + JSON.stringify(this._key) + "))",
         ];
       }
 
@@ -1343,16 +1343,27 @@
       var m = (key, func) => {
         env.setAlias(key, new fl7c.FluoriteAliasMacro(func));
       };
-      var as2c = (pc, arg) => {
-        if (arg instanceof fl7c.FluoriteNodeMacro) {
-          if (arg.getKey() === "_SEMICOLON") {
-            return arg.getArguments()
-              .filter(a => !(a instanceof fl7c.FluoriteNodeVoid))
-              .map(a => a.getCode(pc))
-              .join(",");
+      var inline = code => ["", code];
+      var as2c = (pc, node) => {
+        if (node instanceof fl7c.FluoriteNodeMacro) {
+          if (node.getKey() === "_SEMICOLON") {
+            var codesHeader = [];
+            var codesBody = [];
+            for (var i in node.getArguments()) {
+              var node2 = node.getArguments()[i];
+              if (!(node2 instanceof fl7c.FluoriteNodeVoid)) {
+                var codes = node2.getCodeGetter(pc);
+                codesHeader.push(codes[0]);
+                codesBody.push(codes[1]);
+              }
+            }
+            return [
+              codesHeader.join(""),
+              codesBody.join(", "),
+            ];
           }
         }
-        return arg.getCode(pc);
+        return node.getCodeGetter(pc);
       };
       var as2c2 = (pc, arg) => {
         if (arg instanceof fl7c.FluoriteNodeMacro) {
@@ -1868,44 +1879,65 @@
         return util.toStreamFromValues(util.toStream(stream).toArray().reverse());
       }));
       m("_LITERAL_INTEGER", e => {
-        if (!(e.node().getArgument(0) instanceof fl7c.FluoriteNodeTokenInteger)) throw new Error("Illegal argument");
-        return "(" + e.node().getArgument(0).getValue() + ")";
+        if (e.node().getArgument(0) instanceof fl7c.FluoriteNodeTokenInteger) {
+          return [
+            "'DUMMY';\n",
+            "(" + e.node().getArgument(0).getValue() + ")",
+          ];// TODO
+          return inline("(" + e.node().getArgument(0).getValue() + ")");
+        }
+        throw new Error("Illegal argument");
       });
       m("_LITERAL_BASED_INTEGER", e => {
-        if (!(e.node().getArgument(0) instanceof fl7c.FluoriteNodeTokenBasedInteger)) throw new Error("Illegal argument");
-        return "(" + e.node().getArgument(0).getValue() + ")";
+        if (e.node().getArgument(0) instanceof fl7c.FluoriteNodeTokenBasedInteger) {
+          return inline("(" + e.node().getArgument(0).getValue() + ")");
+        }
+        throw new Error("Illegal argument");
       });
       m("_LITERAL_FLOAT", e => {
-        if (!(e.node().getArgument(0) instanceof fl7c.FluoriteNodeTokenFloat)) throw new Error("Illegal argument");
-        return "(" + e.node().getArgument(0).getValue() + ")";
+        if (e.node().getArgument(0) instanceof fl7c.FluoriteNodeTokenFloat) {
+          return inline("(" + e.node().getArgument(0).getValue() + ")");
+        }
+        throw new Error("Illegal argument");
       });
       m("_LITERAL_IDENTIFIER", e => {
-        if (!(e.node().getArgument(0) instanceof fl7c.FluoriteNodeTokenIdentifier)) throw new Error("Illegal argument");
-        var key = e.node().getArgument(0).getValue();
-        var alias = e.pc().getAliasOrUndefined(e.node().getLocation(), key);
-        if (alias === undefined) return JSON.stringify(key); // throw new Error("No such alias '" + key + "'");
-        return alias.getCode(e.pc(), e.node().getLocation());
+        var nodeKey = e.node().getArgument(0);
+        if (nodeKey instanceof fl7c.FluoriteNodeTokenIdentifier) {
+          var key = nodeKey.getValue();
+          var alias = e.pc().getAliasOrUndefined(e.node().getLocation(), key);
+          if (alias === undefined) return JSON.stringify(key); // throw new Error("No such alias '" + key + "'");
+          return alias.getCodeGetter(e.pc(), e.node().getLocation());
+        }
+        throw new Error("Illegal argument");
       });
       m("_LITERAL_STRING", e => {
-        if (!(e.node().getArgument(0) instanceof fl7c.FluoriteNodeTokenString)) throw new Error("Illegal argument");
-        return "(" + JSON.stringify(e.node().getArgument(0).getValue()) + ")";
+        if (e.node().getArgument(0) instanceof fl7c.FluoriteNodeTokenString) {
+          return inline("(" + JSON.stringify(e.node().getArgument(0).getValue()) + ")");
+        }
+        throw new Error("Illegal argument");
       });
       m("_LITERAL_EMBEDDED_STRING", e => {
-        var codes = [];
+        var codesHeader = [];
+        var codesBody = [];
         var nodes = e.node().getArguments();
         for (var i = 0; i < nodes.length; i++) {
           var node = nodes[i];
           if (node instanceof fl7c.FluoriteNodeTokenString) {
-            codes.push(JSON.stringify(node.getValue()));
-            continue;
+            codesBody.push(JSON.stringify(node.getValue()));
+          } else {
+            var codes = node.getCodeGetter(e.pc());
+            codesHeader.push(codes[0]);
+            codesBody.push("util.toString(" + codes[1] + ")");
           }
-          codes.push("util.toString(" + node.getCode(e.pc()) + ")");
         }
-        return "([" + codes.join(",") + "].join(\"\"))";
+        return [
+          codesHeader.join(""),
+          "(" + codesBody.join(" + ") + ")",
+        ];
       });
       m("_STRING_FORMAT", e => {
 
-        var format = undefined
+        var format = undefined;
         if (e.node().getArgument(0) instanceof fl7c.FluoriteNodeTokenFormat) {
           format = e.node().getArgument(0).getValue();
         }
@@ -1913,12 +1945,29 @@
 
         var node = e.node().getArgument(1);
 
-        return "(util.format(" + JSON.stringify(format) + "," + node.getCode(e.pc()) + "))";
+        var codes = node.getCodeGetter(e.pc());
+        return [
+          codes[0],
+          "(util.format(" + JSON.stringify(format) + ", " + codes[1] + "))",
+        ];
       });
-      m("_ROUND", e => e.code(0));
-      m("_EMPTY_ROUND", e => "(util.empty())");
-      m("_SQUARE", e => "(util.toStream(" + e.code(0) + ").toArray())");
-      m("_EMPTY_SQUARE", e => "[]");
+      m("_ROUND", e => {
+
+        e.pc().pushFrame();
+        var codes = e.node().getArgument(0).getCodeGetter(e.pc());
+        e.pc().popFrame();
+
+        return codes;
+      });
+      m("_EMPTY_ROUND", e => inline("(util.empty())"));
+      m("_SQUARE", e => {
+        var codes = e.node().getArgument(0).getCodeGetter(e.pc());
+        return [
+          codes[0],
+          "(util.toStream(" + codes[1] + ").toArray())",
+        ];
+      });
+      m("_EMPTY_SQUARE", e => inline("([])"));
       m("_CURLY", e => getCodeToCreateFluoriteObject(e.pc(), null, e.node().getArgument(0)));
       m("_EMPTY_CURLY", e => getCodeToCreateFluoriteObject(e.pc(), null, null));
       m("_PERIOD", e => {
@@ -1936,7 +1985,11 @@
         }
         if (key === undefined) throw new Error("Illegal member access key");
 
-        return "(util.getValueFromObject(" + nodeObject.getCode(e.pc()) + "," + JSON.stringify(key) + "))"
+        var codes = nodeObject.getCodeGetter(e.pc());
+        return [
+          codes[0],
+          "(util.getValueFromObject(" + codes[1] + ", " + JSON.stringify(key) + "))",
+        ];
       });
       m("_COLON2", e => {
 
@@ -1953,10 +2006,27 @@
         }
         if (key === undefined) throw new Error("Illegal member access key");
 
-        return "(util.getDelegate(" + nodeObject.getCode(e.pc()) + "," + JSON.stringify(key) + "))";
+        var codes = nodeObject.getCodeGetter(e.pc());
+        return [
+          codes[0],
+          "(util.getDelegate(" + codes[1] + ", " + JSON.stringify(key) + "))",
+        ];
       });
-      m("_RIGHT_ROUND", e => "(util.call(" + e.code(0) + ", [" + as2c(e.pc(), e.node().getArgument(1)) + "]))");
-      m("_RIGHT_EMPTY_ROUND", e => "(util.call(" + e.code(0) + ", []))");
+      m("_RIGHT_ROUND", e => {
+        var codesFunction = e.node().getArgument(0).getCodeGetter(e.pc());
+        var codesArguments = as2c(e.pc(), e.node().getArgument(1));
+        return [
+          codesFunction[0] + codesArguments[0],
+          "(util.call(" + codesFunction[1] + ", [" + codesArguments[1] + "]))",
+        ];
+      });
+      m("_RIGHT_EMPTY_ROUND", e => {
+        var codesFunction = e.node().getArgument(0).getCodeGetter(e.pc());
+        return [
+          codesFunction[0],
+          "(util.call(" + codesFunction[1] + ", []))",
+        ];
+      });
       m("_RIGHT_SQUARE", e => {
 
         {
