@@ -129,8 +129,15 @@
         return this._location;
       }
 
-      getCode(pc) {
+      getCode(pc) { // TODO delete
         throwCompileError(this._location, "Not Implemented");
+      }
+
+      getCodeGetter(pc) { // TODO throw error
+        return [
+          "",
+          this.getCode(pc),
+        ];
       }
 
       getTree(pc) {
@@ -145,7 +152,11 @@
         super(location);
       }
 
-      getCode(pc) {
+      getCode(pc) { // TODO delete
+        throwCompileError(this._location, "Cannot stringify void node");
+      }
+
+      getCodeGetter(pc) {
         throwCompileError(this._location, "Cannot stringify void node");
       }
 
@@ -167,7 +178,11 @@
         return this._value;
       }
 
-      getCode(pc) {
+      getCode(pc) { // TODO delete
+        throwCompileError(this.getLocation(), "Tried to stringify raw token");
+      }
+
+      getCodeGetter(pc) {
         throwCompileError(this.getLocation(), "Tried to stringify raw token");
       }
 
@@ -272,6 +287,30 @@
         throwCompileError(this.getLocation(), "No such macro '" + this._key + "'");
       }
 
+      getCodeGetter(pc) {
+        var alias = pc.getAlias(this.getLocation(), this._key);
+        if (alias instanceof FluoriteAliasMacro) {
+          var codes;
+          try {
+            codes = alias.getMacro()(new FluoriteMacroEnvironment(pc, this));
+          } catch (e) {
+            if (e instanceof FluoriteCompileError) {
+              throw e;
+            } else {
+              throwCompileError(this.getLocation(), "" + e.message + " in macro '" + this._key + "'");
+            }
+          }
+          if (!(codes instanceof Array)) { // TODO delete
+            codes = [
+              "",
+              codes,
+            ];
+          }
+          return codes;
+        }
+        throwCompileError(this.getLocation(), "No such macro '" + this._key + "'");
+      }
+
       getTree() {
         return this._key + "[" + this._args.map(a => a.getTree()).join(",") + "]";
       }
@@ -293,7 +332,7 @@
         return this._node;
       }
 
-      code(index) {
+      code(index) { // TODO delete
         return this._node.getArgument(index).getCode(this._pc);
       }
 
@@ -307,8 +346,15 @@
 
       }
 
-      getCode(pc, location) {
+      getCode(pc, location) { // TODO delete
         throw new Error("Not Implemented"); // TODO 全箇所でエラークラスを独自に
+      }
+
+      getCodeGetter(pc, location) {
+        return [
+          "",
+          this.getCode(pc, location), // TODO throw error
+        ];
       }
 
     }
@@ -324,7 +370,11 @@
         return this._func;
       }
 
-      getCode(pc, location) {
+      getCode(pc, location) { // TODO delete
+        throw new Error("Cannot stringify a macro alias");
+      }
+
+      getCodeGetter(pc, location) {
         throw new Error("Cannot stringify a macro alias");
       }
 
@@ -337,12 +387,19 @@
         this._variableId = variableId;
       }
 
-      getRawCode(pc, location) {
+      getRawCode(pc, location) { // TODO rename -> getCodeArgument
         return "v_" + this._variableId;
       }
 
-      getCode(pc, location) {
+      getCode(pc, location) { // TODO delete
         return "(v_" + this._variableId + ")";
+      }
+
+      getCodeGetter(pc, location) {
+        return [
+          "",
+          "v_" + this._variableId,
+        ];
       }
 
     }
@@ -354,8 +411,15 @@
         this._constantId = constantId;
       }
 
-      getCode(pc, location) {
+      getCode(pc, location) { // TODO delete
         return "(constants[" + this._constantId + "])";
+      }
+
+      getCodeGetter(pc, location) {
+        return [
+          "",
+          "constants[" + this._constantId + "]",
+        ];
       }
 
     }
@@ -368,11 +432,28 @@
         this._key = key;
       }
 
-      getCode(pc, location) {
+      getCode(pc, location) { // TODO delete
         return "(util.getOwnValueFromObject(v_" + this._variableId + "," + JSON.stringify(this._key) + "))";
       }
 
+      getCodeGetter(pc, location) {
+        return [
+          "",
+          "util.getOwnValueFromObject(v_" + this._variableId + ", " + JSON.stringify(this._key) + ")",
+        ];
+      }
+
     }
+
+    //
+
+    var util = {
+
+      indent: function(code) {
+        return "  " + code.replace(/\n/g, "\n  ");
+      },
+
+    };
 
     return {
       FluoriteCompileError,
@@ -392,6 +473,7 @@
       FluoriteAliasVariable,
       FluoriteAliasConstant,
       FluoriteAliasMember,
+      util,
     };
   })();
 
@@ -2187,7 +2269,8 @@ RootDemonstration
 
     var code;
     try {
-      code = main.getCode(pc);
+      var codes = main.getCodeGetter(pc);
+      code = "(function() {\n" + fl7c.util.indent(codes[0] + "return " + codes[1] + ";") + "\n}())";
     } catch (e) {
       var result = ["Compile Error", "" + e, main.getTree()];
       console.log(result);
@@ -2597,6 +2680,8 @@ Stream
 Assignment
   = head:(Stream _
     ( "->" { return [location(), "_MINUS_GREATER"]; }
+    / "::=" { return [location(), "_COLON2_EQUAL"]; }
+    / ":=" { return [location(), "_COLON_EQUAL"]; }
     / ":" { return [location(), "_COLON"]; }
     / "=" !">" { return [location(), "_EQUAL"]; }
   ) _)* tail:Stream {
@@ -2608,12 +2693,20 @@ Assignment
     return result;
   }
 
+LeftAssignment
+  = Assignment
+  / head:
+    ( ":=" { return [location(), "_COLON_EQUAL"]; }
+  ) _ tail:LeftAssignment {
+    return new fl7c.FluoriteNodeMacro(head[0], head[1], [tail]);
+  }
+
 Pipe
-  = head:(Assignment _
+  = head:(LeftAssignment _
     ( "|" { return [location(), "_PIPE"]; }
     / "?|" { return [location(), "_QUESTION_PIPE"]; }
     / "!|" { return [location(), "_EXCLAMATION_PIPE"]; }
-  ) _)* tail:Assignment {
+  ) _)* tail:LeftAssignment {
     var result = tail;
     for (var i = head.length - 1; i >= 0; i--) {
       var h = head[i];
