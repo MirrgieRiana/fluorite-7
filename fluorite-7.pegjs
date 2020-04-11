@@ -269,7 +269,7 @@
         return this._args.length;
       }
 
-      getCode(pc) {
+      getCode(pc) { // TODO delete
         var alias = pc.getAlias(this.getLocation(), this._key);
         if (alias instanceof FluoriteAliasMacro) {
           var result;
