@@ -317,7 +317,7 @@
 
     }
 
-    class FluoriteMacroEnvironment { // TODO 名称変更
+    class FluoriteMacroEnvironment { // TODO 名称変更 場所をマクロローダーに
 
       constructor(pc, node) {
         this._pc = pc;
@@ -330,6 +330,10 @@
 
       node() {
         return this._node;
+      }
+
+      arg(index) {
+        return this._node.getArgument(index);
       }
 
       code(index) { // TODO delete
@@ -1351,6 +1355,14 @@
           func(codes[1]),
         ];
       };
+      var wrap2 = (pc, node1, node2, func) => {
+        var codes1 = node1.getCodeGetter(pc);
+        var codes2 = node2.getCodeGetter(pc);
+        return [
+          codes1[0] + codes2[0],
+          func(codes1[1], codes2[1]),
+        ];
+      };
       var as2c = (pc, node) => {
         if (node instanceof fl7c.FluoriteNodeMacro) {
           if (node.getKey() === "_SEMICOLON") {
@@ -1886,29 +1898,29 @@
         return util.toStreamFromValues(util.toStream(stream).toArray().reverse());
       }));
       m("_LITERAL_INTEGER", e => {
-        if (e.node().getArgument(0) instanceof fl7c.FluoriteNodeTokenInteger) {
+        if (e.arg(0) instanceof fl7c.FluoriteNodeTokenInteger) {
           return [
             "'DUMMY';\n",
-            "(" + e.node().getArgument(0).getValue() + ")",
+            "(" + e.arg(0).getValue() + ")",
           ];// TODO
-          return inline("(" + e.node().getArgument(0).getValue() + ")");
+          return inline("(" + e.arg(0).getValue() + ")");
         }
         throw new Error("Illegal argument");
       });
       m("_LITERAL_BASED_INTEGER", e => {
-        if (e.node().getArgument(0) instanceof fl7c.FluoriteNodeTokenBasedInteger) {
-          return inline("(" + e.node().getArgument(0).getValue() + ")");
+        if (e.arg(0) instanceof fl7c.FluoriteNodeTokenBasedInteger) {
+          return inline("(" + e.arg(0).getValue() + ")");
         }
         throw new Error("Illegal argument");
       });
       m("_LITERAL_FLOAT", e => {
-        if (e.node().getArgument(0) instanceof fl7c.FluoriteNodeTokenFloat) {
-          return inline("(" + e.node().getArgument(0).getValue() + ")");
+        if (e.arg(0) instanceof fl7c.FluoriteNodeTokenFloat) {
+          return inline("(" + e.arg(0).getValue() + ")");
         }
         throw new Error("Illegal argument");
       });
       m("_LITERAL_IDENTIFIER", e => {
-        var nodeKey = e.node().getArgument(0);
+        var nodeKey = e.arg(0);
         if (nodeKey instanceof fl7c.FluoriteNodeTokenIdentifier) {
           var key = nodeKey.getValue();
           var alias = e.pc().getAliasOrUndefined(e.node().getLocation(), key);
@@ -1918,8 +1930,8 @@
         throw new Error("Illegal argument");
       });
       m("_LITERAL_STRING", e => {
-        if (e.node().getArgument(0) instanceof fl7c.FluoriteNodeTokenString) {
-          return inline("(" + JSON.stringify(e.node().getArgument(0).getValue()) + ")");
+        if (e.arg(0) instanceof fl7c.FluoriteNodeTokenString) {
+          return inline("(" + JSON.stringify(e.arg(0).getValue()) + ")");
         }
         throw new Error("Illegal argument");
       });
@@ -1945,32 +1957,32 @@
       m("_STRING_FORMAT", e => {
 
         var format = undefined;
-        if (e.node().getArgument(0) instanceof fl7c.FluoriteNodeTokenFormat) {
-          format = e.node().getArgument(0).getValue();
+        if (e.arg(0) instanceof fl7c.FluoriteNodeTokenFormat) {
+          format = e.arg(0).getValue();
         }
         if (format === undefined) throw new Error("Illegal argument");
 
-        var node = e.node().getArgument(1);
+        var node = e.arg(1);
 
         return wrap(e.pc(), node, c => "(util.format(" + JSON.stringify(format) + ", " + c + "))");
       });
       m("_ROUND", e => {
 
         e.pc().pushFrame();
-        var codes = e.node().getArgument(0).getCodeGetter(e.pc());
+        var codes = e.arg(0).getCodeGetter(e.pc());
         e.pc().popFrame();
 
         return codes;
       });
       m("_EMPTY_ROUND", e => inline("(util.empty())"));
-      m("_SQUARE", e => wrap(e.pc(), e.node().getArgument(0), c => "(util.toStream(" + c + ").toArray())"));
+      m("_SQUARE", e => wrap(e.pc(), e.arg(0), c => "(util.toStream(" + c + ").toArray())"));
       m("_EMPTY_SQUARE", e => inline("([])"));
-      m("_CURLY", e => getCodeToCreateFluoriteObject(e.pc(), null, e.node().getArgument(0)));
+      m("_CURLY", e => getCodeToCreateFluoriteObject(e.pc(), null, e.arg(0)));
       m("_EMPTY_CURLY", e => getCodeToCreateFluoriteObject(e.pc(), null, null));
       m("_PERIOD", e => {
 
-        var nodeObject = e.node().getArgument(0);
-        var nodeKey = e.node().getArgument(1);
+        var nodeObject = e.arg(0);
+        var nodeKey = e.arg(1);
 
         var key = undefined;
         if (nodeKey instanceof fl7c.FluoriteNodeMacro) {
@@ -1986,8 +1998,8 @@
       });
       m("_COLON2", e => {
 
-        var nodeObject = e.node().getArgument(0);
-        var nodeKey = e.node().getArgument(1);
+        var nodeObject = e.arg(0);
+        var nodeKey = e.arg(1);
 
         var key = undefined;
         if (nodeKey instanceof fl7c.FluoriteNodeMacro) {
@@ -2002,18 +2014,18 @@
         return wrap(e.pc(), nodeObject, c => "(util.getDelegate(" + c + ", " + JSON.stringify(key) + "))");
       });
       m("_RIGHT_ROUND", e => {
-        var codesFunction = e.node().getArgument(0).getCodeGetter(e.pc());
+        var codesFunction = e.arg(0).getCodeGetter(e.pc());
         var codesArguments = as2c(e.pc(), e.node().getArgument(1));
         return [
           codesFunction[0] + codesArguments[0],
           "(util.call(" + codesFunction[1] + ", [" + codesArguments[1] + "]))",
         ];
       });
-      m("_RIGHT_EMPTY_ROUND", e => wrap(e.pc(), e.node().getArgument(0), c => "(util.call(" + c + ", []))"));
+      m("_RIGHT_EMPTY_ROUND", e => wrap(e.pc(), e.arg(0), c => "(util.call(" + c + ", []))"));
       m("_RIGHT_SQUARE", e => {
 
         {
-          var nodeRight = e.node().getArgument(1);
+          var nodeRight = e.arg(1);
           if (nodeRight instanceof fl7c.FluoriteNodeMacro) {
             if (nodeRight.getKey() == "_SEMICOLON") {
               if (nodeRight.getArgumentCount() == 2) {
@@ -2034,7 +2046,7 @@
                   codesEnd = nodeEnd.getCodeGetter(e.pc());
                 }
 
-                var codesLeft = e.node().getArgument(0).getCodeGetter(e.pc());
+                var codesLeft = e.arg(0).getCodeGetter(e.pc());
                 return [
                   codesLeft[0] + codesStart[0] + codesEnd[0],
                   "(util.slice(" + codesLeft[1] + ", " + codesStart[1] + ", " + codesEnd[1] + "))",
@@ -2044,50 +2056,55 @@
           }
         }
 
-        var codesLeft = e.node().getArgument(0).getCodeGetter(e.pc());
-        var codesRight = e.node().getArgument(1).getCodeGetter(e.pc());
+        var codesLeft = e.arg(0).getCodeGetter(e.pc());
+        var codesRight = e.arg(1).getCodeGetter(e.pc());
         return [
           codesLeft[0] + codesRight[0],
           "(util.getFromArray(" + codesLeft[1] + ", " + codesRight[1] + "))",
         ];
       });
-      m("_RIGHT_EMPTY_SQUARE", e => wrap(e.pc(), e.node().getArgument(0), c => "(util.toStreamFromArray(" + c + "))"));
-      m("_RIGHT_CURLY", e => getCodeToCreateFluoriteObject(e.pc(), e.node().getArgument(0), e.node().getArgument(1)));
-      m("_RIGHT_EMPTY_CURLY", e => getCodeToCreateFluoriteObject(e.pc(), e.node().getArgument(0), null));
-      m("_LEFT_PLUS", e => "(util.toNumber(" + e.code(0) + "))");
-      m("_LEFT_MINUS", e => "(-util.toNumber(" + e.code(0) + "))");
-      m("_LEFT_QUESTION", e => "(util.toBoolean(" + e.code(0) + "))");
-      m("_LEFT_EXCLAMATION", e => "(!util.toBoolean(" + e.code(0) + "))");
-      m("_LEFT_AMPERSAND", e => "(util.toString(" + e.code(0) + "))");
-      
+      m("_RIGHT_EMPTY_SQUARE", e => wrap(e.pc(), e.arg(0), c => "(util.toStreamFromArray(" + c + "))"));
+      m("_RIGHT_CURLY", e => getCodeToCreateFluoriteObject(e.pc(), e.arg(0), e.node().getArgument(1)));
+      m("_RIGHT_EMPTY_CURLY", e => getCodeToCreateFluoriteObject(e.pc(), e.arg(0), null));
+      m("_LEFT_PLUS", e => wrap(e.pc(), e.arg(0), c => "(util.toNumber(" + c + "))"));
+      m("_LEFT_MINUS", e => wrap(e.pc(), e.arg(0), c => "(-util.toNumber(" + c + "))"));
+      m("_LEFT_QUESTION", e => wrap(e.pc(), e.arg(0), c => "(util.toBoolean(" + c + "))"));
+      m("_LEFT_EXCLAMATION", e => wrap(e.pc(), e.arg(0), c => "(!util.toBoolean(" + c + "))"));
+      m("_LEFT_AMPERSAND", e => wrap(e.pc(), e.arg(0), c => "(util.toString(" + c + "))"));
       m("_LEFT_ASTERISK", e => {
-        var alias = e.pc().getAlias(e.node().getLocation(), "_");
-        var codeAlias = alias.getCode(e.pc(), e.node().getLocation());
-        return "(util.call(" + e.code(0) + ",[" + codeAlias + "]))";
+        var codesLeft = e.arg(0).getCodeGetter(e.pc());
+        var codesAlias = e.pc().getAlias(e.node().getLocation(), "_").getCodeGetter(e.pc(), e.node().getLocation());
+        return [
+          codesLeft[0] + codesAlias[0],
+          "(util.call(" + codesLeft[1] + ",[" + codesAlias[1] + "]))",
+        ];
       });
       m("_LEFT_BACKSLASH", e => {
         var alias = new fl7c.FluoriteAliasVariable(e.pc().allocateVariableId())
-        var check = "if(args.length!=" + 1 + ")throw new Error(\"Number of lambda arguments do not match: \" + args.length + \" != " + 1 + "\");";
-        var vars = "var " + alias.getRawCode(e.pc(), e.node().getLocation()) + "=args[" + 0 + "];";
 
         e.pc().pushFrame();
         e.pc().getFrame()["_"] = alias;
-        var body = e.code(0);
+        var codes = e.arg(0).getCodeGetter(e.pc());
         e.pc().popFrame();
 
-        return "(util.createLambda(args=>{" + check + vars + "return " + body + ";}))";
+        var codeBody =
+          "if (args.length != 1) throw new Error(\"Number of lambda arguments do not match: \" + args.length + \" != 1\");\n" +
+          "const " + alias.getRawCode(e.pc(), e.node().getLocation()) + " = args[0];\n" +
+          codes[0] +
+          "return " + codes[1] + ";";
+
+        return inline("(util.createLambda(args => {\n" + fl7c.util.indent(codeBody) + "\n}))");
       });
-      
-      m("_LEFT_DOLLAR_HASH", e => "(util.getLength(" + e.code(0) + "))");
-      m("_CIRCUMFLEX", e => "(Math.pow(" + e.code(0) + "," + e.code(1) + "))");
-      m("_ASTERISK", e => "(util.mul(" + e.code(0) + "," + e.code(1) + "))");
-      m("_SLASH", e => "(" + e.code(0) + "/" + e.code(1) + ")");
-      m("_PERCENT", e => "(" + e.code(0) + "%" + e.code(1) + ")");
-      m("_PLUS", e => "(util.add(" + e.code(0) + "," + e.code(1) + "))");
-      m("_MINUS", e => "(" + e.code(0) + "-" + e.code(1) + ")");
-      m("_AMPERSAND", e => "(util.toString(" + e.code(0) + ")+util.toString(" + e.code(1) + "))");
-      m("_TILDE", e => "(util.rangeOpened(" + e.code(0) + "," + e.code(1) + "))");
-      m("_PERIOD2", e => "(util.rangeClosed(" + e.code(0) + "," + e.code(1) + "))");
+      m("_LEFT_DOLLAR_HASH", e => wrap(e.pc(), e.arg(0), c => "(util.getLength(" + c + "))"));
+      m("_CIRCUMFLEX", e => wrap2(e.pc(), e.arg(0), e.arg(1), (c0, c1) => "(Math.pow(" + c0 + ", " + c1 + "))"));
+      m("_ASTERISK", e => wrap2(e.pc(), e.arg(0), e.arg(1), (c0, c1) => "(util.mul(" + c0 + ", " + c1 + "))"));
+      m("_SLASH", e => wrap2(e.pc(), e.arg(0), e.arg(1), (c0, c1) => "(" + c0 + " / " + c1 + ")"));
+      m("_PERCENT", e => wrap2(e.pc(), e.arg(0), e.arg(1), (c0, c1) => "(" + c0 + " % " + c1 + ")"));
+      m("_PLUS", e => wrap2(e.pc(), e.arg(0), e.arg(1), (c0, c1) => "(util.add(" + c0 + ", " + c1 + "))"));
+      m("_MINUS", e => wrap2(e.pc(), e.arg(0), e.arg(1), (c0, c1) => "(" + c0 + " - " + c1 + ")"));
+      m("_AMPERSAND", e => wrap2(e.pc(), e.arg(0), e.arg(1), (c0, c1) => "(util.toString(" + c0 + ") + util.toString(" + c1 + "))"));
+      m("_TILDE", e => wrap2(e.pc(), e.arg(0), e.arg(1), (c0, c1) => "(util.rangeOpened(" + c0 + ", " + c1 + "))"));
+      m("_PERIOD2", e => wrap2(e.pc(), e.arg(0), e.arg(1), (c0, c1) => "(util.rangeClosed(" + c0 + ", " + c1 + "))"));
       m("_LESS2", e => "(util.curryLeft(" + e.code(0) + ",[" + as2c2(e.pc(), e.node().getArgument(1)) + "]))");
       m("_GREATER2", e => "(util.curryRight(" + e.code(0) + ",[" + as2c2(e.pc(), e.node().getArgument(1)) + "]))");
       m("_LESS_EQUAL_GREATER", e => "(util.compare(" + e.code(0) + "," + e.code(1) + "))");
