@@ -2339,6 +2339,14 @@
           "\n}))"
         );
       });
+      m("_LEFT_COLON_EQUAL", e => {
+        var codes = e.arg(0).getCodeGetter(e.pc());
+        return [
+          codes[0] +
+          "return " + codes[1] + ";\n",
+          "(null)",
+        ];
+      });
       m("_PIPE", e => {
         var key = undefined;
         var codesLeft = undefined;
