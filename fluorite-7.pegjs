@@ -1509,8 +1509,8 @@
           var codesEntries = [];
           for (var i = 0; i < entries.length; i++) {
             var entry = entries[i];
+            var codesEntry = entry[1].getCodeGetter(pc);
             if (entry[2]) {
-              var codesEntry = entry[1].getCodeGetter(pc);
               codesEntries.push(
                 "" + variableMap + "[" + JSON.stringify(entry[0]) + "] = util.initializer(function() {\n" +
                 fl7c.util.indent(
@@ -2316,7 +2316,13 @@
           codes[0] +
           "return " + codes[1] + ";";
 
-        return inline("(util.createLambda(args => {\n" + fl7c.util.indent(codeBody) + "\n}))");
+        return inline(
+          "(util.createLambda(args => {\n" +
+          fl7c.util.indent(
+            codeBody
+          ) +
+          "\n}))"
+        );
       });
       m("_PIPE", e => {
         var key = undefined;
