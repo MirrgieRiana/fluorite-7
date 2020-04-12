@@ -1418,11 +1418,11 @@
       var getCodeToCreateFluoriteObject = (pc, nodeParent, nodeMap) => {
 
         // 親オブジェクトの計算
-        var codeParent;
+        var codesParent;
         if (nodeParent === null) {
-          codeParent = "null";
+          codesParent = ["", "null"];
         } else {
-          codeParent = nodeParent.getCode(pc);
+          codesParent = nodeParent.getCodeGetter(pc);
         }
 
         var fromInitializer = function(nodesEntry) {
@@ -1497,32 +1497,58 @@
           }
 
           var variableIdMap = pc.allocateVariableId();
+          var variableMap = "v_" + variableIdMap;
           var variableIdObject = pc.allocateVariableId();
+          var variableObject = "v_" + variableIdObject;
+
           pc.pushFrame();
           for (var i = 0; i < keys.length; i++) {
             var key = keys[i];
             pc.getFrame()[key] = new fl7c.FluoriteAliasMember(variableIdObject, key);
           }
-          var codes = [];
+          var codesEntries = [];
           for (var i = 0; i < entries.length; i++) {
             var entry = entries[i];
             if (entry[2]) {
-              codes.push("v_" + variableIdMap + "[" + JSON.stringify(entry[0]) + "]=util.initializer(function(){return " + entry[1].getCode(pc) + ";});");
+              var codesEntry = entry[1].getCodeGetter(pc);
+              codesEntries.push(
+                "" + variableMap + "[" + JSON.stringify(entry[0]) + "] = util.initializer(function() {\n" +
+                fl7c.util.indent(
+                  codesEntry[0] +
+                  "return " + codesEntry[1] + ";\n"
+                ) +
+                "});\n"
+              );
             } else {
-              codes.push("v_" + variableIdMap + "[" + JSON.stringify(entry[0]) + "]=" + entry[1].getCode(pc) + ";");
+              codesEntries.push(
+                codesEntry[0] +
+                "" + variableMap + "[" + JSON.stringify(entry[0]) + "] = " + codesEntry[1] + ";\n"
+              );
             }
           }
           pc.popFrame();
 
-          var code1 = "var v_" + variableIdMap + "={};";
-          var code2 = "var v_" + variableIdObject + "=util.createObject(" + codeParent + ",v_" + variableIdMap + ");";
-          var code3 = codes.join("");
-          var code4 = "v_" + variableIdObject + ".initialize();";
-          var code5 = "return v_" + variableIdObject;
-          return "(function(){" + code1 + code2 + code3 + code4 + code5 + "}())";
+          return [
+            codesParent[0] +
+            "const " + variableMap + " = {};\n" +
+            "const " + variableObject + " = util.createObject(" + codesParent[1] + ", " + variableMap + ");\n" +
+            codesEntries.join("") +
+            "" + variableObject + ".initialize();\n",
+            "(" + variableObject + ")",
+          ];
         };
         var fromStream = function(nodeStreamer) {
-          return "(util.createObjectFromEntries(" + codeParent + ",util.toStream(" + nodeStreamer.getCode(pc) + ").toArray()))";
+          var codesStreamer = nodeStreamer.getCodeGetter(pc);
+          return [
+            codesParent[0] + codesStreamer[0],
+            "(util.createObjectFromEntries(" + codesParent[1] + ", util.toStream(" + codesStreamer[1] + ").toArray()))",
+          ];
+        };
+        var fromStreamEmpty = function() {
+          return [
+            codesParent[0],
+            "(util.createObjectFromEntries(" + codesParent[1] + ", []))",
+          ];
         };
 
         //
@@ -1536,6 +1562,9 @@
           }
           if (nodeMap.getKey() === "_SQUARE") {
             return fromStream(nodeMap.getArgument(0));
+          }
+          if (nodeMap.getKey() === "_EMPTY_SQUARE") {
+            return fromStreamEmpty();
           }
         }
         return fromInitializer([nodeMap]);
