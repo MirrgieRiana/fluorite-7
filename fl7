@@ -156,7 +156,8 @@ c("READ", (function(){
   });
 })());
 
-const code = result.node.getCode(env);
+const codes = result.node.getCodeGetter(env);
+const code = "(function() {\n" + result.fl7c.util.indent(codes[0] + "return " + codes[1] + ";\n") + "}())";
 
 const util = result.fl7.util;
 const constants = env.getConstants();
