@@ -1390,20 +1390,30 @@
         }
         return node.getCodeGetter(pc);
       };
-      var as2c2 = (pc, arg) => {
-        if (arg instanceof fl7c.FluoriteNodeMacro) {
-          if (arg.getKey() === "_ROUND") {
-            if (arg.getArgument(0) instanceof fl7c.FluoriteNodeMacro) {
-              if (arg.getArgument(0).getKey() === "_SEMICOLON") {
-                return arg.getArgument(0).getArguments()
-                  .filter(a => !(a instanceof fl7c.FluoriteNodeVoid))
-                  .map(a => a.getCode(pc))
-                  .join(",");
+      var as2c2 = (pc, node) => {
+        if (node instanceof fl7c.FluoriteNodeMacro) {
+          if (node.getKey() === "_ROUND") {
+            if (node.getArgument(0) instanceof fl7c.FluoriteNodeMacro) {
+              if (node.getArgument(0).getKey() === "_SEMICOLON") {
+                var codesHeader = [];
+                var codesBody = [];
+                for (var i = 0; i < node.getArgument(0).getArgumentCount(); i++) {
+                  var node2 = node.getArgument(0).getArguments()[i];
+                  if (!(node2 instanceof fl7c.FluoriteNodeVoid)) {
+                    var codes = node2.getCodeGetter(pc);
+                    codesHeader.push(codes[0]);
+                    codesBody.push(codes[1]);
+                  }
+                }
+                return [
+                  codesHeader.join(""),
+                  codesBody.join(", "),
+                ];
               }
             }
           }
         }
-        return arg.getCode(pc);
+        return node.getCodeGetter(pc);
       };
       var getCodeToCreateFluoriteObject = (pc, nodeParent, nodeMap) => {
 
@@ -2111,8 +2121,22 @@
       m("_AMPERSAND", e => wrap2_01(e, (c0, c1) => "(util.toString(" + c0 + ") + util.toString(" + c1 + "))"));
       m("_TILDE", e => wrap2_01(e, (c0, c1) => "(util.rangeOpened(" + c0 + ", " + c1 + "))"));
       m("_PERIOD2", e => wrap2_01(e, (c0, c1) => "(util.rangeClosed(" + c0 + ", " + c1 + "))"));
-      m("_LESS2", e => "(util.curryLeft(" + e.code(0) + ",[" + as2c2(e.pc(), e.node().getArgument(1)) + "]))");
-      m("_GREATER2", e => "(util.curryRight(" + e.code(0) + ",[" + as2c2(e.pc(), e.node().getArgument(1)) + "]))");
+      m("_LESS2", e => {
+        var codesLeft = e.arg(0).getCodeGetter(e.pc());
+        var codesRight = as2c2(e.pc(), e.arg(1));
+        return [
+          codesLeft[0] + codesRight[0],
+          "(util.curryLeft(" + codesLeft[1] + ", [" + codesRight[1] + "]))"
+        ];
+      });
+      m("_GREATER2", e => {
+        var codesLeft = e.arg(0).getCodeGetter(e.pc());
+        var codesRight = as2c2(e.pc(), e.arg(1));
+        return [
+          codesLeft[0] + codesRight[0],
+          "(util.curryRight(" + codesLeft[1] + ", [" + codesRight[1] + "]))"
+        ];
+      });
       m("_LESS_EQUAL_GREATER", e => wrap2_01(e, (c0, c1) => "(util.compare(" + c0 + ", " + c1 + "))"));
       m("_GREATER_EQUAL", e => wrap2_01(e, (c0, c1) => "(util.compare(" + c0 + ", " + c1 + ") >= 0)")); // TODO 同時評価
       m("_LESS_EQUAL", e => wrap2_01(e, (c0, c1) => "(util.compare(" + c0 + ", " + c1 + ") <= 0)"));
@@ -2250,18 +2274,20 @@
 
         var aliases = args.map(a => new fl7c.FluoriteAliasVariable(e.pc().allocateVariableId()));
 
-        var check = "if(args.length!=" + args.length + ")throw new Error(\"Number of lambda arguments do not match: \" + args.length + \" != " + args.length + "\");";
-
-        var vars = aliases.map((a, i) => "var " + a.getRawCode(e.pc(), e.node().getLocation()) + "=args[" + i + "];").join("");
-
         e.pc().pushFrame();
         for (var i = 0; i < args.length; i++) {
           e.pc().getFrame()[args[i]] = aliases[i];
         }
-        var body = e.code(1);
+        var codes = e.arg(1).getCodeGetter(e.pc());
         e.pc().popFrame();
 
-        return "(util.createLambda(args=>{" + check + vars + "return " + body + ";}))";
+        var codeBody =
+          "if (args.length != " + args.length + ") throw new Error(\"Number of lambda arguments do not match: \" + args.length + \" != " + args.length + "\");\n" +
+          aliases.map((a, i) => "const " + a.getRawCode(e.pc(), e.node().getLocation()) + " = args[" + i + "];\n").join("") +
+          codes[0] +
+          "return " + codes[1] + ";";
+
+        return inline("(util.createLambda(args => {\n" + fl7c.util.indent(codeBody) + "\n}))");
       });
       m("_PIPE", e => {
         var key = undefined;
