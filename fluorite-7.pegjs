@@ -1349,6 +1349,7 @@
   //
 
   function loadAliases(env) { // TODO
+    {
       var util = fl7.util;
       var c = (key, value) => {
         var constantId = env.allocateConstantId();
@@ -2532,6 +2533,31 @@
           "(util.call(" + codesRight[1] + ", [" + codesLeft[1] + "]))",
         ];
       });
+      m("_SEMICOLON", e => {
+
+        var nodes = [];
+        for (var i = 0; i < e.node().getArgumentCount(); i++) {
+          var node = e.arg(i);
+          if (!(node instanceof fl7c.FluoriteNodeVoid)) {
+            nodes.push(node);
+          }
+        }
+
+        var variable = "v_" + e.pc().allocateVariableId();
+
+        return [
+          "let " + variable + " = null;\n" +
+          nodes.map(node => {
+            var codes = node.getCodeGetter(e.pc());
+            return (
+              codes[0] +
+              "" + variable + " = " + codes[1] + ";\n"
+            );
+          }).join(""),
+          "(" + variable +")"
+        ];
+      });
+    }
   }
 
 }
