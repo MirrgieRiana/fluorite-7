@@ -871,7 +871,10 @@
       getStream() {
         var array = [];
         for (var key in this.map) {
-          array.push([key, this.map[key]]);
+          array.push(new FluoriteObject(null, {
+            "key": key,
+            "value": this.map[key],
+          }));
         }
         return util.toStreamFromValues(array);
       }
@@ -1254,14 +1257,22 @@
       
       createObjectFromEntries: function(parent, entries) {
         var map = {};
-        for (var i in entries) {
-          var key = util.toString(entries[i][0]);
-          var value = entries[i][1];
-          if (key === undefined) throw new Error("Illegal entry: " + key + ", " + value);
-          if (value === undefined) throw new Error("Illegal entry: " + key + ", " + value);
-          map[key] = value;
+        if (entries instanceof Array) {
+          for (var i in entries) {
+            var entry = entries[i];
+            if (entry instanceof FluoriteObject) {
+              var key = util.toString(entry.map.key);
+              var value = entry.map.value;
+              if (key === undefined) throw new Error("Illegal entry: " + key + ", " + value);
+              if (value === undefined) throw new Error("Illegal entry: " + key + ", " + value);
+              map[key] = value;
+              continue;
+            }
+            throw new Error("Illegal entry: " + entry + " ([" + i + "])");
+          }
+          return util.createObject(parent, map);
         }
-        return util.createObject(parent, map);
+        throw new Error("Illegal argument: " + parent + ", " + entries);
       },
 
       initializer: function(func) {
