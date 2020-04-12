@@ -454,7 +454,7 @@
     var util = {
 
       indent: function(code) {
-        return "  " + code.replace(/\n/g, "\n  ");
+        return "  " + code.replace(/\n(?<!$)/g, "\n  ");
       },
 
     };
@@ -1363,12 +1363,18 @@
           func(codes1[1], codes2[1]),
         ];
       };
+      var wrap_0 = (e, func) => {
+        return wrap(e.pc(), e.arg(0), func);
+      };
+      var wrap2_01 = (e, func) => {
+        return wrap2(e.pc(), e.arg(0), e.arg(1), func);
+      };
       var as2c = (pc, node) => {
         if (node instanceof fl7c.FluoriteNodeMacro) {
           if (node.getKey() === "_SEMICOLON") {
             var codesHeader = [];
             var codesBody = [];
-            for (var i in node.getArguments()) {
+            for (var i = 0; i < node.getArgumentCount(); i++) {
               var node2 = node.getArguments()[i];
               if (!(node2 instanceof fl7c.FluoriteNodeVoid)) {
                 var codes = node2.getCodeGetter(pc);
@@ -1975,7 +1981,7 @@
         return codes;
       });
       m("_EMPTY_ROUND", e => inline("(util.empty())"));
-      m("_SQUARE", e => wrap(e.pc(), e.arg(0), c => "(util.toStream(" + c + ").toArray())"));
+      m("_SQUARE", e => wrap_0(e, c => "(util.toStream(" + c + ").toArray())"));
       m("_EMPTY_SQUARE", e => inline("([])"));
       m("_CURLY", e => getCodeToCreateFluoriteObject(e.pc(), null, e.arg(0)));
       m("_EMPTY_CURLY", e => getCodeToCreateFluoriteObject(e.pc(), null, null));
@@ -2021,7 +2027,7 @@
           "(util.call(" + codesFunction[1] + ", [" + codesArguments[1] + "]))",
         ];
       });
-      m("_RIGHT_EMPTY_ROUND", e => wrap(e.pc(), e.arg(0), c => "(util.call(" + c + ", []))"));
+      m("_RIGHT_EMPTY_ROUND", e => wrap_0(e, c => "(util.call(" + c + ", []))"));
       m("_RIGHT_SQUARE", e => {
 
         {
@@ -2063,14 +2069,14 @@
           "(util.getFromArray(" + codesLeft[1] + ", " + codesRight[1] + "))",
         ];
       });
-      m("_RIGHT_EMPTY_SQUARE", e => wrap(e.pc(), e.arg(0), c => "(util.toStreamFromArray(" + c + "))"));
+      m("_RIGHT_EMPTY_SQUARE", e => wrap_0(e, c => "(util.toStreamFromArray(" + c + "))"));
       m("_RIGHT_CURLY", e => getCodeToCreateFluoriteObject(e.pc(), e.arg(0), e.node().getArgument(1)));
       m("_RIGHT_EMPTY_CURLY", e => getCodeToCreateFluoriteObject(e.pc(), e.arg(0), null));
-      m("_LEFT_PLUS", e => wrap(e.pc(), e.arg(0), c => "(util.toNumber(" + c + "))"));
-      m("_LEFT_MINUS", e => wrap(e.pc(), e.arg(0), c => "(-util.toNumber(" + c + "))"));
-      m("_LEFT_QUESTION", e => wrap(e.pc(), e.arg(0), c => "(util.toBoolean(" + c + "))"));
-      m("_LEFT_EXCLAMATION", e => wrap(e.pc(), e.arg(0), c => "(!util.toBoolean(" + c + "))"));
-      m("_LEFT_AMPERSAND", e => wrap(e.pc(), e.arg(0), c => "(util.toString(" + c + "))"));
+      m("_LEFT_PLUS", e => wrap_0(e, c => "(util.toNumber(" + c + "))"));
+      m("_LEFT_MINUS", e => wrap_0(e, c => "(-util.toNumber(" + c + "))"));
+      m("_LEFT_QUESTION", e => wrap_0(e, c => "(util.toBoolean(" + c + "))"));
+      m("_LEFT_EXCLAMATION", e => wrap_0(e, c => "(!util.toBoolean(" + c + "))"));
+      m("_LEFT_AMPERSAND", e => wrap_0(e, c => "(util.toString(" + c + "))"));
       m("_LEFT_ASTERISK", e => {
         var codesLeft = e.arg(0).getCodeGetter(e.pc());
         var codesAlias = e.pc().getAlias(e.node().getLocation(), "_").getCodeGetter(e.pc(), e.node().getLocation());
@@ -2080,7 +2086,7 @@
         ];
       });
       m("_LEFT_BACKSLASH", e => {
-        var alias = new fl7c.FluoriteAliasVariable(e.pc().allocateVariableId())
+        var alias = new fl7c.FluoriteAliasVariable(e.pc().allocateVariableId());
 
         e.pc().pushFrame();
         e.pc().getFrame()["_"] = alias;
@@ -2095,31 +2101,113 @@
 
         return inline("(util.createLambda(args => {\n" + fl7c.util.indent(codeBody) + "\n}))");
       });
-      m("_LEFT_DOLLAR_HASH", e => wrap(e.pc(), e.arg(0), c => "(util.getLength(" + c + "))"));
-      m("_CIRCUMFLEX", e => wrap2(e.pc(), e.arg(0), e.arg(1), (c0, c1) => "(Math.pow(" + c0 + ", " + c1 + "))"));
-      m("_ASTERISK", e => wrap2(e.pc(), e.arg(0), e.arg(1), (c0, c1) => "(util.mul(" + c0 + ", " + c1 + "))"));
-      m("_SLASH", e => wrap2(e.pc(), e.arg(0), e.arg(1), (c0, c1) => "(" + c0 + " / " + c1 + ")"));
-      m("_PERCENT", e => wrap2(e.pc(), e.arg(0), e.arg(1), (c0, c1) => "(" + c0 + " % " + c1 + ")"));
-      m("_PLUS", e => wrap2(e.pc(), e.arg(0), e.arg(1), (c0, c1) => "(util.add(" + c0 + ", " + c1 + "))"));
-      m("_MINUS", e => wrap2(e.pc(), e.arg(0), e.arg(1), (c0, c1) => "(" + c0 + " - " + c1 + ")"));
-      m("_AMPERSAND", e => wrap2(e.pc(), e.arg(0), e.arg(1), (c0, c1) => "(util.toString(" + c0 + ") + util.toString(" + c1 + "))"));
-      m("_TILDE", e => wrap2(e.pc(), e.arg(0), e.arg(1), (c0, c1) => "(util.rangeOpened(" + c0 + ", " + c1 + "))"));
-      m("_PERIOD2", e => wrap2(e.pc(), e.arg(0), e.arg(1), (c0, c1) => "(util.rangeClosed(" + c0 + ", " + c1 + "))"));
+      m("_LEFT_DOLLAR_HASH", e => wrap_0(e, c => "(util.getLength(" + c + "))"));
+      m("_CIRCUMFLEX", e => wrap2_01(e, (c0, c1) => "(Math.pow(" + c0 + ", " + c1 + "))"));
+      m("_ASTERISK", e => wrap2_01(e, (c0, c1) => "(util.mul(" + c0 + ", " + c1 + "))"));
+      m("_SLASH", e => wrap2_01(e, (c0, c1) => "(" + c0 + " / " + c1 + ")"));
+      m("_PERCENT", e => wrap2_01(e, (c0, c1) => "(" + c0 + " % " + c1 + ")"));
+      m("_PLUS", e => wrap2_01(e, (c0, c1) => "(util.add(" + c0 + ", " + c1 + "))"));
+      m("_MINUS", e => wrap2_01(e, (c0, c1) => "(" + c0 + " - " + c1 + ")"));
+      m("_AMPERSAND", e => wrap2_01(e, (c0, c1) => "(util.toString(" + c0 + ") + util.toString(" + c1 + "))"));
+      m("_TILDE", e => wrap2_01(e, (c0, c1) => "(util.rangeOpened(" + c0 + ", " + c1 + "))"));
+      m("_PERIOD2", e => wrap2_01(e, (c0, c1) => "(util.rangeClosed(" + c0 + ", " + c1 + "))"));
       m("_LESS2", e => "(util.curryLeft(" + e.code(0) + ",[" + as2c2(e.pc(), e.node().getArgument(1)) + "]))");
       m("_GREATER2", e => "(util.curryRight(" + e.code(0) + ",[" + as2c2(e.pc(), e.node().getArgument(1)) + "]))");
-      m("_LESS_EQUAL_GREATER", e => "(util.compare(" + e.code(0) + "," + e.code(1) + "))");
-      m("_GREATER_EQUAL", e => "(util.compare(" + e.code(0) + "," + e.code(1) + ")>=0)"); // TODO 同時評価
-      m("_LESS_EQUAL", e => "(util.compare(" + e.code(0) + "," + e.code(1) + ")<=0)");
-      m("_GREATER", e => "(util.compare(" + e.code(0) + "," + e.code(1) + ")>0)");
-      m("_LESS", e => "(util.compare(" + e.code(0) + "," + e.code(1) + ")<0)");
-      m("_EQUAL2", e => "(util.equal(" + e.code(0) + "," + e.code(1) + "))");
-      m("_EXCLAMATION_EQUAL", e => "(!util.equal(" + e.code(0) + "," + e.code(1) + "))");
-      m("_EQUAL3", e => "(util.equalStict(" + e.code(0) + "," + e.code(1) + "))");
-      m("_EXCLAMATION_EQUAL2", e => "(!util.equalStict(" + e.code(0) + "," + e.code(1) + "))");
-      m("_AMPERSAND2", e => "(function(){var a=" + e.code(0) + ";return !util.toBoolean(a)?a:" + e.code(1) + "}())");
-      m("_PIPE2", e => "(function(){var a=" + e.code(0) + ";return util.toBoolean(a)?a:" + e.code(1) + "}())");
-      m("_TERNARY_QUESTION_COLON", e => "(util.toBoolean(" + e.code(0) + ")?" + e.code(1) + ":" + e.code(2) + ")");
-      m("_QUESTION_COLON", e => "(function(){var a=" + e.code(0) + ";return a!==null?a:" + e.code(1) + "}())");
+      m("_LESS_EQUAL_GREATER", e => wrap2_01(e, (c0, c1) => "(util.compare(" + c0 + ", " + c1 + "))"));
+      m("_GREATER_EQUAL", e => wrap2_01(e, (c0, c1) => "(util.compare(" + c0 + ", " + c1 + ") >= 0)")); // TODO 同時評価
+      m("_LESS_EQUAL", e => wrap2_01(e, (c0, c1) => "(util.compare(" + c0 + ", " + c1 + ") <= 0)"));
+      m("_GREATER", e => wrap2_01(e, (c0, c1) => "(util.compare(" + c0 + ", " + c1 + ") > 0)"));
+      m("_LESS", e => wrap2_01(e, (c0, c1) => "(util.compare(" + c0 + ", " + c1 + ") < 0)"));
+      m("_EQUAL2", e => wrap2_01(e, (c0, c1) => "(util.equal(" + c0 + ", " + c1 + "))"));
+      m("_EXCLAMATION_EQUAL", e => wrap2_01(e, (c0, c1) => "(!util.equal(" + c0 + ", " + c1 + "))"));
+      m("_EQUAL3", e => wrap2_01(e, (c0, c1) => "(util.equalStict(" + c0 + ", " + c1 + "))"));
+      m("_EXCLAMATION_EQUAL2", e => wrap2_01(e, (c0, c1) => "(!util.equalStict(" + c0 + ", " + c1 + "))"));
+      m("_AMPERSAND2", e => {
+        var variable = "v_" + e.pc().allocateVariableId();
+        var codesLeft = e.arg(0).getCodeGetter(e.pc());
+        var codesRight = e.arg(1).getCodeGetter(e.pc());
+        return [
+          codesLeft[0] + 
+          "let " + variable + " = " + codesLeft[1] + ";\n" +
+          "if (util.toBoolean(" + variable + ")) {\n" +
+          fl7c.util.indent(
+            codesRight[0] +
+            variable + " = " + codesRight[1] + ";\n"
+          ) +
+          "}\n",
+          "(" + variable + ")",
+        ];
+      });
+      m("_PIPE2", e => {
+        var variable = "v_" + e.pc().allocateVariableId();
+        var codesLeft = e.arg(0).getCodeGetter(e.pc());
+        var codesRight = e.arg(1).getCodeGetter(e.pc());
+        return [
+          codesLeft[0] + 
+          "let " + variable + " = " + codesLeft[1] + ";\n" +
+          "if (!util.toBoolean(" + variable + ")) {\n" +
+          fl7c.util.indent(
+            codesRight[0] +
+            variable + " = " + codesRight[1] + ";\n"
+          ) +
+          "}\n",
+          "(" + variable + ")",
+        ];
+      });
+      m("_TERNARY_QUESTION_COLON", e => {
+        var variable = "v_" + e.pc().allocateVariableId();
+        var codesLeft = e.arg(0).getCodeGetter(e.pc());
+        var codesCenter = e.arg(1).getCodeGetter(e.pc());
+        var codesRight = e.arg(2).getCodeGetter(e.pc());
+        return [
+          codesLeft[0] + 
+          "let " + variable + " = " + codesLeft[1] + ";\n" +
+          "if (util.toBoolean(" + variable + ")) {\n" +
+          fl7c.util.indent(
+            codesCenter[0] +
+            variable + " = " + codesCenter[1] + ";\n"
+          ) +
+          "} else {\n" +
+          fl7c.util.indent(
+            codesRight[0] +
+            variable + " = " + codesRight[1] + ";\n"
+          ) +
+          "}\n",
+          "(" + variable + ")",
+        ];
+      });
+      m("_QUESTION_COLON", e => {
+        var variable = "v_" + e.pc().allocateVariableId();
+        var codesLeft = e.arg(0).getCodeGetter(e.pc());
+        var codesRight = e.arg(1).getCodeGetter(e.pc());
+        return [
+          codesLeft[0] + 
+          "let " + variable + " = " + codesLeft[1] + ";\n" +
+          "if (" + variable + " === null) {\n" +
+          fl7c.util.indent(
+            codesRight[0] +
+            variable + " = " + codesRight[1] + ";\n"
+          ) +
+          "}\n",
+          "(" + variable + ")",
+        ];
+      });
+      m("_COMMA", e => {
+        var codesHeader = [];
+        var codesBody = [];
+        for (var i = 0; i < e.node().getArgumentCount(); i++) {
+          var node = e.node().getArgument(i);
+          if (!(node instanceof fl7c.FluoriteNodeVoid)) {
+            var codes = node.getCodeGetter(e.pc());
+            codesHeader.push(codes[0]);
+            codesBody.push(codes[1]);
+          }
+        }
+        return [
+          codesHeader.join(""),
+          "(util.toStreamFromValues([" + codesBody.join(", ") + "]))",
+        ];
+      });
       m("_MINUS_GREATER", e => {
 
         // 引数部全体を括弧で囲んでもよい
@@ -2174,17 +2262,6 @@
         e.pc().popFrame();
 
         return "(util.createLambda(args=>{" + check + vars + "return " + body + ";}))";
-      });
-      m("_COMMA", e => {
-        var nodes = [];
-        var limit = e.node().getArgumentCount();
-        for (var i = 0; i < limit; i++) {
-          var node = e.node().getArgument(i);
-          if (!(node instanceof fl7c.FluoriteNodeVoid)) {
-            nodes.push(node.getCode(e.pc()));
-          }
-        }
-        return "(util.toStreamFromValues([" + nodes.join(",") + "]))";
       });
       m("_PIPE", e => {
         var key = undefined;
@@ -2349,7 +2426,7 @@ RootDemonstration
     var code;
     try {
       var codes = main.getCodeGetter(pc);
-      code = "(function() {\n" + fl7c.util.indent(codes[0] + "return " + codes[1] + ";") + "\n}())";
+      code = "(function() {\n" + fl7c.util.indent(codes[0] + "return " + codes[1] + ";\n") + "}())";
     } catch (e) {
       var result = ["Compile Error", "" + e, main.getTree()];
       console.log(result);
