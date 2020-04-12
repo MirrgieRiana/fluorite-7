@@ -6,11 +6,18 @@ usage() {
 }
 
 output_json=0
+compile=0
 
 if [ "$1" = "-j" ]
 then
   shift
   output_json=1
+fi
+
+if [ "$1" = "-c" ]
+then
+  shift
+  compile=1
 fi
 
 (($# > 0)) || usage
@@ -33,6 +40,7 @@ fi
 
 export exec
 export output_json
+export compile
 export app_dir
 export NODE_PATH="$NODE_PATH:$app_dir"
 node -e "$(cat << 'END'
@@ -159,21 +167,25 @@ c("READ", (function(){
 const codes = result.node.getCodeGetter(env);
 const code = "(function() {\n" + result.fl7c.util.indent(codes[0] + "return " + codes[1] + ";\n") + "}())";
 
-const util = result.fl7.util;
-const constants = env.getConstants();
-const stream = util.toStreamer(eval(code)).start();
-
-if (process.env.output_json !== "0") {
-  while (true) {
-    const next = stream.next();
-    if (next === undefined) break;
-    console.log(JSON.stringify(next));
-  }
+if (process.env.compile !== "0") {
+  console.log(code);
 } else {
-  while (true) {
-    const next = stream.next();
-    if (next === undefined) break;
-    console.log(util.toString(next));
+  const util = result.fl7.util;
+  const constants = env.getConstants();
+  const stream = util.toStreamer(eval(code)).start();
+
+  if (process.env.output_json !== "0") {
+    while (true) {
+      const next = stream.next();
+      if (next === undefined) break;
+      console.log(JSON.stringify(next));
+    }
+  } else {
+    while (true) {
+      const next = stream.next();
+      if (next === undefined) break;
+      console.log(util.toString(next));
+    }
   }
 }
 
