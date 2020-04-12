@@ -2155,7 +2155,7 @@
         var codesRight = as2c2(e.pc(), e.arg(1));
         return [
           codesLeft[0] + codesRight[0],
-          "(util.curryLeft(" + codesLeft[1] + ", [" + codesRight[1] + "]))"
+          "(util.curryLeft(" + codesLeft[1] + ", [" + codesRight[1] + "]))",
         ];
       });
       m("_GREATER2", e => {
@@ -2163,7 +2163,7 @@
         var codesRight = as2c2(e.pc(), e.arg(1));
         return [
           codesLeft[0] + codesRight[0],
-          "(util.curryRight(" + codesLeft[1] + ", [" + codesRight[1] + "]))"
+          "(util.curryRight(" + codesLeft[1] + ", [" + codesRight[1] + "]))",
         ];
       });
       m("_LESS_EQUAL_GREATER", e => wrap2_01(e, (c0, c1) => "(util.compare(" + c0 + ", " + c1 + "))"));
@@ -2470,7 +2470,14 @@
           return "(function(){var " + codeVariable + "=" + codeLeft + ";return !util.toBoolean(" + body + ")?util.toStreamFromValues([" + codeVariable2 + "]):util.empty()}())";
         }
       });
-      m("_EQUAL_GREATER", e => "(util.call(" + e.code(1) + ", [" + as2c2(e.pc(), e.node().getArgument(0)) + "]))");
+      m("_EQUAL_GREATER", e => {
+        var codesLeft = as2c2(e.pc(), e.arg(0));
+        var codesRight = e.arg(1).getCodeGetter(e.pc());
+        return [
+          codesLeft[0] + codesRight[0],
+          "(util.call(" + codesRight[1] + ", [" + codesLeft[1] + "]))",
+        ];
+      });
   }
 
 }
