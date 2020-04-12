@@ -1944,10 +1944,6 @@
       }));
       m("_LITERAL_INTEGER", e => {
         if (e.arg(0) instanceof fl7c.FluoriteNodeTokenInteger) {
-          return [
-            "'DUMMY';\n",
-            "(" + e.arg(0).getValue() + ")",
-          ];// TODO
           return inline("(" + e.arg(0).getValue() + ")");
         }
         throw new Error("Illegal argument");
