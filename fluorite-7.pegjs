@@ -1990,10 +1990,17 @@
             codesBody.push("util.toString(" + codes[1] + ")");
           }
         }
-        return [
-          codesHeader.join(""),
-          "(" + codesBody.join(" + ") + ")",
-        ];
+        if (codesBody.length !== 0) {
+          return [
+            codesHeader.join(""),
+            "(" + codesBody.join(" + ") + ")",
+          ];
+        } else {
+          return [
+            codesHeader.join(""),
+            "(\"\")",
+          ];
+        }
       });
       m("_STRING_FORMAT", e => {
 
