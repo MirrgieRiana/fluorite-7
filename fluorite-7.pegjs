@@ -182,7 +182,24 @@
         throwCompileError(this.getLocation(), "Tried to stringify raw token");
       }
 
+      /**
+       * @return [header : string, formula : string]
+       * Example:
+       *   ["", "(50)"]
+       *   ["const v_1 = (20);\n", "(v_1)"]
+       *   ["return (v_7);\n", "(null)"]
+       */
       getCodeGetter(pc) {
+        throwCompileError(this.getLocation(), "Tried to stringify raw token");
+      }
+
+      /**
+       * @return [expression : string]
+       * Example:
+       *   ["v_5 = " + code + ";\n"]
+       *   ["util.setArrayValue(v_5, " + code + ");\n"]
+       */
+      getCodeSetter(pc, code) {
         throwCompileError(this.getLocation(), "Tried to stringify raw token");
       }
 
@@ -305,6 +322,24 @@
               "",
               codes,
             ];
+          }
+          return codes;
+        }
+        throwCompileError(this.getLocation(), "No such macro '" + this._key + "'");
+      }
+
+      getCodeSetter(pc, code) {
+        var alias = pc.getAlias(this.getLocation(), "_SET" + this._key);
+        if (alias instanceof FluoriteAliasMacro) {
+          var codes;
+          try {
+            codes = alias.getMacro()(new FluoriteMacroEnvironment(pc, this), code);
+          } catch (e) {
+            if (e instanceof FluoriteCompileError) {
+              throw e;
+            } else {
+              throwCompileError(this.getLocation(), "" + e.message + " in macro '" + this._key + "'");
+            }
           }
           return codes;
         }
@@ -1206,6 +1241,32 @@
         if (array instanceof FluoriteObject) {
           return util.getOwnValueFromObject(array, util.toString(index));
         }
+        throw new Error("Illegal argument: " + array + ", " + index);
+      },
+
+      setToArray: function(array, index, value) { // TODO 名称変更
+        if (array instanceof Array) {
+          index = util.toNumber(index);
+          if (index < 0) index = array.length + index;
+          if (index < 0) throw new Error("Invalid array index: " + index);
+          if (index > array.length) {
+            for (var i = array.length; i < index; i++) {
+              array[i] = null;
+            }
+          }
+          array[index] = value;
+          return;
+        }
+        /* // TODO 実装
+        if (typeof array === 'string' || array instanceof String) {
+          index = util.toNumber(index);
+          if (index < 0) index = array.length + index;
+          return array.charAt(index);
+        }
+        if (array instanceof FluoriteObject) {
+          return util.getOwnValueFromObject(array, util.toString(index));
+        }
+        */
         throw new Error("Illegal argument: " + array + ", " + index);
       },
 
@@ -2123,6 +2184,51 @@
           "(util.getFromArray(" + codesLeft[1] + ", " + codesRight[1] + "))",
         ];
       });
+      m("_SET_RIGHT_SQUARE", (e, code) => {
+
+        // TODO 部分配列への代入
+        /*
+        {
+          var nodeRight = e.arg(1);
+          if (nodeRight instanceof fl7c.FluoriteNodeMacro) {
+            if (nodeRight.getKey() == "_SEMICOLON") {
+              if (nodeRight.getArgumentCount() == 2) {
+                var nodeStart = nodeRight.getArgument(0);
+                var nodeEnd = nodeRight.getArgument(1);
+
+                var codesStart = undefined;
+                if (nodeStart instanceof fl7c.FluoriteNodeVoid) {
+                  codesStart = inline("(null)");
+                } else {
+                  codesStart = nodeStart.getCodeGetter(e.pc());
+                }
+
+                var codesEnd = undefined;
+                if (nodeEnd instanceof fl7c.FluoriteNodeVoid) {
+                  codesEnd = inline("(null)");
+                } else {
+                  codesEnd = nodeEnd.getCodeGetter(e.pc());
+                }
+
+                var codesLeft = e.arg(0).getCodeGetter(e.pc());
+                return [
+                  codesLeft[0] + codesStart[0] + codesEnd[0],
+                  "(util.slice(" + codesLeft[1] + ", " + codesStart[1] + ", " + codesEnd[1] + "))",
+                ];
+              }
+            }
+          }
+        }
+        */
+
+        var codesLeft = e.arg(0).getCodeGetter(e.pc());
+        var codesRight = e.arg(1).getCodeGetter(e.pc());
+        return [
+          codesLeft[0] +
+          codesRight[0] +
+          "util.setToArray(" + codesLeft[1] + ", " + codesRight[1] + ", " + code + ");\n",
+        ];
+      });
       m("_RIGHT_EMPTY_SQUARE", e => wrap_0(e, c => "(util.toStreamFromArray(" + c + "))"));
       m("_RIGHT_CURLY", e => getCodeToCreateFluoriteObject(e.pc(), e.arg(0), e.node().getArgument(1)));
       m("_RIGHT_EMPTY_CURLY", e => getCodeToCreateFluoriteObject(e.pc(), e.arg(0), null));
@@ -2338,6 +2444,17 @@
           ) +
           "\n}))"
         );
+      });
+      m("_EQUAL", e => {
+        var variable = "v_" + e.pc().allocateVariableId();
+        var codesRight = e.arg(1).getCodeGetter(e.pc());
+        var codesLeft = e.arg(0).getCodeSetter(e.pc(), "(" + variable + ")");
+        return [
+          codesRight[0] +
+          "const " + variable + " = " + codesRight[1] + ";\n" +
+          codesLeft[0],
+          "(" + variable + ")",
+        ];
       });
       m("_LEFT_COLON_EQUAL", e => {
         var codes = e.arg(0).getCodeGetter(e.pc());
