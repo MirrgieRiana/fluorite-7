@@ -2745,6 +2745,12 @@ _ "Comment"
     / NestedComment
   )*
 
+CharacterIdentifierHead
+  = [a-zA-Z_\u0080-\uFFFF]
+
+CharacterIdentifierBody
+  = [a-zA-Z_0-9\u0080-\uFFFF]
+
 TokenInteger "Integer"
   = [0-9] [0-9_]* { return new fl7c.FluoriteNodeTokenInteger(location(), parseInt(text().replace(/_/g, ""), 10), text()); }
 
@@ -2769,7 +2775,7 @@ TokenFloat "Float"
   ) { return new fl7c.FluoriteNodeTokenFloat(location(), parseFloat(text().replace(/_/g, "")), text()); }
 
 TokenIdentifier "Identifier"
-  = [a-zA-Z_] [a-zA-Z0-9_]* { return new fl7c.FluoriteNodeTokenIdentifier(location(), text(), text()); }
+  = CharacterIdentifierHead CharacterIdentifierBody* { return new fl7c.FluoriteNodeTokenIdentifier(location(), text(), text()); }
 
 TokenStringCharacter
   = [^'\\]
