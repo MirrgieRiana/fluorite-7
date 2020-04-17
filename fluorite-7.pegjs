@@ -2117,6 +2117,21 @@
         }
         throw new Error("Illegal argument");
       });
+      m("_SET_LITERAL_IDENTIFIER", (e, code) => {
+        var nodeKey = e.arg(0);
+        if (nodeKey instanceof fl7c.FluoriteNodeTokenIdentifier) {
+          var key = nodeKey.getValue();
+          var alias = e.pc().getAliasOrUndefined(e.node().getLocation(), key);
+          if (alias === undefined) throw new Error("No such alias: name=" + key);
+          if (alias instanceof fl7c.FluoriteAliasVariableSettable) {
+            return [
+              "" + alias.getCode() + " = " + code + ";\n",
+            ];
+          }
+          throw new Error("Cannot assign: variable=" + alias);
+        }
+        throw new Error("Illegal argument");
+      });
       m("_LITERAL_STRING", e => {
         if (e.arg(0) instanceof fl7c.FluoriteNodeTokenString) {
           return inline("(" + JSON.stringify(e.arg(0).getValue()) + ")");
