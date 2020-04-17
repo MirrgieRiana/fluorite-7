@@ -30,13 +30,14 @@
 
     //
 
-    class Environment { // TODO 全体の pc -> env
+    class Environment { // TODO 全体の pc -> env; rename: -> CompilerContext
 
       constructor() {
         this._nextConstantId = 0;
         this._nextVariableId = 0;
         this._constants = [];
         this._frameStack = [{}];
+        this._labelFrameStackStack = [[{}]];
       }
 
       //
@@ -91,6 +92,8 @@
         return this._frameStack[this._frameStack.length - 1];
       }
 
+      //
+
       setAlias(key, value) {
         this.getFrame()[key] = value;
       }
@@ -110,6 +113,44 @@
           var alias = this._frameStack[i][key]; // TODO own property
           if (alias !== undefined) {
             return alias;
+          }
+        }
+        return undefined;
+      }
+
+      //
+
+      pushLabelFrame() {
+        this.getLabelFrameStack().push({});
+      }
+
+      popLabelFrame() {
+        this.getLabelFrameStack().pop();
+      }
+
+      nextLabelFrame() {
+        this._labelFrameStackStack.push([{}]);
+      }
+
+      prevLabelFrame() {
+        this._labelFrameStackStack.pop();
+      }
+
+      getLabelFrameStack() {
+        return this._labelFrameStackStack[this._labelFrameStackStack.length - 1];
+      }
+
+      getLabelFrame() {
+        return this.getLabelFrameStack()[this.getLabelFrameStack().length - 1];
+      }
+
+      //
+
+      getLabelAliasOrUndefined(location, key) {
+        for (var i = this.getLabelFrameStack().length - 1; i >= 0; i--) {
+          var labelAlias = this.getLabelFrameStack()[i][key]; // TODO own property
+          if (labelAlias !== undefined) {
+            return labelAlias;
           }
         }
         return undefined;
@@ -419,6 +460,7 @@
 
     }
 
+    // TODO すべての変数名ハードコーディングはこのクラスのメソッドを呼び出すように
     class FluoriteAliasVariable extends FluoriteAlias {
 
       constructor(variableId) {
@@ -426,7 +468,7 @@
         this._variableId = variableId;
       }
 
-      getRawCode(pc, location) { // TODO rename -> getCodeArgument
+      getRawCode(pc, location) { // TODO rename -> getCode(void)
         return "v_" + this._variableId;
       }
 
@@ -438,6 +480,20 @@
         return [
           "",
           "(v_" + this._variableId + ")",
+        ];
+      }
+
+    }
+
+    class FluoriteAliasVariableSettable extends FluoriteAliasVariable {
+
+      constructor(variableId) {
+        super(variableId);
+      }
+
+      getCodeSetter(pc, location, code) {
+        return [
+          "v_" + this._variableId + " = " + code + ";\n",
         ];
       }
 
@@ -486,6 +542,20 @@
 
     //
 
+    class FluoriteLabelAlias {
+
+      constructor(id) {
+        this._id = id;
+      }
+
+      getCode() {
+        return "l_" + this._id;
+      }
+
+    }
+
+    //
+
     var util = {
 
       indent: function(code) {
@@ -510,8 +580,10 @@
       FluoriteAlias,
       FluoriteAliasMacro,
       FluoriteAliasVariable,
+      FluoriteAliasVariableSettable,
       FluoriteAliasConstant,
       FluoriteAliasMember,
+      FluoriteLabelAlias,
       util,
     };
   })();
@@ -1432,7 +1504,8 @@
         var codes1 = node1.getCodeGetter(pc);
         var codes2 = node2.getCodeGetter(pc);
         return [
-          codes1[0] + codes2[0],
+          codes1[0] +
+          codes2[0],
           func(codes1[1], codes2[1]),
         ];
       };
@@ -1613,7 +1686,8 @@
         var fromStream = function(nodeStreamer) {
           var codesStreamer = nodeStreamer.getCodeGetter(pc);
           return [
-            codesParent[0] + codesStreamer[0],
+            codesParent[0] +
+            codesStreamer[0],
             "(util.createObjectFromEntries(" + codesParent[1] + ", util.toStream(" + codesStreamer[1] + ").toArray()))",
           ];
         };
@@ -2089,11 +2163,22 @@
       });
       m("_ROUND", e => {
 
+        var variable = "v_" + e.pc().allocateVariableId();
+
         e.pc().pushFrame();
         var codes = e.arg(0).getCodeGetter(e.pc());
         e.pc().popFrame();
 
-        return codes;
+        return [
+          "let " + variable + " = null;\n" +
+          "{\n" +
+          fl7c.util.indent(
+            codes[0] +
+            "" + variable + " = " + codes[1] + ";\n"
+          ) +
+          "}\n",
+          "(" + variable + ")",
+        ];
       });
       m("_EMPTY_ROUND", e => inline("(util.empty())"));
       m("_SQUARE", e => wrap_0(e, c => "(util.toStream(" + c + ").toArray())"));
@@ -2138,7 +2223,8 @@
         var codesFunction = e.arg(0).getCodeGetter(e.pc());
         var codesArguments = as2c(e.pc(), e.node().getArgument(1));
         return [
-          codesFunction[0] + codesArguments[0],
+          codesFunction[0] +
+          codesArguments[0],
           "(util.call(" + codesFunction[1] + ", [" + codesArguments[1] + "]))",
         ];
       });
@@ -2169,7 +2255,9 @@
 
                 var codesLeft = e.arg(0).getCodeGetter(e.pc());
                 return [
-                  codesLeft[0] + codesStart[0] + codesEnd[0],
+                  codesLeft[0] +
+                  codesStart[0] +
+                  codesEnd[0],
                   "(util.slice(" + codesLeft[1] + ", " + codesStart[1] + ", " + codesEnd[1] + "))",
                 ];
               }
@@ -2180,7 +2268,8 @@
         var codesLeft = e.arg(0).getCodeGetter(e.pc());
         var codesRight = e.arg(1).getCodeGetter(e.pc());
         return [
-          codesLeft[0] + codesRight[0],
+          codesLeft[0] +
+          codesRight[0],
           "(util.getFromArray(" + codesLeft[1] + ", " + codesRight[1] + "))",
         ];
       });
@@ -2241,7 +2330,8 @@
         var codesLeft = e.arg(0).getCodeGetter(e.pc());
         var codesAlias = e.pc().getAlias(e.node().getLocation(), "_").getCodeGetter(e.pc(), e.node().getLocation());
         return [
-          codesLeft[0] + codesAlias[0],
+          codesLeft[0] +
+          codesAlias[0],
           "(util.call(" + codesLeft[1] + ",[" + codesAlias[1] + "]))",
         ];
       });
@@ -2249,8 +2339,10 @@
         var alias = new fl7c.FluoriteAliasVariable(e.pc().allocateVariableId());
 
         e.pc().pushFrame();
+        e.pc().nextLabelFrame();
         e.pc().getFrame()["_"] = alias;
         var codes = e.arg(0).getCodeGetter(e.pc());
+        e.pc().prevLabelFrame();
         e.pc().popFrame();
 
         var codeBody =
@@ -2259,7 +2351,13 @@
           codes[0] +
           "return " + codes[1] + ";";
 
-        return inline("(util.createLambda(args => {\n" + fl7c.util.indent(codeBody) + "\n}))");
+        return inline(
+          "(util.createLambda(function(args) {\n" +
+          fl7c.util.indent(
+            codeBody
+          ) +
+          "\n}))"
+        );
       });
       m("_LEFT_DOLLAR_HASH", e => wrap_0(e, c => "(util.getLength(" + c + "))"));
       m("_CIRCUMFLEX", e => wrap2_01(e, (c0, c1) => "(Math.pow(" + c0 + ", " + c1 + "))"));
@@ -2275,7 +2373,8 @@
         var codesLeft = e.arg(0).getCodeGetter(e.pc());
         var codesRight = as2c2(e.pc(), e.arg(1));
         return [
-          codesLeft[0] + codesRight[0],
+          codesLeft[0] +
+          codesRight[0],
           "(util.curryLeft(" + codesLeft[1] + ", [" + codesRight[1] + "]))",
         ];
       });
@@ -2283,7 +2382,8 @@
         var codesLeft = e.arg(0).getCodeGetter(e.pc());
         var codesRight = as2c2(e.pc(), e.arg(1));
         return [
-          codesLeft[0] + codesRight[0],
+          codesLeft[0] +
+          codesRight[0],
           "(util.curryRight(" + codesLeft[1] + ", [" + codesRight[1] + "]))",
         ];
       });
@@ -2299,7 +2399,11 @@
       m("_AMPERSAND2", e => {
         var variable = "v_" + e.pc().allocateVariableId();
         var codesLeft = e.arg(0).getCodeGetter(e.pc());
+
+        e.pc().pushFrame();
         var codesRight = e.arg(1).getCodeGetter(e.pc());
+        e.pc().popFrame();
+
         return [
           codesLeft[0] + 
           "let " + variable + " = " + codesLeft[1] + ";\n" +
@@ -2315,7 +2419,11 @@
       m("_PIPE2", e => {
         var variable = "v_" + e.pc().allocateVariableId();
         var codesLeft = e.arg(0).getCodeGetter(e.pc());
+
+        e.pc().pushFrame();
         var codesRight = e.arg(1).getCodeGetter(e.pc());
+        e.pc().popFrame();
+
         return [
           codesLeft[0] + 
           "let " + variable + " = " + codesLeft[1] + ";\n" +
@@ -2331,8 +2439,15 @@
       m("_TERNARY_QUESTION_COLON", e => {
         var variable = "v_" + e.pc().allocateVariableId();
         var codesLeft = e.arg(0).getCodeGetter(e.pc());
+
+        e.pc().pushFrame();
         var codesCenter = e.arg(1).getCodeGetter(e.pc());
+        e.pc().popFrame();
+
+        e.pc().pushFrame();
         var codesRight = e.arg(2).getCodeGetter(e.pc());
+        e.pc().popFrame();
+
         return [
           codesLeft[0] + 
           "let " + variable + " = " + codesLeft[1] + ";\n" +
@@ -2353,7 +2468,11 @@
       m("_QUESTION_COLON", e => {
         var variable = "v_" + e.pc().allocateVariableId();
         var codesLeft = e.arg(0).getCodeGetter(e.pc());
+
+        e.pc().pushFrame();
         var codesRight = e.arg(1).getCodeGetter(e.pc());
+        e.pc().popFrame();
+
         return [
           codesLeft[0] + 
           "let " + variable + " = " + codesLeft[1] + ";\n" +
@@ -2425,25 +2544,64 @@
         var aliases = args.map(a => new fl7c.FluoriteAliasVariable(e.pc().allocateVariableId()));
 
         e.pc().pushFrame();
+        e.pc().nextLabelFrame();
         for (var i = 0; i < args.length; i++) {
           e.pc().getFrame()[args[i]] = aliases[i];
         }
         var codes = e.arg(1).getCodeGetter(e.pc());
+        e.pc().prevLabelFrame();
         e.pc().popFrame();
 
         var codeBody =
           "if (args.length != " + args.length + ") throw new Error(\"Number of lambda arguments do not match: \" + args.length + \" != " + args.length + "\");\n" +
           aliases.map((a, i) => "const " + a.getRawCode(e.pc(), e.node().getLocation()) + " = args[" + i + "];\n").join("") +
           codes[0] +
-          "return " + codes[1] + ";";
+          "return " + codes[1] + ";\n";
 
         return inline(
-          "(util.createLambda(args => {\n" +
+          "(util.createLambda(function(args) {\n" +
           fl7c.util.indent(
             codeBody
           ) +
           "\n}))"
         );
+      });
+      m("_COLON", e => {
+
+        var key = undefined;
+        if (e.arg(0) instanceof fl7c.FluoriteNodeMacro) {
+          if (e.arg(0).getKey() === "_LITERAL_IDENTIFIER") {
+            if (e.arg(0).getArgument(0) instanceof fl7c.FluoriteNodeTokenIdentifier) {
+              key = e.arg(0).getArgument(0).getValue();
+            }
+          }
+        }
+        if (key === undefined) throw new Error("Illegal label: " + e.arg(0));
+
+        var variableId = e.pc().allocateVariableId();
+        var variable = "v_" + variableId;
+        var alias = new fl7c.FluoriteAliasVariableSettable(variableId);
+        var labelAlias = new fl7c.FluoriteLabelAlias(variableId);
+
+        e.pc().getFrame()[key] = alias;
+
+        e.pc().pushFrame();
+        e.pc().pushLabelFrame();
+        e.pc().getLabelFrame()[key] = labelAlias;
+        var codes = e.arg(1).getCodeGetter(e.pc());
+        e.pc().popLabelFrame();
+        e.pc().popFrame();
+
+        return [
+          "let " + variable + " = null;\n" +
+          "" + labelAlias.getCode() + ": {\n" +
+          fl7c.util.indent(
+            codes[0] +
+            "" + variable + " = " + codes[1] + ";\n"
+          ) +
+          "}\n",
+          "(" + variable + ")",
+        ];
       });
       m("_EQUAL", e => {
         var variable = "v_" + e.pc().allocateVariableId();
@@ -2456,7 +2614,7 @@
           "(" + variable + ")",
         ];
       });
-      m("_LEFT_COLON_EQUAL", e => {
+      m("_LEFT_COLON_EQUAL", e => { // TODO returnできるか否かの判定
         var codes = e.arg(0).getCodeGetter(e.pc());
         return [
           codes[0] +
@@ -2502,12 +2660,15 @@
         var variable = "v_" + variableId;
         var alias = new fl7c.FluoriteAliasVariable(variableId);
 
-        e.pc().pushFrame();
-        e.pc().getFrame()[key] = alias;
-        var codesRight = e.arg(1).getCodeGetter(e.pc());
-        e.pc().popFrame();
-
         if (iterate) {
+
+          e.pc().pushFrame();
+          e.pc().nextLabelFrame();
+          e.pc().getFrame()[key] = alias;
+          var codesRight = e.arg(1).getCodeGetter(e.pc());
+          e.pc().prevLabelFrame();
+          e.pc().popFrame();
+
           return [ // TODO パイプ内でreturnできるように
             codesLeft[0], // TODO 内部でreturnすると　　　　　↓この関数が反応する問題
             "(util.map(util.toStream(" + codesLeft[1] + "), function(" + variable + ") {\n" +
@@ -2518,6 +2679,12 @@
             "}))",
           ];
         } else {
+
+          e.pc().pushFrame();
+          e.pc().getFrame()[key] = alias;
+          var codesRight = e.arg(1).getCodeGetter(e.pc());
+          e.pc().popFrame();
+
           return [
             codesLeft[0] +
             "const " + variable + " = " + codesLeft[1] + ";\n" +
@@ -2564,12 +2731,15 @@
         var variable = "v_" + variableId;
         var alias = new fl7c.FluoriteAliasVariable(variableId);
 
-        e.pc().pushFrame();
-        e.pc().getFrame()[key] = alias;
-        var codesRight = e.arg(1).getCodeGetter(e.pc());
-        e.pc().popFrame();
-
         if (iterate) {
+
+          e.pc().pushFrame();
+          e.pc().nextLabelFrame();
+          e.pc().getFrame()[key] = alias;
+          var codesRight = e.arg(1).getCodeGetter(e.pc());
+          e.pc().prevLabelFrame();
+          e.pc().popFrame();
+
           return [ // TODO パイプ内でreturnできるように
             codesLeft[0], // TODO 内部でreturnすると　　　　　↓この関数が反応する問題
             "(util.grep(util.toStream(" + codesLeft[1] + "), function(" + variable + ") {\n" +
@@ -2580,6 +2750,12 @@
             "}))",
           ];
         } else {
+
+          e.pc().pushFrame();
+          e.pc().getFrame()[key] = alias;
+          var codesRight = e.arg(1).getCodeGetter(e.pc());
+          e.pc().popFrame();
+
           return [
             codesLeft[0] +
             "const " + variable + " = " + codesLeft[1] + ";\n" +
@@ -2626,12 +2802,15 @@
         var variable = "v_" + variableId;
         var alias = new fl7c.FluoriteAliasVariable(variableId);
 
-        e.pc().pushFrame();
-        e.pc().getFrame()[key] = alias;
-        var codesRight = e.arg(1).getCodeGetter(e.pc());
-        e.pc().popFrame();
-
         if (iterate) {
+
+          e.pc().pushFrame();
+          e.pc().nextLabelFrame();
+          e.pc().getFrame()[key] = alias;
+          var codesRight = e.arg(1).getCodeGetter(e.pc());
+          e.pc().prevLabelFrame();
+          e.pc().popFrame();
+
           return [ // TODO パイプ内でreturnできるように
             codesLeft[0], // TODO 内部でreturnすると　　　　　↓この関数が反応する問題
             "(util.grep(util.toStream(" + codesLeft[1] + "), function(" + variable + ") {\n" +
@@ -2642,6 +2821,12 @@
             "}))",
           ];
         } else {
+
+          e.pc().pushFrame();
+          e.pc().getFrame()[key] = alias;
+          var codesRight = e.arg(1).getCodeGetter(e.pc());
+          e.pc().popFrame();
+
           return [
             codesLeft[0] +
             "const " + variable + " = " + codesLeft[1] + ";\n" +
