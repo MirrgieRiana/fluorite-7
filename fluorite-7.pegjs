@@ -544,12 +544,17 @@
 
     class FluoriteLabelAlias {
 
-      constructor(id) {
-        this._id = id;
+      constructor(labelId, variableId) {
+        this._labelId = labelId;
+        this._variableId = variableId;
       }
 
       getCode() {
-        return "l_" + this._id;
+        return "l_" + this._labelId;
+      }
+
+      getCodeResponse() {
+        return "v_" + this._variableId;
       }
 
     }
@@ -2581,6 +2586,31 @@
           "\n}))"
         );
       });
+      m("_COLON_EQUAL", e => {
+
+        var key = undefined;
+        if (e.arg(0) instanceof fl7c.FluoriteNodeMacro) {
+          if (e.arg(0).getKey() === "_LITERAL_IDENTIFIER") {
+            if (e.arg(0).getArgument(0) instanceof fl7c.FluoriteNodeTokenIdentifier) {
+              key = e.arg(0).getArgument(0).getValue();
+            }
+          }
+        }
+        if (key === undefined) throw new Error("Illegal label: " + e.arg(0));
+
+        var labelAlias = e.pc().getLabelAliasOrUndefined(e.node().getLocation(), key);
+        if (labelAlias === undefined) throw new Error("No such label alias: " + key);
+
+        var codes = e.arg(1).getCodeGetter(e.pc());
+
+        return [
+          codes[0] +
+          "" + labelAlias.getCodeResponse() + " = " + codes[1] + ";\n" +
+          "break " + labelAlias.getCode() + ";\n",
+          "(null)",
+        ];
+
+      });
       m("_COLON", e => {
 
         var key = undefined;
@@ -2596,7 +2626,7 @@
         var variableId = e.pc().allocateVariableId();
         var variable = "v_" + variableId;
         var alias = new fl7c.FluoriteAliasVariableSettable(variableId);
-        var labelAlias = new fl7c.FluoriteLabelAlias(variableId);
+        var labelAlias = new fl7c.FluoriteLabelAlias(variableId, variableId);
 
         e.pc().getFrame()[key] = alias;
 
