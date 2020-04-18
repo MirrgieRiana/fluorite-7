@@ -2583,7 +2583,7 @@
           fl7c.util.indent(
             codeBody
           ) +
-          "\n}))"
+          "}))"
         );
       });
       m("_COLON_EQUAL", e => {
