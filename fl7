@@ -171,6 +171,7 @@ if (process.env.compile !== "0") {
   console.log(code);
 } else {
   const util = result.fl7.util;
+  const fl7 = result.fl7;
   const constants = env.getConstants();
   const stream = util.toStreamer(eval(code)).start();
 
