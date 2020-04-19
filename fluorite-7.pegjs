@@ -174,11 +174,41 @@
         throwCompileError(this._location, "Not Implemented");
       }
 
+      /**
+       * @return [codeLines : string, codeFormula : string]
+       * Example:
+       *   ["", "(50)"]
+       *   ["const v_1 = (20);\n", "(v_1)"]
+       *   ["return (v_7);\n", "(null)"]
+       */
       getCodeGetter(pc) { // TODO throw error
         return [
           "",
           this.getCode(pc),
         ];
+      }
+
+      /**
+       * @param funcCode (codeFormula : string) => (codeLines : string)
+       * @return [codeLines : string]
+       */
+      getCodeIterator(pc, funcCode) {
+        var codes = this.getCodeGetter(pc);
+        return [
+          codes[0] +
+          funcCode(codes[1]),
+        ];
+      }
+
+      /**
+       * @param code (codeFormula : string)
+       * @return [codeLines : string]
+       * Example:
+       *   ["v_5 = " + code + ";\n"]
+       *   ["util.setArrayValue(v_5, " + code + ");\n"]
+       */
+      getCodeSetter(pc, code) {
+        throwCompileError(this._location, "Cannot get setter code this node: " + this);
       }
 
       getTree(pc) {
@@ -223,23 +253,10 @@
         throwCompileError(this.getLocation(), "Tried to stringify raw token");
       }
 
-      /**
-       * @return [header : string, formula : string]
-       * Example:
-       *   ["", "(50)"]
-       *   ["const v_1 = (20);\n", "(v_1)"]
-       *   ["return (v_7);\n", "(null)"]
-       */
       getCodeGetter(pc) {
         throwCompileError(this.getLocation(), "Tried to stringify raw token");
       }
 
-      /**
-       * @return [expression : string]
-       * Example:
-       *   ["v_5 = " + code + ";\n"]
-       *   ["util.setArrayValue(v_5, " + code + ");\n"]
-       */
       getCodeSetter(pc, code) {
         throwCompileError(this.getLocation(), "Tried to stringify raw token");
       }
@@ -298,7 +315,6 @@
 
     }
 
-
     class FluoriteNodeMacro extends FluoriteNode {
 
       constructor(location, key, args) {
@@ -346,7 +362,7 @@
       }
 
       getCodeGetter(pc) {
-        var alias = pc.getAlias(this.getLocation(), this._key);
+        var alias = pc.getAliasOrUndefined(this.getLocation(), this._key);
         if (alias instanceof FluoriteAliasMacro) {
           var codes;
           try {
@@ -369,8 +385,26 @@
         throwCompileError(this.getLocation(), "No such macro '" + this._key + "'");
       }
 
+      getCodeIterator(pc, funcCode) {
+        var alias = pc.getAliasOrUndefined(this.getLocation(), "_ITERATE" + this._key);
+        if (alias instanceof FluoriteAliasMacro) {
+          var codes;
+          try {
+            codes = alias.getMacro()(new FluoriteMacroEnvironment(pc, this), funcCode);
+          } catch (e) {
+            if (e instanceof FluoriteCompileError) {
+              throw e;
+            } else {
+              throwCompileError(this.getLocation(), "" + e.message + " in macro '" + this._key + "'");
+            }
+          }
+          return codes;
+        }
+        return super.getCodeIterator(pc, funcCode);
+      }
+
       getCodeSetter(pc, code) {
-        var alias = pc.getAlias(this.getLocation(), "_SET" + this._key);
+        var alias = pc.getAliasOrUndefined(this.getLocation(), "_SET" + this._key);
         if (alias instanceof FluoriteAliasMacro) {
           var codes;
           try {
@@ -1721,6 +1755,39 @@
         }
         return fromInitializer([nodeMap]);
       };
+      var functionUnpackStreamer = (pc, codeItemOrStreamer, funcCode) => {
+        var variableItemOrStreamer = "v_" + pc.allocateVariableId();
+        var variableStream = "v_" + pc.allocateVariableId();
+        var variableItem = "v_" + pc.allocateVariableId();
+
+        pc.pushFrame();
+        var codeOnStreamer = funcCode(pc, variableItem);
+        pc.popFrame();
+
+        pc.pushFrame();
+        var codeOnNotStreamer = funcCode(pc, variableItemOrStreamer);
+        pc.popFrame();
+
+        return (
+          "let " + variableItemOrStreamer + " = " + codeItemOrStreamer + ";\n" +
+          "if (" + variableItemOrStreamer + " instanceof fl7.FluoriteStreamer) {\n" +
+          fl7c.util.indent(
+            "let " + variableStream + " = " + variableItemOrStreamer + ".start();\n" +
+            "while (true) {\n" +
+            fl7c.util.indent(
+              "let " + variableItem + " = " + variableStream + ".next();\n" +
+              "if (" + variableItem + " === undefined) break;\n" +
+              codeOnStreamer
+            ) +
+            "}\n"
+          ) +
+          "} else {\n" +
+          fl7c.util.indent(
+            codeOnNotStreamer
+          )+
+          "}\n"
+        );
+      };
       c("PI", Math.PI);
       c("E", Math.E);
       c("FLOOR", new fl7.FluoriteFunction(args => {
@@ -2200,8 +2267,33 @@
           "(" + variable + ")",
         ];
       });
+      m("_ITERATE_ROUND", (e, funcCode) => {
+
+        e.pc().pushFrame();
+        var codes = e.arg(0).getCodeIterator(e.pc(), funcCode);
+        e.pc().popFrame();
+
+        return [
+          "{\n" +
+          fl7c.util.indent(
+            codes[0]
+          ) +
+          "}\n",
+        ];
+      });
       m("_EMPTY_ROUND", e => inline("(util.empty())"));
-      m("_SQUARE", e => wrap_0(e, c => "(util.toStream(" + c + ").toArray())"));
+      m("_SQUARE", e => {
+        var variable = "v_" + e.pc().allocateVariableId();
+        return [
+          "const " + variable + " = [];\n" +
+          e.arg(0).getCodeIterator(e.pc(), codeItemOrStreamer => {
+            return functionUnpackStreamer(e.pc(), codeItemOrStreamer, (pc, codeItem) => {
+              return "" + variable + "[" + variable + ".length] = " + codeItem + ";\n";
+            });
+          })[0],
+          "(" + variable + ")",
+        ];
+      });
       m("_EMPTY_SQUARE", e => inline("([])"));
       m("_CURLY", e => getCodeToCreateFluoriteObject(e.pc(), null, e.arg(0)));
       m("_EMPTY_CURLY", e => getCodeToCreateFluoriteObject(e.pc(), null, null));
@@ -2506,6 +2598,7 @@
         ];
       });
       m("_COMMA", e => {
+
         var codesHeader = [];
         var codesBody = [];
         for (var i = 0; i < e.node().getArgumentCount(); i++) {
@@ -2516,9 +2609,24 @@
             codesBody.push(codes[1]);
           }
         }
+
         return [
           codesHeader.join(""),
           "(util.toStreamFromValues([" + codesBody.join(", ") + "]))",
+        ];
+      });
+      m("_ITERATE_COMMA", (e, funcCode) => {
+
+        var codes = [];
+        for (var i = 0; i < e.node().getArgumentCount(); i++) {
+          var node = e.node().getArgument(i);
+          if (!(node instanceof fl7c.FluoriteNodeVoid)) {
+            codes.push(node.getCodeIterator(e.pc(), funcCode)[0]);
+          }
+        }
+
+        return [
+          codes.join(""),
         ];
       });
       m("_MINUS_GREATER", e => {
@@ -2891,26 +2999,39 @@
       m("_SEMICOLON", e => {
 
         var nodes = [];
+        var nodeLast = null;
         for (var i = 0; i < e.node().getArgumentCount(); i++) {
           var node = e.arg(i);
           if (!(node instanceof fl7c.FluoriteNodeVoid)) {
-            nodes.push(node);
+            if (i == e.node().getArgumentCount() - 1) {
+              nodeLast = node;
+            } else {
+              nodes.push(node);
+            }
           }
         }
 
-        var variable = "v_" + e.pc().allocateVariableId();
+        var codeHeader = nodes.map(node => {
+          return node.getCodeIterator(e.pc(), codeItemOrStreamer => {
+            return functionUnpackStreamer(e.pc(), codeItemOrStreamer, (pc, codeItem) => {
+              return "" + codeItem + ";\n";
+            });
+          })[0];
+        }).join("");
+        var codesLast = nodeLast === null ? null : nodeLast.getCodeGetter(e.pc());
 
-        return [
-          "let " + variable + " = null;\n" +
-          nodes.map(node => {
-            var codes = node.getCodeGetter(e.pc());
-            return (
-              codes[0] +
-              "" + variable + " = " + codes[1] + ";\n"
-            );
-          }).join(""),
-          "(" + variable +")"
-        ];
+        if (codesLast === null) {
+          return [
+            codeHeader,
+            "(null)",
+          ];
+        } else {
+          return [
+            codeHeader +
+            codesLast[0],
+            "(" + codesLast[1] +")",
+          ];
+        }
       });
     }
   }
