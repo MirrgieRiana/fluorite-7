@@ -3126,7 +3126,7 @@
         if (codesLast === null) {
           return [
             codeHeader,
-            "(null)",
+            "(util.empty())",
           ];
         } else {
           return [
