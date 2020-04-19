@@ -1770,21 +1770,18 @@
 
         return (
           "let " + variableItemOrStreamer + " = " + codeItemOrStreamer + ";\n" +
-          "if (" + variableItemOrStreamer + " instanceof fl7.FluoriteStreamer) {\n" +
+          "if (!(" + variableItemOrStreamer + " instanceof fl7.FluoriteStreamer)) {\n" +
           fl7c.util.indent(
-            "let " + variableStream + " = " + variableItemOrStreamer + ".start();\n" +
-            "while (true) {\n" +
-            fl7c.util.indent(
-              "let " + variableItem + " = " + variableStream + ".next();\n" +
-              "if (" + variableItem + " === undefined) break;\n" +
-              codeOnStreamer
-            ) +
-            "}\n"
+            "" + variableItemOrStreamer + " = new fl7.FluoriteStreamerScalar(" + variableItemOrStreamer + ");\n"
           ) +
-          "} else {\n" +
+          "}\n" +
+          "let " + variableStream + " = " + variableItemOrStreamer + ".start();\n" +
+          "while (true) {\n" +
           fl7c.util.indent(
-            codeOnNotStreamer
-          )+
+            "let " + variableItem + " = " + variableStream + ".next();\n" +
+            "if (" + variableItem + " === undefined) break;\n" +
+            codeOnStreamer
+          ) +
           "}\n"
         );
       };
@@ -2775,29 +2772,29 @@
           "(null)",
         ];
       });
-      m("_PIPE", e => {
+      var functionExtractPipeArguments = (node) => {
         var key = undefined;
-        var codesLeft = undefined;
+        var nodesLeft = undefined;
         var iterate = undefined;
 
-        if (e.arg(0) instanceof fl7c.FluoriteNodeMacro) {
-          if (e.arg(0).getKey() === "_COLON") {
-            if (e.arg(0).getArgument(0) instanceof fl7c.FluoriteNodeMacro) {
-              if (e.arg(0).getArgument(0).getKey() === "_LITERAL_IDENTIFIER") {
-                if (e.arg(0).getArgument(0).getArgument(0) instanceof fl7c.FluoriteNodeTokenIdentifier) {
-                  key = e.arg(0).getArgument(0).getArgument(0).getValue();
-                  codesLeft = e.arg(0).getArgument(1).getCodeGetter(e.pc());
+        if (node instanceof fl7c.FluoriteNodeMacro) {
+          if (node.getKey() === "_COLON") {
+            if (node.getArgument(0) instanceof fl7c.FluoriteNodeMacro) {
+              if (node.getArgument(0).getKey() === "_LITERAL_IDENTIFIER") {
+                if (node.getArgument(0).getArgument(0) instanceof fl7c.FluoriteNodeTokenIdentifier) {
+                  key = node.getArgument(0).getArgument(0).getValue();
+                  nodesLeft = node.getArgument(1);
                   iterate = true;
                 }
               }
             }
           }
-          if (e.arg(0).getKey() === "_EQUAL") {
-            if (e.arg(0).getArgument(0) instanceof fl7c.FluoriteNodeMacro) {
-              if (e.arg(0).getArgument(0).getKey() === "_LITERAL_IDENTIFIER") {
-                if (e.arg(0).getArgument(0).getArgument(0) instanceof fl7c.FluoriteNodeTokenIdentifier) {
-                  key = e.arg(0).getArgument(0).getArgument(0).getValue();
-                  codesLeft = e.arg(0).getArgument(1).getCodeGetter(e.pc());
+          if (node.getKey() === "_EQUAL") {
+            if (node.getArgument(0) instanceof fl7c.FluoriteNodeMacro) {
+              if (node.getArgument(0).getKey() === "_LITERAL_IDENTIFIER") {
+                if (node.getArgument(0).getArgument(0) instanceof fl7c.FluoriteNodeTokenIdentifier) {
+                  key = node.getArgument(0).getArgument(0).getValue();
+                  nodesLeft = node.getArgument(1);
                   iterate = false;
                 }
               }
@@ -2806,23 +2803,30 @@
         }
 
         if (key === undefined) key = "_";
-        if (codesLeft === undefined) codesLeft = e.arg(0).getCodeGetter(e.pc());
+        if (nodesLeft === undefined) nodesLeft = node;
         if (iterate === undefined) iterate = true;
+
+        return {key, nodesLeft, iterate};
+      };
+      m("_PIPE", e => {
+
+        var args = functionExtractPipeArguments(e.arg(0));
+        var codesLeft = args.nodesLeft.getCodeGetter(e.pc());
 
         var variableId = e.pc().allocateVariableId();
         var variable = "v_" + variableId;
         var alias = new fl7c.FluoriteAliasVariable(variableId);
 
-        if (iterate) {
+        if (args.iterate) {
 
           e.pc().pushFrame();
           e.pc().nextLabelFrame();
-          e.pc().getFrame()[key] = alias;
+          e.pc().getFrame()[args.key] = alias;
           var codesRight = e.arg(1).getCodeGetter(e.pc());
           e.pc().prevLabelFrame();
           e.pc().popFrame();
 
-          return [ // TODO パイプ内でreturnできるように
+          return [
             codesLeft[0], // TODO 内部でreturnすると　　　　　↓この関数が反応する問題
             "(util.map(util.toStream(" + codesLeft[1] + "), function(" + variable + ") {\n" +
             fl7c.util.indent(
@@ -2834,7 +2838,7 @@
         } else {
 
           e.pc().pushFrame();
-          e.pc().getFrame()[key] = alias;
+          e.pc().getFrame()[args.key] = alias;
           var codesRight = e.arg(1).getCodeGetter(e.pc());
           e.pc().popFrame();
 
@@ -2846,49 +2850,67 @@
           ];
         }
       });
-      m("_QUESTION_PIPE", e => {
-        var key = undefined;
-        var codesLeft = undefined;
-        var iterate = undefined;
+      m("_ITERATE_PIPE", (e, funcCode) => {
 
-        if (e.arg(0) instanceof fl7c.FluoriteNodeMacro) {
-          if (e.arg(0).getKey() === "_COLON") {
-            if (e.arg(0).getArgument(0) instanceof fl7c.FluoriteNodeMacro) {
-              if (e.arg(0).getArgument(0).getKey() === "_LITERAL_IDENTIFIER") {
-                if (e.arg(0).getArgument(0).getArgument(0) instanceof fl7c.FluoriteNodeTokenIdentifier) {
-                  key = e.arg(0).getArgument(0).getArgument(0).getValue();
-                  codesLeft = e.arg(0).getArgument(1).getCodeGetter(e.pc());
-                  iterate = true;
-                }
-              }
-            }
-          }
-          if (e.arg(0).getKey() === "_EQUAL") {
-            if (e.arg(0).getArgument(0) instanceof fl7c.FluoriteNodeMacro) {
-              if (e.arg(0).getArgument(0).getKey() === "_LITERAL_IDENTIFIER") {
-                if (e.arg(0).getArgument(0).getArgument(0) instanceof fl7c.FluoriteNodeTokenIdentifier) {
-                  key = e.arg(0).getArgument(0).getArgument(0).getValue();
-                  codesLeft = e.arg(0).getArgument(1).getCodeGetter(e.pc());
-                  iterate = false;
-                }
-              }
-            }
-          }
+        var args = functionExtractPipeArguments(e.arg(0));
+
+        if (args.iterate) {
+          return [
+            args.nodesLeft.getCodeIterator(e.pc(), codeItemOrStreamer => {
+              return functionUnpackStreamer(e.pc(), codeItemOrStreamer, (pc, codeItem) => {
+
+                var variableId = e.pc().allocateVariableId();
+                var variable = "v_" + variableId;
+                var alias = new fl7c.FluoriteAliasVariable(variableId);
+
+                e.pc().pushFrame();
+                e.pc().getFrame()[args.key] = alias;
+                var codesRight = e.arg(1).getCodeGetter(pc);
+                e.pc().popFrame();
+
+                return (
+                  "const " + variable + " = " + codeItem + ";\n" +
+                  codesRight[0] +
+                  funcCode(codesRight[1])
+                );
+              });
+            })[0],
+          ];
+        } else {
+
+          var variableId = e.pc().allocateVariableId();
+          var variable = "v_" + variableId;
+          var alias = new fl7c.FluoriteAliasVariable(variableId);
+
+          var codesLeft = args.nodesLeft.getCodeGetter(e.pc());
+
+          e.pc().pushFrame();
+          e.pc().getFrame()[args.key] = alias;
+          var codesRight = e.arg(1).getCodeGetter(e.pc());
+          e.pc().popFrame();
+
+          return [
+            codesLeft[0] +
+            "const " + variable + " = " + codesLeft[1] + ";\n" +
+            codesRight[0] +
+            funcCode(codesRight[1]),
+          ];
         }
+      });
+      m("_QUESTION_PIPE", e => {
 
-        if (key === undefined) key = "_";
-        if (codesLeft === undefined) codesLeft = e.arg(0).getCodeGetter(e.pc());
-        if (iterate === undefined) iterate = true;
+        var args = functionExtractPipeArguments(e.arg(0));
+        var codesLeft = args.nodesLeft.getCodeGetter(e.pc());
 
         var variableId = e.pc().allocateVariableId();
         var variable = "v_" + variableId;
         var alias = new fl7c.FluoriteAliasVariable(variableId);
 
-        if (iterate) {
+        if (args.iterate) {
 
           e.pc().pushFrame();
           e.pc().nextLabelFrame();
-          e.pc().getFrame()[key] = alias;
+          e.pc().getFrame()[args.key] = alias;
           var codesRight = e.arg(1).getCodeGetter(e.pc());
           e.pc().prevLabelFrame();
           e.pc().popFrame();
@@ -2905,7 +2927,7 @@
         } else {
 
           e.pc().pushFrame();
-          e.pc().getFrame()[key] = alias;
+          e.pc().getFrame()[args.key] = alias;
           var codesRight = e.arg(1).getCodeGetter(e.pc());
           e.pc().popFrame();
 
@@ -2917,49 +2939,75 @@
           ];
         }
       });
-      m("_EXCLAMATION_PIPE", e => {
-        var key = undefined;
-        var codesLeft = undefined;
-        var iterate = undefined;
+      m("_ITERATE_QUESTION_PIPE", (e, funcCode) => {
 
-        if (e.arg(0) instanceof fl7c.FluoriteNodeMacro) {
-          if (e.arg(0).getKey() === "_COLON") {
-            if (e.arg(0).getArgument(0) instanceof fl7c.FluoriteNodeMacro) {
-              if (e.arg(0).getArgument(0).getKey() === "_LITERAL_IDENTIFIER") {
-                if (e.arg(0).getArgument(0).getArgument(0) instanceof fl7c.FluoriteNodeTokenIdentifier) {
-                  key = e.arg(0).getArgument(0).getArgument(0).getValue();
-                  codesLeft = e.arg(0).getArgument(1).getCodeGetter(e.pc());
-                  iterate = true;
-                }
-              }
-            }
-          }
-          if (e.arg(0).getKey() === "_EQUAL") {
-            if (e.arg(0).getArgument(0) instanceof fl7c.FluoriteNodeMacro) {
-              if (e.arg(0).getArgument(0).getKey() === "_LITERAL_IDENTIFIER") {
-                if (e.arg(0).getArgument(0).getArgument(0) instanceof fl7c.FluoriteNodeTokenIdentifier) {
-                  key = e.arg(0).getArgument(0).getArgument(0).getValue();
-                  codesLeft = e.arg(0).getArgument(1).getCodeGetter(e.pc());
-                  iterate = false;
-                }
-              }
-            }
-          }
+        var args = functionExtractPipeArguments(e.arg(0));
+
+        if (args.iterate) {
+          return [
+            args.nodesLeft.getCodeIterator(e.pc(), codeItemOrStreamer => {
+              return functionUnpackStreamer(e.pc(), codeItemOrStreamer, (pc, codeItem) => {
+
+                var variableId = e.pc().allocateVariableId();
+                var variable = "v_" + variableId;
+                var alias = new fl7c.FluoriteAliasVariable(variableId);
+
+                e.pc().pushFrame();
+                e.pc().getFrame()[args.key] = alias;
+                var codesRight = e.arg(1).getCodeGetter(pc);
+                e.pc().popFrame();
+
+                return (
+                  "const " + variable + " = " + codeItem + ";\n" +
+                  codesRight[0] +
+                  "if (util.toBoolean(" + codesRight[1] + ")) {\n" +
+                  fl7c.util.indent(
+                    funcCode(variable)
+                  ) +
+                  "}\n"
+                );
+              });
+            })[0],
+          ];
+        } else {
+
+          var variableId = e.pc().allocateVariableId();
+          var variable = "v_" + variableId;
+          var alias = new fl7c.FluoriteAliasVariable(variableId);
+
+          var codesLeft = args.nodesLeft.getCodeGetter(e.pc());
+
+          e.pc().pushFrame();
+          e.pc().getFrame()[args.key] = alias;
+          var codesRight = e.arg(1).getCodeGetter(e.pc());
+          e.pc().popFrame();
+
+          return [
+            codesLeft[0] +
+            "const " + variable + " = " + codesLeft[1] + ";\n" +
+            codesRight[0] +
+            "if (util.toBoolean(" + codesRight[1] + ")) {\n" +
+            fl7c.util.indent(
+              funcCode(variable)
+            ) +
+            "}\n",
+          ];
         }
+      });
+      m("_EXCLAMATION_PIPE", e => {
 
-        if (key === undefined) key = "_";
-        if (codesLeft === undefined) codesLeft = e.arg(0).getCodeGetter(e.pc());
-        if (iterate === undefined) iterate = true;
+        var args = functionExtractPipeArguments(e.arg(0));
+        var codesLeft = args.nodesLeft.getCodeGetter(e.pc());
 
         var variableId = e.pc().allocateVariableId();
         var variable = "v_" + variableId;
         var alias = new fl7c.FluoriteAliasVariable(variableId);
 
-        if (iterate) {
+        if (args.iterate) {
 
           e.pc().pushFrame();
           e.pc().nextLabelFrame();
-          e.pc().getFrame()[key] = alias;
+          e.pc().getFrame()[args.key] = alias;
           var codesRight = e.arg(1).getCodeGetter(e.pc());
           e.pc().prevLabelFrame();
           e.pc().popFrame();
@@ -2976,7 +3024,7 @@
         } else {
 
           e.pc().pushFrame();
-          e.pc().getFrame()[key] = alias;
+          e.pc().getFrame()[args.key] = alias;
           var codesRight = e.arg(1).getCodeGetter(e.pc());
           e.pc().popFrame();
 
@@ -2985,6 +3033,61 @@
             "const " + variable + " = " + codesLeft[1] + ";\n" +
             codesRight[0],
             "(!util.toBoolean(" + codesRight[1] + ") ? util.toStreamFromValues([" + variable + "]) : util.empty())",
+          ];
+        }
+      });
+      m("_ITERATE_EXCLAMATION_PIPE", (e, funcCode) => {
+
+        var args = functionExtractPipeArguments(e.arg(0));
+
+        if (args.iterate) {
+          return [
+            args.nodesLeft.getCodeIterator(e.pc(), codeItemOrStreamer => {
+              return functionUnpackStreamer(e.pc(), codeItemOrStreamer, (pc, codeItem) => {
+
+                var variableId = e.pc().allocateVariableId();
+                var variable = "v_" + variableId;
+                var alias = new fl7c.FluoriteAliasVariable(variableId);
+
+                e.pc().pushFrame();
+                e.pc().getFrame()[args.key] = alias;
+                var codesRight = e.arg(1).getCodeGetter(pc);
+                e.pc().popFrame();
+
+                return (
+                  "const " + variable + " = " + codeItem + ";\n" +
+                  codesRight[0] +
+                  "if (!util.toBoolean(" + codesRight[1] + ")) {\n" +
+                  fl7c.util.indent(
+                    funcCode(variable)
+                  ) +
+                  "}\n"
+                );
+              });
+            })[0],
+          ];
+        } else {
+
+          var variableId = e.pc().allocateVariableId();
+          var variable = "v_" + variableId;
+          var alias = new fl7c.FluoriteAliasVariable(variableId);
+
+          var codesLeft = args.nodesLeft.getCodeGetter(e.pc());
+
+          e.pc().pushFrame();
+          e.pc().getFrame()[args.key] = alias;
+          var codesRight = e.arg(1).getCodeGetter(e.pc());
+          e.pc().popFrame();
+
+          return [
+            codesLeft[0] +
+            "const " + variable + " = " + codesLeft[1] + ";\n" +
+            codesRight[0] +
+            "if (!util.toBoolean(" + codesRight[1] + ")) {\n" +
+            fl7c.util.indent(
+              funcCode(variable)
+            ) +
+            "}\n",
           ];
         }
       });
