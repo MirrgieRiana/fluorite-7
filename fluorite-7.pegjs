@@ -1520,6 +1520,8 @@
 
   //
 
+  // TODO FluoriteFunction廃止
+
   function loadAliases(env) { // TODO
     {
       var util = fl7.util;
@@ -2157,6 +2159,20 @@
         var stream = args[0];
         if (stream === undefined) throw new Error("Illegal argument");
         return util.toStreamFromValues(util.toStream(stream).toArray().reverse());
+      }));
+      c("CHARCODES", new fl7.FluoriteFunction(args => {
+        var string = args[0];
+        string = util.toString(string);
+        var result = [];
+        for (var i = 0; i < string.length; i++) {
+          result[i] = string.charCodeAt(i);
+        }
+        return result;
+      }));
+      c("FROM_CHARCODES", new fl7.FluoriteFunction(args => {
+        var array = args[0];
+        if (!(array instanceof Array)) throw new Error("Illegal argument");
+        return String.fromCharCode.apply(null, array);
       }));
       m("_LITERAL_INTEGER", e => {
         if (e.arg(0) instanceof fl7c.FluoriteNodeTokenInteger) {
