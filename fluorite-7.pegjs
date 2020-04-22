@@ -1298,6 +1298,26 @@
         return actual === expected;
       },
 
+      contained: function(item, container) {
+        if (container instanceof Array) {
+          item = util.toNumber(item);
+          return item >= 0 && item < container.length;
+        }
+        if (container instanceof FluoriteObject) {
+          item = util.toString(item);
+          return Object.getOwnPropertyDescriptor(container.map, item) !== undefined;
+        }
+        if (typeof container === 'string' || container instanceof String) {
+          item = util.toString(item);
+          return container.includes(item);
+        }
+        if (Number.isFinite(container)) {
+          item = util.toString(item);
+          return String(container).includes(item);
+        }
+        throw new Error("Illegal argument: " + item + ", " + container);
+      },
+
       //
 
       empty: function() {
@@ -2521,6 +2541,7 @@
       m("_EXCLAMATION_EQUAL", e => wrap2_01(e, (c0, c1) => "(!util.equal(" + c0 + ", " + c1 + "))"));
       m("_EQUAL3", e => wrap2_01(e, (c0, c1) => "(util.equalStict(" + c0 + ", " + c1 + "))"));
       m("_EXCLAMATION_EQUAL2", e => wrap2_01(e, (c0, c1) => "(!util.equalStict(" + c0 + ", " + c1 + "))"));
+      m("_ATSIGN", e => wrap2_01(e, (c0, c1) => "(util.contained(" + c0 + ", " + c1 + "))"));
       m("_AMPERSAND2", e => {
         var variable = "v_" + e.pc().allocateVariableId();
         var codesLeft = e.arg(0).getCodeGetter(e.pc());
@@ -3524,6 +3545,7 @@ Compare
     / "==" { return [location(), "_EQUAL2"]; }
     / "!==" { return [location(), "_EXCLAMATION_EQUAL2"]; }
     / "!=" { return [location(), "_EXCLAMATION_EQUAL"]; }
+    / "@" { return [location(), "_ATSIGN"]; }
   ) _ Spaceship)* {
     var result = head;
     for (var i = 0; i < tail.length; i++) {
