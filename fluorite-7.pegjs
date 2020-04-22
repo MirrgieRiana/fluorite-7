@@ -2194,6 +2194,9 @@
         if (!(array instanceof Array)) throw new Error("Illegal argument");
         return String.fromCharCode.apply(null, array);
       }));
+      c("YN", new fl7.FluoriteFunction(args => {
+        return util.toBoolean(args[0]) ? "Yes" : "No";
+      }));
       m("_LITERAL_INTEGER", e => {
         if (e.arg(0) instanceof fl7c.FluoriteNodeTokenInteger) {
           return inline("(" + e.arg(0).getValue() + ")");
