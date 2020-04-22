@@ -2160,7 +2160,7 @@
         if (stream === undefined) throw new Error("Illegal argument");
         return util.toStreamFromValues(util.toStream(stream).toArray().reverse());
       }));
-      c("UTF16", new fl7.FluoriteFunction(args => {
+      c("CHARCODES", new fl7.FluoriteFunction(args => {
         var string = args[0];
         string = util.toString(string);
         var result = [];
@@ -2169,7 +2169,7 @@
         }
         return result;
       }));
-      c("FROM_UTF16", new fl7.FluoriteFunction(args => {
+      c("FROM_CHARCODES", new fl7.FluoriteFunction(args => {
         var array = args[0];
         if (!(array instanceof Array)) throw new Error("Illegal argument");
         return String.fromCharCode.apply(null, array);
