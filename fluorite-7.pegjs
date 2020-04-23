@@ -1300,8 +1300,10 @@
 
       contained: function(item, container) {
         if (container instanceof Array) {
-          item = util.toNumber(item);
-          return item >= 0 && item < container.length;
+          for (var i = 0; i < container.length; i++) {
+            if (util.equal(item, container[i])) return true;
+          }
+          return false;
         }
         if (container instanceof FluoriteObject) {
           item = util.toString(item);
