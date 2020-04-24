@@ -2205,6 +2205,10 @@
       c("YN", new fl7.FluoriteFunction(args => {
         return util.toBoolean(args[0]) ? "Yes" : "No";
       }));
+      c("TRIM", new fl7.FluoriteFunction(args => {
+        if (args[0] === undefined) throw new Error("Illegal argument");
+        return util.toString(args[0]).trim();
+      }));
       m("_LITERAL_INTEGER", e => {
         if (e.arg(0) instanceof fl7c.FluoriteNodeTokenInteger) {
           return inline("(" + e.arg(0).getValue() + ")");
