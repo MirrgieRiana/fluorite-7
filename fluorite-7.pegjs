@@ -2209,6 +2209,14 @@
         if (args[0] === undefined) throw new Error("Illegal argument");
         return util.toString(args[0]).trim();
       }));
+      c("ENTRY", new fl7.FluoriteFunction(args => {
+        if (args[0] === undefined) throw new Error("Illegal argument");
+        if (args[1] === undefined) throw new Error("Illegal argument");
+        return new fl7.FluoriteObject(null, {
+          key: args[0],
+          value: args[1],
+        });
+      }));
       m("_LITERAL_INTEGER", e => {
         if (e.arg(0) instanceof fl7c.FluoriteNodeTokenInteger) {
           return inline("(" + e.arg(0).getValue() + ")");
