@@ -1320,6 +1320,12 @@
         throw new Error("Illegal argument: " + item + ", " + container);
       },
 
+      regexpFind: function(string, regex) { // TODO 正規表現オブジェクト
+        string = util.toString(string);
+        regex = util.toString(regex);
+        return new RegExp(regex).exec(string);
+      },
+
       //
 
       empty: function() {
@@ -2242,6 +2248,12 @@
         }
         throw new Error("Illegal argument");
       });
+      m("_LITERAL_PATTERN_STRING", e => {
+        if (e.arg(0) instanceof fl7c.FluoriteNodeTokenString) {
+          return inline("(" + JSON.stringify(e.arg(0).getValue()) + ")");
+        }
+        throw new Error("Illegal argument");
+      });
       m("_LITERAL_STRING", e => {
         if (e.arg(0) instanceof fl7c.FluoriteNodeTokenString) {
           return inline("(" + JSON.stringify(e.arg(0).getValue()) + ")");
@@ -2546,6 +2558,15 @@
       m("_EXCLAMATION_EQUAL", e => wrap2_01(e, (c0, c1) => "(!util.equal(" + c0 + ", " + c1 + "))"));
       m("_EQUAL3", e => wrap2_01(e, (c0, c1) => "(util.equalStict(" + c0 + ", " + c1 + "))"));
       m("_EXCLAMATION_EQUAL2", e => wrap2_01(e, (c0, c1) => "(!util.equalStict(" + c0 + ", " + c1 + "))"));
+      m("_EQUAL_TILDE", e => { // TODO 右辺が文字列リテラルの場合は定数化する
+        var codesLeft = e.arg(0).getCodeGetter(e.pc());
+        var codesRight = e.arg(1).getCodeGetter(e.pc());
+        return [
+          codesLeft[0] +
+          codesRight[0],
+          "(util.regexpFind(" + codesLeft[1] + ", " + codesRight[1] + "))",
+        ];
+      });
       m("_ATSIGN", e => wrap2_01(e, (c0, c1) => "(util.contained(" + c0 + ", " + c1 + "))"));
       m("_AMPERSAND2", e => {
         var variable = "v_" + e.pc().allocateVariableId();
@@ -3273,6 +3294,14 @@ TokenFloat "Float"
 TokenIdentifier "Identifier"
   = CharacterIdentifierHead CharacterIdentifierBody* { return new fl7c.FluoriteNodeTokenIdentifier(location(), text(), text()); }
 
+TokenPatternStringCharacter
+  = [^/\\]
+  / "\\" (!"/") { return "\\"; }
+  / "\\" "/" { return "/"; }
+
+TokenPatternString "PatternString"
+  = "/" main:TokenPatternStringCharacter* "/" { return new fl7c.FluoriteNodeTokenString(location(), main.join(""), text()); }
+
 TokenStringCharacter
   = [^'\\]
   / "\\" main:. { return main; }
@@ -3342,6 +3371,9 @@ LiteralFloat
 LiteralIdentifier
   = main:TokenIdentifier { return new fl7c.FluoriteNodeMacro(location(), "_LITERAL_IDENTIFIER", [main]); }
 
+LiteralPatternString
+  = main:TokenPatternString { return new fl7c.FluoriteNodeMacro(location(), "_LITERAL_PATTERN_STRING", [main]); }
+
 LiteralString
   = main:TokenString { return new fl7c.FluoriteNodeMacro(location(), "_LITERAL_STRING", [main]); }
 
@@ -3353,6 +3385,7 @@ Literal
   / LiteralBasedInteger
   / LiteralInteger
   / LiteralIdentifier
+  / LiteralPatternString
   / LiteralString
   / LiteralEmbeddedString
 
@@ -3550,6 +3583,7 @@ Compare
     / "==" { return [location(), "_EQUAL2"]; }
     / "!==" { return [location(), "_EXCLAMATION_EQUAL2"]; }
     / "!=" { return [location(), "_EXCLAMATION_EQUAL"]; }
+    / "=~" { return [location(), "_EQUAL_TILDE"]; }
     / "@" { return [location(), "_ATSIGN"]; }
   ) _ Spaceship)* {
     var result = head;
