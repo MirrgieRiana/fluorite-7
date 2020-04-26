@@ -47,6 +47,8 @@ node -e "$(cat << 'END'
 const fs = require("fs");
 const parser = require(process.env.app_dir + "/fluorite-7.js");
 
+let globalResult;
+
 function parse(source) {
 
   const result = parser.parse(source);
@@ -66,8 +68,10 @@ function parse(source) {
       }
 
       start() { // TODO 徐々に読み込む
+      
         var fd = process.stdin.fd;
-        var strings = [];
+        var buffers = [];
+        var length = 0;
         while (true) {
           var buffer = new Buffer(4096);
           var bytesRead;
@@ -84,10 +88,14 @@ function parse(source) {
             break;
           }
           if (bytesRead === 0) break;
-          strings.push(buffer.toString('utf8', 0, bytesRead));
+          buffers.push(buffer);
+          length += bytesRead;
         }
-        var input = strings.join("");
-        var inputs = input.split("\n");
+        fs.closeSync(fd);
+
+        const input = Buffer.concat(buffers, length).toString('utf8', 0, length);
+        const inputs = input.split("\n");
+
         var i = 0;
         return {
           next: () => {
@@ -117,8 +125,10 @@ function parse(source) {
       }
 
       start() { // TODO 徐々に読み込む
+
         var fd = fs.openSync(this._filename, "r");
-        var strings = [];
+        var buffers = [];
+        var length = 0;
         while (true) {
           var buffer = new Buffer(4096);
           var bytesRead;
@@ -135,11 +145,14 @@ function parse(source) {
             break;
           }
           if (bytesRead === 0) break;
-          strings.push(buffer.toString('utf8', 0, bytesRead));
+          buffers.push(buffer);
+          length += bytesRead;
         }
         fs.closeSync(fd);
-        var input = strings.join("");
-        var inputs = input.split("\n");
+
+        const input = Buffer.concat(buffers, length).toString('utf8', 0, length);
+        const inputs = input.split("\n");
+
         var i = 0;
         return {
           next: () => {
@@ -197,8 +210,8 @@ function parse(source) {
 
       const result = parse(source);
 
-      const fl7 = result.fl7;
-      const util = result.fl7.util;
+      const fl7 = globalResult.fl7;
+      const util = globalResult.fl7.util;
       const constants = result.constants;
       return eval(result.code);
     });
@@ -215,6 +228,7 @@ function parse(source) {
 }
 
 let result = parse(process.env.exec);
+globalResult = result;
 
 if (process.env.compile !== "0") {
   console.log(result.code);
