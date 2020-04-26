@@ -42,7 +42,10 @@
 
       //
 
-      allocateConstantId() { // TODO システムの刷新
+      // TODO システムの刷新
+      // REQUIRE関数の挙動の為にコンパイル後に呼び出してはならない
+      // 同じ構成の環境では、コンパイル時に同じ定数が同じ順序で並んでいなければならない
+      allocateConstantId() {
         var result = this._nextConstantId;
         this._nextConstantId++;
         return result;
