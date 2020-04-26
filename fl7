@@ -225,9 +225,8 @@ function parse(source) {
 
   return {
     fl7: result.fl7,
-    constants: env.getConstants(),
-    code: code,
     env: env,
+    code: code,
   };
 }
 
@@ -239,7 +238,7 @@ if (process.env.compile !== "0") {
 } else {
   const fl7 = result.fl7;
   const util = result.fl7.util;
-  const constants = result.constants;
+  const constants = result.env.getConstants();
   const stream = util.toStreamer(eval(result.code)).start();
 
   if (process.env.output_json !== "0") {
