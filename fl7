@@ -1,3 +1,4 @@
+%%writefile /usr/local/bin/fluorite-7/fl7
 #!/usr/bin/env bash
 
 usage() {
@@ -208,15 +209,12 @@ function parse(source) {
 
       const source = Buffer.concat(buffers, length).toString('utf8', 0, length);
 
-      const result = parser.parse(source);
-
-      const codes = result.node.getCodeGetter(globalResult.env);
-      const code = "(function() {\n" + result.fl7c.util.indent(codes[0] + "return " + codes[1] + ";\n") + "}())";
+      const result = parse(source);
 
       const fl7 = globalResult.fl7;
       const util = globalResult.fl7.util;
       const constants = globalResult.env.getConstants();
-      return eval(code);
+      return eval(result.code);
     });
   })());
 
