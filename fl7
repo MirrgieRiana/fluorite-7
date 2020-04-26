@@ -1,4 +1,3 @@
-%%writefile /usr/local/bin/fluorite-7/fl7
 #!/usr/bin/env bash
 
 usage() {
