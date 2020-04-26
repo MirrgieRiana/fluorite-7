@@ -45,79 +45,133 @@ export app_dir
 export NODE_PATH="$NODE_PATH:$app_dir"
 node -e "$(cat << 'END'
 const fs = require("fs");
-const source = process.env.exec;
 const parser = require(process.env.app_dir + "/fluorite-7.js");
-const result = parser.parse(source);
 
-const env = new result.fl7c.Environment();
-result.loadAliases(env);
+function parse(source) {
 
-const c = (key, value) => {
-  var constantId = env.allocateConstantId();
-  env.setAlias(key, new result.fl7c.FluoriteAliasConstant(constantId));
-  env.setConstant(constantId, value);
-};
-c("IN", (function(){
-  class FluoriteStreamerStdin extends result.fl7.FluoriteStreamer {
+  const result = parser.parse(source);
 
-    constructor () {
-      super();
-    }
+  const env = new result.fl7c.Environment();
+  result.loadAliases(env);
+  const c = (key, value) => {
+    var constantId = env.allocateConstantId();
+    env.setAlias(key, new result.fl7c.FluoriteAliasConstant(constantId));
+    env.setConstant(constantId, value);
+  };
+  c("IN", (function(){
+    class FluoriteStreamerStdin extends result.fl7.FluoriteStreamer {
 
-    start() { // TODO 徐々に読み込む
-      var fd = process.stdin.fd;
-      var strings = [];
-      while (true) {
-        var buffer = new Buffer(4096);
-        var bytesRead;
-        while (true) {
-          try {
-            bytesRead = fs.readSync(fd, buffer, 0, 4096, null);
-          } catch (e) {
-            if (e.code === "EAGAIN") {
-              continue;
-            } else {
-              throw e;
-            }
-          }
-          break;
-        }
-        if (bytesRead === 0) break;
-        strings.push(buffer.toString('utf8', 0, bytesRead));
+      constructor () {
+        super();
       }
-      var input = strings.join("");
-      var inputs = input.split("\n");
-      var i = 0;
-      return {
-        next: () => {
-          if (i >= inputs.length) return undefined;
-          if (i == inputs.length - 1) {
-            if (inputs[i] === "") {
-              i++;
-              return undefined;
+
+      start() { // TODO 徐々に読み込む
+        var fd = process.stdin.fd;
+        var strings = [];
+        while (true) {
+          var buffer = new Buffer(4096);
+          var bytesRead;
+          while (true) {
+            try {
+              bytesRead = fs.readSync(fd, buffer, 0, 4096, null);
+            } catch (e) {
+              if (e.code === "EAGAIN") {
+                continue;
+              } else {
+                throw e;
+              }
             }
+            break;
           }
-          var result = inputs[i];
-          i++;
-          return result;
-        },
-      };
+          if (bytesRead === 0) break;
+          strings.push(buffer.toString('utf8', 0, bytesRead));
+        }
+        var input = strings.join("");
+        var inputs = input.split("\n");
+        var i = 0;
+        return {
+          next: () => {
+            if (i >= inputs.length) return undefined;
+            if (i == inputs.length - 1) {
+              if (inputs[i] === "") {
+                i++;
+                return undefined;
+              }
+            }
+            var result = inputs[i];
+            i++;
+            return result;
+          },
+        };
+      }
+
     }
+    return new FluoriteStreamerStdin();
+  })());
+  c("READ", (function(){
+    class FluoriteStreamerRead extends result.fl7.FluoriteStreamer {
 
-  }
-  return new FluoriteStreamerStdin();
-})());
-c("READ", (function(){
-  class FluoriteStreamerRead extends result.fl7.FluoriteStreamer {
+      constructor (filename) {
+        super();
+        this._filename = filename;
+      }
 
-    constructor (filename) {
-      super();
-      this._filename = filename;
+      start() { // TODO 徐々に読み込む
+        var fd = fs.openSync(this._filename, "r");
+        var strings = [];
+        while (true) {
+          var buffer = new Buffer(4096);
+          var bytesRead;
+          while (true) {
+            try {
+              bytesRead = fs.readSync(fd, buffer, 0, 4096, null);
+            } catch (e) {
+              if (e.code === "EAGAIN") {
+                continue;
+              } else {
+                throw e;
+              }
+            }
+            break;
+          }
+          if (bytesRead === 0) break;
+          strings.push(buffer.toString('utf8', 0, bytesRead));
+        }
+        fs.closeSync(fd);
+        var input = strings.join("");
+        var inputs = input.split("\n");
+        var i = 0;
+        return {
+          next: () => {
+            if (i >= inputs.length) return undefined;
+            if (i == inputs.length - 1) {
+              if (inputs[i] === "") {
+                i++;
+                return undefined;
+              }
+            }
+            var result = inputs[i];
+            i++;
+            return result;
+          },
+        };
+      }
+
     }
+    return new result.fl7.FluoriteFunction(args => {
+      var filename = args[0];
+      if (filename === undefined) throw new Error("Illegal argument");
+      return new FluoriteStreamerRead(result.fl7.util.toString(filename));
+    });
+  })());
+  c("REQUIRE", (function(){
+    return new result.fl7.FluoriteFunction(args => {
+      var filename = args[0];
+      if (filename === undefined) throw new Error("Illegal argument");
 
-    start() { // TODO 徐々に読み込む
-      var fd = fs.openSync(this._filename, "r");
-      var strings = [];
+      var fd = fs.openSync(filename, "r");
+      var buffers = [];
+      var length = 0;
       while (true) {
         var buffer = new Buffer(4096);
         var bytesRead;
@@ -134,46 +188,41 @@ c("READ", (function(){
           break;
         }
         if (bytesRead === 0) break;
-        strings.push(buffer.toString('utf8', 0, bytesRead));
+        buffers.push(buffer);
+	length += bytesRead;
       }
       fs.closeSync(fd);
-      var input = strings.join("");
-      var inputs = input.split("\n");
-      var i = 0;
-      return {
-        next: () => {
-          if (i >= inputs.length) return undefined;
-          if (i == inputs.length - 1) {
-            if (inputs[i] === "") {
-              i++;
-              return undefined;
-            }
-          }
-          var result = inputs[i];
-          i++;
-          return result;
-        },
-      };
-    }
 
-  }
-  return new result.fl7.FluoriteFunction(args => {
-    var filename = args[0];
-    if (filename === undefined) throw new Error("Illegal argument");
-    return new FluoriteStreamerRead(filename);
-  });
-})());
+      const source = Buffer.concat(buffers, length).toString('utf8', 0, length);
 
-const codes = result.node.getCodeGetter(env);
-const code = "(function() {\n" + result.fl7c.util.indent(codes[0] + "return " + codes[1] + ";\n") + "}())";
+      const result = parse(source);
+
+      const fl7 = result.fl7;
+      const util = result.fl7.util;
+      const constants = result.constants;
+      return eval(result.code);
+    });
+  })());
+
+  const codes = result.node.getCodeGetter(env);
+  const code = "(function() {\n" + result.fl7c.util.indent(codes[0] + "return " + codes[1] + ";\n") + "}())";
+
+  return {
+    fl7: result.fl7,
+    constants: env.getConstants(),
+    code: code,
+  };
+}
+
+let result = parse(process.env.exec);
 
 if (process.env.compile !== "0") {
-  console.log(code);
+  console.log(result.code);
 } else {
-  const util = result.fl7.util;
   const fl7 = result.fl7;
-  const constants = env.getConstants();
-  const stream = util.toStreamer(eval(code)).start();
+  const util = result.fl7.util;
+  const constants = result.constants;
+  const stream = util.toStreamer(eval(result.code)).start();
 
   if (process.env.output_json !== "0") {
     while (true) {
