@@ -3295,7 +3295,7 @@ CharacterIdentifierBody
   = [a-zA-Z_0-9\u0080-\uFFFF]
 
 Identifier
-  = CharacterIdentifierHead CharacterIdentifierBody*
+  = $(CharacterIdentifierHead CharacterIdentifierBody*)
 
 //
 
@@ -3389,12 +3389,12 @@ TokenEmbeddedString
   = "\"" main:TokenEmbeddedStringSection* "\"" { return main; }
 
 TokenHereDocument "HereDocument"
-  = "<<" _ "'" delimiter:$Identifier "'" LB
+  = "<<" _ "'" delimiter:Identifier "'" lb:LB
     main:(
-      !(LB delimiter2:$Identifier LB &{ return delimiter === delimiter2; }) main:. { return main; }
+      !(LB delimiter2:Identifier (ex:$[^\r\n]* &{ return ex === ""; }) &{ return delimiter === delimiter2; }) main:. { return main; }
     )*
-    (LB delimiter2:$Identifier LB &{ return delimiter === delimiter2; })
-    { return new fl7c.FluoriteNodeTokenString(location(), main.join("0"), text()); }
+    (LB delimiter2:Identifier (ex:$[^\r\n]* &{ return ex === ""; }) &{ return delimiter === delimiter2; })
+  { return new fl7c.FluoriteNodeTokenString(location(), main.join(""), text() + lb); }
 
 //
 
