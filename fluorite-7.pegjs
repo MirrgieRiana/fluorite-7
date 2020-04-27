@@ -2301,6 +2301,12 @@
           ];
         }
       });
+      m("_LITERAL_HERE_DOCUMENT", e => {
+        if (e.arg(0) instanceof fl7c.FluoriteNodeTokenString) {
+          return inline("(" + JSON.stringify(e.arg(0).getValue()) + ")");
+        }
+        throw new Error("Illegal argument");
+      });
       m("_STRING_FORMAT", e => {
 
         var format = undefined;
@@ -3277,11 +3283,21 @@ _ "Comment"
     / NestedComment
   )*
 
+LB
+  = "\r\n"
+  / "\r"
+  / "\n"
+
 CharacterIdentifierHead
   = [a-zA-Z_\u0080-\uFFFF]
 
 CharacterIdentifierBody
   = [a-zA-Z_0-9\u0080-\uFFFF]
+
+Identifier
+  = CharacterIdentifierHead CharacterIdentifierBody*
+
+//
 
 TokenInteger "Integer"
   = [0-9] [0-9_]* { return new fl7c.FluoriteNodeTokenInteger(location(), parseInt(text().replace(/_/g, ""), 10), text()); }
@@ -3307,7 +3323,7 @@ TokenFloat "Float"
   ) { return new fl7c.FluoriteNodeTokenFloat(location(), parseFloat(text().replace(/_/g, "")), text()); }
 
 TokenIdentifier "Identifier"
-  = CharacterIdentifierHead CharacterIdentifierBody* { return new fl7c.FluoriteNodeTokenIdentifier(location(), text(), text()); }
+  = Identifier { return new fl7c.FluoriteNodeTokenIdentifier(location(), text(), text()); }
 
 TokenPatternStringCharacter
   = [^/\\]
@@ -3372,6 +3388,14 @@ TokenEmbeddedStringSection
 TokenEmbeddedString
   = "\"" main:TokenEmbeddedStringSection* "\"" { return main; }
 
+TokenHereDocument "HereDocument"
+  = "<<" _ "'" delimiter:$Identifier "'" LB
+    main:(
+      !(LB delimiter2:$Identifier LB &{ return delimiter === delimiter2; }) main:. { return main; }
+    )*
+    (LB delimiter2:$Identifier LB &{ return delimiter === delimiter2; })
+    { return new fl7c.FluoriteNodeTokenString(location(), main.join("0"), text()); }
+
 //
 
 LiteralInteger
@@ -3395,6 +3419,9 @@ LiteralString
 LiteralEmbeddedString
   = main:TokenEmbeddedString { return new fl7c.FluoriteNodeMacro(location(), "_LITERAL_EMBEDDED_STRING", main); }
 
+LiteralHereDocument
+  = main:TokenHereDocument { return new fl7c.FluoriteNodeMacro(location(), "_LITERAL_HERE_DOCUMENT", [main]); }
+
 Literal
   = LiteralFloat
   / LiteralBasedInteger
@@ -3403,6 +3430,7 @@ Literal
   / LiteralPatternString
   / LiteralString
   / LiteralEmbeddedString
+  / LiteralHereDocument
 
 //
 
