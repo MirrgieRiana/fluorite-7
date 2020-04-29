@@ -1310,7 +1310,11 @@
         }
         if (container instanceof FluoriteObject) {
           item = util.toString(item);
-          return Object.getOwnPropertyDescriptor(container.map, item) !== undefined;
+          var values = Object.values(container.map);
+          for (var i = 0; i < values.length; i++) {
+            if (util.equal(item, values[i])) return true;
+          }
+          return false;
         }
         if (typeof container === 'string' || container instanceof String) {
           item = util.toString(item);
@@ -1319,6 +1323,26 @@
         if (Number.isFinite(container)) {
           item = util.toString(item);
           return String(container).includes(item);
+        }
+        throw new Error("Illegal argument: " + item + ", " + container);
+      },
+
+      containedKey: function(item, container) {
+        if (container instanceof Array) {
+          item = util.toNumber(item);
+          return item >= 0 && item < container.length;
+        }
+        if (container instanceof FluoriteObject) {
+          item = util.toString(item);
+          return Object.getOwnPropertyDescriptor(container.map, item) !== undefined;
+        }
+        if (typeof container === 'string' || container instanceof String) {
+          item = util.toNumber(item);
+          return item >= 0 && item < container.length;
+        }
+        if (Number.isFinite(container)) {
+          item = util.toNumber(item);
+          return item >= 0 && item < String(container).length;
         }
         throw new Error("Illegal argument: " + item + ", " + container);
       },
@@ -2588,6 +2612,7 @@
           "(util.regexpFind(" + codesLeft[1] + ", " + codesRight[1] + "))",
         ];
       });
+      m("_ATSIGN2", e => wrap2_01(e, (c0, c1) => "(util.containedKey(" + c0 + ", " + c1 + "))"));
       m("_ATSIGN", e => wrap2_01(e, (c0, c1) => "(util.contained(" + c0 + ", " + c1 + "))"));
       m("_AMPERSAND2", e => {
         var variable = "v_" + e.pc().allocateVariableId();
@@ -3627,6 +3652,7 @@ Compare
     / "!==" { return [location(), "_EXCLAMATION_EQUAL2"]; }
     / "!=" { return [location(), "_EXCLAMATION_EQUAL"]; }
     / "=~" { return [location(), "_EQUAL_TILDE"]; }
+    / "@@" { return [location(), "_ATSIGN2"]; }
     / "@" { return [location(), "_ATSIGN"]; }
   ) _ Spaceship)* {
     var result = head;
