@@ -2244,6 +2244,18 @@
           value: args[1],
         });
       }));
+      c("KEYS", new fl7.FluoriteFunction(args => {
+        if (args[0] instanceof fl7.FluoriteObject) {
+          return util.toStreamFromValues(Object.keys(args[0].map));
+        }
+        throw new Error("Illegal argument");
+      }));
+      c("VALUES", new fl7.FluoriteFunction(args => {
+        if (args[0] instanceof fl7.FluoriteObject) {
+          return util.toStreamFromValues(Object.values(args[0].map));
+        }
+        throw new Error("Illegal argument");
+      }));
       m("_LITERAL_INTEGER", e => {
         if (e.arg(0) instanceof fl7c.FluoriteNodeTokenInteger) {
           return inline("(" + e.arg(0).getValue() + ")");
