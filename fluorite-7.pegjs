@@ -310,6 +310,19 @@
 
     }
 
+    class FluoriteNodeTokenPattern extends FluoriteNodeToken {
+
+      constructor(location, value, option, source) {
+        super(location, value, source);
+        this._option = option;
+      }
+
+      getOption() {
+        return this._option;
+      }
+
+    }
+
     class FluoriteNodeTokenFormat extends FluoriteNodeToken {
 
       constructor(location, value, source) {
@@ -617,6 +630,7 @@
       FluoriteNodeTokenFloat,
       FluoriteNodeTokenIdentifier,
       FluoriteNodeTokenString,
+      FluoriteNodeTokenPattern,
       FluoriteNodeTokenFormat,
       FluoriteNodeMacro,
       FluoriteAlias,
@@ -1064,6 +1078,36 @@
 
     //
 
+    class FluoriteRegExpProvider extends FluoriteValue {
+
+      constructor(pattern, option) {
+        super();
+        this._pattern = pattern;
+        this._option = option;
+      }
+
+      create() {
+        var option = "";
+        if (this._option.includes("i")) option += "i";
+        if (this._option.includes("s")) option += "s";
+        if (this._option.includes("m")) option += "m";
+        if (this._option.includes("u")) option += "u";
+        if (this._option.includes("g")) option += "g";
+        return new RegExp(this._pattern, option);
+      }
+
+      isGlobal() {
+        return this._option.includes("g");
+      }
+
+      toString() {
+        return "" + this._pattern;
+      }
+
+    }
+
+    //
+
     var util = {
 
       toNumberOrUndefined: function(value) {
@@ -1347,10 +1391,34 @@
         throw new Error("Illegal argument: " + item + ", " + container);
       },
 
-      regexpFind: function(string, regex) { // TODO 正規表現オブジェクト
-        string = util.toString(string);
-        regex = util.toString(regex);
-        return new RegExp(regex).exec(string);
+      regexpFind: function(string, regexp) {
+        if (regexp instanceof FluoriteRegExpProvider) {
+          string = util.toString(string);
+          var regexp2 = regexp.create();
+          if (!regexp.isGlobal()) {
+            return regexp2.exec(string);
+          } else {
+            class FluoriteStreamerFindAll extends FluoriteStreamer {
+
+              constructor () {
+                super();
+              }
+
+              start() {
+                return {
+                  next: () => {
+                    var res = regexp2.exec(string);
+                    if (res === null) return undefined;
+                    return res;
+                  },
+                };
+              }
+
+            }
+            return new FluoriteStreamerFindAll();
+          }
+        }
+        throw new Error("Illegal argument: " + string + ", " + regexp);
       },
 
       //
@@ -1569,6 +1637,7 @@
       FluoriteStreamerScalar,
       FluoriteFunction,
       FluoriteObject,
+      FluoriteRegExpProvider,
       util,
     };
   })();
@@ -2300,8 +2369,8 @@
         throw new Error("Illegal argument");
       });
       m("_LITERAL_PATTERN_STRING", e => {
-        if (e.arg(0) instanceof fl7c.FluoriteNodeTokenString) {
-          return inline("(" + JSON.stringify(e.arg(0).getValue()) + ")");
+        if (e.arg(0) instanceof fl7c.FluoriteNodeTokenPattern) {
+          return inline("(new fl7.FluoriteRegExpProvider(" + JSON.stringify(e.arg(0).getValue()) + ", " + JSON.stringify(e.arg(0).getOption()) + "))");
         }
         throw new Error("Illegal argument");
       });
@@ -3368,7 +3437,7 @@ TokenPatternStringCharacter
   / "\\" "/" { return "/"; }
 
 TokenPatternString "PatternString"
-  = "/" main:TokenPatternStringCharacter* "/" { return new fl7c.FluoriteNodeTokenString(location(), main.join(""), text()); }
+  = "/" main:TokenPatternStringCharacter* "/" option:$[a-z]* { return new fl7c.FluoriteNodeTokenPattern(location(), main.join(""), option, text()); }
 
 TokenStringCharacter
   = [^'\\]
