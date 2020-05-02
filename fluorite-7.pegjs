@@ -693,6 +693,22 @@
         return actual === this;
       }
 
+      plus(b) {
+        return undefined;
+      }
+
+      minus(b) {
+        return undefined;
+      }
+
+      asterisk(b) {
+        return undefined;
+      }
+
+      slash(b) {
+        return undefined;
+      }
+
     }
 
     //
@@ -1062,6 +1078,30 @@
         return false;
       }
 
+      plus(b) {
+        var res = util.getValueFromObject(this, "PLUS");
+        if (res !== null) return util.call(res, [this, b]);
+        return super.plus(b);
+      }
+
+      minus(b) {
+        var res = util.getValueFromObject(this, "MINUS");
+        if (res !== null) return util.call(res, [this, b]);
+        return super.minus(b);
+      }
+
+      asterisk(b) {
+        var res = util.getValueFromObject(this, "ASTERISK");
+        if (res !== null) return util.call(res, [this, b]);
+        return super.asterisk(b);
+      }
+
+      slash(b) {
+        var res = util.getValueFromObject(this, "SLASH");
+        if (res !== null) return util.call(res, [this, b]);
+        return super.slash(b);
+      }
+
     }
 
     class FluoriteObjectInitializer {
@@ -1184,7 +1224,7 @@
         return util.toStream(value);
       },
 
-      add: function(a, b) {
+      plus: function(a, b) {
         if (Number.isFinite(a)) {
           return a + util.toNumber(b);
         }
@@ -1199,10 +1239,25 @@
         if (typeof a === 'string' || a instanceof String) {
           return a + util.toString(b);
         }
+        if (a instanceof FluoriteValue) {
+          var result = a.plus(b);
+          if (result !== undefined) return result;
+        }
         throw new Error("Illegal argument: " + a + ", " + b);
       },
 
-      mul: function(a, b) {
+      minus: function(a, b) {
+        if (Number.isFinite(a)) {
+          return a - util.toNumber(b);
+        }
+        if (a instanceof FluoriteValue) {
+          var result = a.minus(b);
+          if (result !== undefined) return result;
+        }
+        throw new Error("Illegal argument: " + a + ", " + b);
+      },
+
+      asterisk: function(a, b) {
         if (Number.isFinite(a)) {
           return a * util.toNumber(b);
         }
@@ -1216,6 +1271,21 @@
         }
         if (typeof a === 'string' || a instanceof String) {
           return a.repeat(util.toNumber(b));
+        }
+        if (a instanceof FluoriteValue) {
+          var result = a.asterisk(b);
+          if (result !== undefined) return result;
+        }
+        throw new Error("Illegal argument: " + a + ", " + b);
+      },
+
+      slash: function(a, b) {
+        if (Number.isFinite(a)) {
+          return a / util.toNumber(b);
+        }
+        if (a instanceof FluoriteValue) {
+          var result = a.slash(b);
+          if (result !== undefined) return result;
         }
         throw new Error("Illegal argument: " + a + ", " + b);
       },
@@ -2649,11 +2719,11 @@
       });
       m("_LEFT_DOLLAR_HASH", e => wrap_0(e, c => "(util.getLength(" + c + "))"));
       m("_CIRCUMFLEX", e => wrap2_01(e, (c0, c1) => "(Math.pow(" + c0 + ", " + c1 + "))"));
-      m("_ASTERISK", e => wrap2_01(e, (c0, c1) => "(util.mul(" + c0 + ", " + c1 + "))"));
-      m("_SLASH", e => wrap2_01(e, (c0, c1) => "(" + c0 + " / " + c1 + ")"));
+      m("_ASTERISK", e => wrap2_01(e, (c0, c1) => "(util.asterisk(" + c0 + ", " + c1 + "))"));
+      m("_SLASH", e => wrap2_01(e, (c0, c1) => "(util.slash(" + c0 + ", " + c1 + "))"));
       m("_PERCENT", e => wrap2_01(e, (c0, c1) => "(" + c0 + " % " + c1 + ")"));
-      m("_PLUS", e => wrap2_01(e, (c0, c1) => "(util.add(" + c0 + ", " + c1 + "))"));
-      m("_MINUS", e => wrap2_01(e, (c0, c1) => "(" + c0 + " - " + c1 + ")"));
+      m("_PLUS", e => wrap2_01(e, (c0, c1) => "(util.plus(" + c0 + ", " + c1 + "))"));
+      m("_MINUS", e => wrap2_01(e, (c0, c1) => "(util.minus(" + c0 + ", " + c1 + "))"));
       m("_AMPERSAND", e => wrap2_01(e, (c0, c1) => "(util.toString(" + c0 + ") + util.toString(" + c1 + "))"));
       m("_TILDE", e => wrap2_01(e, (c0, c1) => "(util.rangeOpened(" + c0 + ", " + c1 + "))"));
       m("_PERIOD2", e => wrap2_01(e, (c0, c1) => "(util.rangeClosed(" + c0 + ", " + c1 + "))"));
