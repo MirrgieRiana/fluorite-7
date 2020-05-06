@@ -1526,6 +1526,13 @@
         if (array instanceof FluoriteValue) {
           return array.getStream();
         }
+        if (Number.isFinite(array)) {
+          array = String(array);
+          return util.toStreamFromArray(array.split(""));
+        }
+        if (typeof array === 'string' || array instanceof String) {
+          return util.toStreamFromArray(array.split(""));
+        }
         throw new Error("Illegal argument: " + array); // TODO utilの中のエラーを全部FluRuErrに
       },
 
