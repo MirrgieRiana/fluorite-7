@@ -2126,15 +2126,22 @@
         return stream.toArray().join(delimiter);
       }));
       c("SPLIT", new fl7.FluoriteFunction(args => {
-        var delimiter = args[1];
-        if (delimiter === undefined) delimiter = ",";
-        delimiter = util.toString(delimiter);
 
         var string = args[0];
         if (string === undefined) throw new Error("Illegal argument");
         string = util.toString(string);
 
-        return util.toStreamFromValues(string.split(delimiter));
+        var delimiter = args[1];
+        if (delimiter === undefined) delimiter = ",";
+        if (delimiter instanceof fl7.FluoriteRegExpProvider) {
+          delimiter = delimiter.create();
+        } else {
+          delimiter = util.toString(delimiter);
+        }
+
+        var limit = args[2];
+
+        return util.toStreamFromValues(string.split(delimiter, limit));
       }));
       c("MAX", new fl7.FluoriteFunction(args => {
 
