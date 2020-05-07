@@ -68,7 +68,7 @@ function parse(source) {
       }
 
       start() { // TODO 徐々に読み込む
-      
+
         var fd = process.stdin.fd;
         var buffers = [];
         var length = 0;
@@ -175,6 +175,30 @@ function parse(source) {
       var filename = args[0];
       if (filename === undefined) throw new Error("Illegal argument");
       return new FluoriteStreamerRead(result.fl7.util.toString(filename));
+    });
+  })());
+  c("WRITE", (function(){
+    return new result.fl7.FluoriteFunction(args => {
+
+      var streamer = args[0];
+      if (streamer === undefined) throw new Error("Illegal argument");
+      streamer = result.fl7.util.toStream(streamer);
+
+      var filename = args[1];
+      if (filename === undefined) throw new Error("Illegal argument");
+      filename = result.fl7.util.toString(filename);
+
+      const fd = fs.openSync(filename, "w");
+      const stream = streamer.start();
+      while (true) {
+        const next = stream.next();
+        if (next === undefined) break;
+        fs.writeSync(fd, result.fl7.util.toString(next));
+        fs.writeSync(fd, "\n");
+      }
+      fs.closeSync(fd);
+
+      return null;
     });
   })());
   c("REQUIRE", (function(){
