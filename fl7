@@ -180,13 +180,13 @@ function parse(source) {
   c("WRITE", (function(){
     return new result.fl7.FluoriteFunction(args => {
 
-      var streamer = args[0];
-      if (streamer === undefined) throw new Error("Illegal argument");
-      streamer = result.fl7.util.toStream(streamer);
-
-      var filename = args[1];
+      var filename = args[0];
       if (filename === undefined) throw new Error("Illegal argument");
       filename = result.fl7.util.toString(filename);
+
+      var streamer = args[1];
+      if (streamer === undefined) throw new Error("Illegal argument");
+      streamer = result.fl7.util.toStream(streamer);
 
       const fd = fs.openSync(filename, "w");
       const stream = streamer.start();
