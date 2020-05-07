@@ -1315,10 +1315,6 @@
         throw new Error("Illegal argument: " + value);
       },
 
-      writeAsJson: function(value, out) {
-        out(JSON.stringify(value)); // TODO ストリーム方式に
-      },
-
       format: function(format, value) {
 
         var sign = undefined;
@@ -2349,11 +2345,20 @@
         return util.toStreamFromValues(array.map(item => item[1]));
       }));
       c("JSON", new fl7.FluoriteFunction(args => {
+
         var value = args[0];
         if (value === undefined) throw new Error("Illegal argument");
-        var outputs = [];
-        util.writeAsJson(value, string => outputs[outputs.length] = string);
-        return outputs.join();
+
+        var indent = args[1];
+        if (indent === undefined) {
+          indent = null;
+        } else if (Number.isFinite(indent)) {
+        } else if (typeof indent === 'string' || indent instanceof String) {
+        } else {
+          throw new Error("Illegal argument");
+        }
+
+        return JSON.stringify(value, null, indent);
       }));
       c("FROM_JSON", new fl7.FluoriteFunction(args => {
         var value = args[0];
