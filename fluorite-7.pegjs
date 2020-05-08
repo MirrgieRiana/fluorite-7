@@ -709,6 +709,10 @@
         return undefined;
       }
 
+      setValue(index, value) {
+        throw new FluoriteRuntimeError("Not Implemented");
+      }
+
     }
 
     //
@@ -720,7 +724,7 @@
       }
 
       start() {
-          throw new FluoriteRuntimeError("Not Implemented");
+        throw new FluoriteRuntimeError("Not Implemented");
       }
 
       toArray() {
@@ -1100,6 +1104,10 @@
         var res = util.getValueFromObject(this, "SLASH");
         if (res !== null) return util.call(res, [this, b]);
         return super.slash(b);
+      }
+
+      setValue(index, value) {
+        this.map[util.toString(index)] = value;
       }
 
     }
@@ -1570,10 +1578,10 @@
           if (index < 0) index = array.length + index;
           return array.charAt(index);
         }
-        if (array instanceof FluoriteObject) {
-          return util.getOwnValueFromObject(array, util.toString(index));
-        }
         */
+        if (array instanceof FluoriteObject) {
+          return array.setValue(index, value);
+        }
         throw new Error("Illegal argument: " + array + ", " + index);
       },
 
@@ -2578,6 +2586,15 @@
         if (key === undefined) throw new Error("Illegal member access key");
 
         return wrap(e.pc(), nodeObject, c => "(util.getValueFromObject(" + c + ", " + JSON.stringify(key) + "))");
+      });
+      m("_SET_PERIOD", (e, code) => {
+        var codesLeft = e.arg(0).getCodeGetter(e.pc());
+        var codesRight = e.arg(1).getCodeGetter(e.pc());
+        return [
+          codesLeft[0] +
+          codesRight[0] +
+          "util.setToArray(" + codesLeft[1] + ", " + codesRight[1] + ", " + code + ");\n",
+        ];
       });
       m("_COLON2", e => {
 
