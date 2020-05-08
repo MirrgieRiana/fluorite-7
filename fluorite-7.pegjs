@@ -2588,12 +2588,23 @@
         return wrap(e.pc(), nodeObject, c => "(util.getValueFromObject(" + c + ", " + JSON.stringify(key) + "))");
       });
       m("_SET_PERIOD", (e, code) => {
+
         var codesLeft = e.arg(0).getCodeGetter(e.pc());
-        var codesRight = e.arg(1).getCodeGetter(e.pc());
+
+        var nodeKey = e.arg(1);
+        var key = undefined;
+        if (nodeKey instanceof fl7c.FluoriteNodeMacro) {
+          if (nodeKey.getKey() === "_LITERAL_IDENTIFIER") {
+            if (nodeKey.getArgument(0) instanceof fl7c.FluoriteNodeTokenIdentifier) {
+              key = nodeKey.getArgument(0).getValue();
+            }
+          }
+        }
+        if (key === undefined) throw new Error("Illegal member access key");
+
         return [
           codesLeft[0] +
-          codesRight[0] +
-          "util.setToArray(" + codesLeft[1] + ", " + codesRight[1] + ", " + code + ");\n",
+          "util.setToArray(" + codesLeft[1] + ", " + JSON.stringify(key) + ", " + code + ");\n",
         ];
       });
       m("_COLON2", e => {
