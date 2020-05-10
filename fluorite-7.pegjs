@@ -2371,7 +2371,7 @@
             var array2 = array[i];
             var a = array2[0];
             var b = next;
-            if (matcher != null ? util.call(matcher, [a, b]) : util.equal(a, b)) {
+            if (matcher != null ? util.call(matcher, [b, a]) : util.equal(b, a)) {
               array2[array2.length] = next;
               continue a;
             }
@@ -2400,7 +2400,7 @@
             var array2 = array[i];
             var a = util.call(keySelector, [array2[0]]);
             var b = util.call(keySelector, [next]);
-            if (util.equal(a, b)) {
+            if (util.equal(b, a)) {
               array2[array2.length] = next;
               continue a;
             }
