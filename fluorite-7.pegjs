@@ -2371,7 +2371,7 @@
             var array2 = array[i];
             var a = array2[0];
             var b = next;
-            if (matcher != null ? util.call(matcher, [b, a]) : util.equal(b, a)) {
+            if (matcher != null ? util.call(matcher, [a, b]) : util.equal(b, a)) {
               array2[array2.length] = next;
               continue a;
             }
