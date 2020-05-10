@@ -2352,6 +2352,64 @@
 
         return util.toStreamFromValues(array.map(item => item[1]));
       }));
+      c("GROUP", new fl7.FluoriteFunction(args => {
+
+        var streamer = args[0];
+        if (streamer === undefined) throw new Error("Illegal argument");
+        streamer = util.toStream(streamer);
+
+        var matcher = args[1];
+        if (matcher === undefined) matcher = null;
+
+        var array = [];
+        var stream = streamer.start();
+        a:
+        while (true) {
+          var next = stream.next();
+          if (next === undefined) break;
+          for (var i = 0; i < array.length; i++) {
+            var array2 = array[i];
+            var a = array2[0];
+            var b = next;
+            if (matcher != null ? util.call(matcher, [a, b]) : util.equal(a, b)) {
+              array2[array2.length] = next;
+              continue a;
+            }
+          }
+          array[array.length] = [next];
+        }
+
+        return array;
+      }));
+      c("GROUP_BY", new fl7.FluoriteFunction(args => {
+
+        var streamer = args[0];
+        if (streamer === undefined) throw new Error("Illegal argument");
+        streamer = util.toStream(streamer);
+
+        var keySelector = args[1];
+        if (keySelector === undefined) throw new Error("Illegal argument");
+
+        var array = [];
+        var stream = streamer.start();
+        a:
+        while (true) {
+          var next = stream.next();
+          if (next === undefined) break;
+          for (var i = 0; i < array.length; i++) {
+            var array2 = array[i];
+            var a = util.call(keySelector, [array2[0]]);
+            var b = util.call(keySelector, [next]);
+            if (util.equal(a, b)) {
+              array2[array2.length] = next;
+              continue a;
+            }
+          }
+          array[array.length] = [next];
+        }
+
+        return array;
+      }));
       c("JSON", new fl7.FluoriteFunction(args => {
 
         var value = args[0];
