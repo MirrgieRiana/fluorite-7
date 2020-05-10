@@ -2379,7 +2379,7 @@
           array[array.length] = [next];
         }
 
-        return array;
+        return util.toStreamFromValues(array);
       }));
       c("GROUP_BY", new fl7.FluoriteFunction(args => {
 
@@ -2408,7 +2408,7 @@
           array[array.length] = [next];
         }
 
-        return array;
+        return util.toStreamFromValues(array);
       }));
       c("JSON", new fl7.FluoriteFunction(args => {
 
