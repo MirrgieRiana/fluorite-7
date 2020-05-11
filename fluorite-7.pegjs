@@ -713,6 +713,10 @@
         throw new FluoriteRuntimeError("Not Implemented");
       }
 
+      match(value) {
+        throw new FluoriteRuntimeError("Not Implemented");
+      }
+
     }
 
     //
@@ -1110,6 +1114,12 @@
         this.map[util.toString(index)] = value;
       }
 
+      match(value) {
+        var res = util.getValueFromObject(this, "MATCH");
+        if (res !== null) return util.call(res, [this, value]);
+        return super.match(value);
+      }
+
     }
 
     class FluoriteObjectInitializer {
@@ -1146,6 +1156,33 @@
 
       isGlobal() {
         return this._option.includes("g");
+      }
+
+      match(value) {
+        value = util.toString(value);
+        var regexp = this.create();
+        if (!this.isGlobal()) {
+          return regexp.exec(value);
+        } else {
+          class FluoriteStreamerFindAll extends FluoriteStreamer {
+
+            constructor () {
+              super();
+            }
+
+            start() {
+              return {
+                next: () => {
+                  var res = regexp.exec(value);
+                  if (res === null) return undefined;
+                  return res;
+                },
+              };
+            }
+
+          }
+          return new FluoriteStreamerFindAll();
+        }
       }
 
       toString() {
@@ -1465,34 +1502,14 @@
         throw new Error("Illegal argument: " + item + ", " + container);
       },
 
-      regexpFind: function(string, regexp) {
-        if (regexp instanceof FluoriteRegExpProvider) {
-          string = util.toString(string);
-          var regexp2 = regexp.create();
-          if (!regexp.isGlobal()) {
-            return regexp2.exec(string);
-          } else {
-            class FluoriteStreamerFindAll extends FluoriteStreamer {
-
-              constructor () {
-                super();
-              }
-
-              start() {
-                return {
-                  next: () => {
-                    var res = regexp2.exec(string);
-                    if (res === null) return undefined;
-                    return res;
-                  },
-                };
-              }
-
-            }
-            return new FluoriteStreamerFindAll();
-          }
+      match: function(value, predicate) {
+        if (typeof predicate === 'string' || predicate instanceof String) {
+          return new FluoriteRegExpProvider(predicate, "").match(value);
         }
-        throw new Error("Illegal argument: " + string + ", " + regexp);
+        if (predicate instanceof FluoriteValue) {
+          return predicate.match(value);
+        }
+        throw new Error("Illegal argument: " + value + ", " + predicate);
       },
 
       //
@@ -2859,15 +2876,7 @@
       m("_EXCLAMATION_EQUAL", e => wrap2_01(e, (c0, c1) => "(!util.equal(" + c0 + ", " + c1 + "))"));
       m("_EQUAL3", e => wrap2_01(e, (c0, c1) => "(util.equalStict(" + c0 + ", " + c1 + "))"));
       m("_EXCLAMATION_EQUAL2", e => wrap2_01(e, (c0, c1) => "(!util.equalStict(" + c0 + ", " + c1 + "))"));
-      m("_EQUAL_TILDE", e => { // TODO 右辺が文字列リテラルの場合は定数化する
-        var codesLeft = e.arg(0).getCodeGetter(e.pc());
-        var codesRight = e.arg(1).getCodeGetter(e.pc());
-        return [
-          codesLeft[0] +
-          codesRight[0],
-          "(util.regexpFind(" + codesLeft[1] + ", " + codesRight[1] + "))",
-        ];
-      });
+      m("_EQUAL_TILDE", e => wrap2_01(e, (c0, c1) => "(util.match(" + c0 + ", " + c1 + "))"));
       m("_ATSIGN2", e => wrap2_01(e, (c0, c1) => "(util.containedKey(" + c0 + ", " + c1 + "))"));
       m("_ATSIGN", e => wrap2_01(e, (c0, c1) => "(util.contained(" + c0 + ", " + c1 + "))"));
       m("_AMPERSAND2", e => {
