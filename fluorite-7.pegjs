@@ -717,6 +717,10 @@
         throw new FluoriteRuntimeError("Not Implemented");
       }
 
+      call(args) {
+        throw new FluoriteRuntimeError("Not Implemented");
+      }
+
     }
 
     //
@@ -1118,6 +1122,16 @@
         var res = util.getValueFromObject(this, "MATCH");
         if (res !== null) return util.call(res, [this, value]);
         return super.match(value);
+      }
+
+      call(args) {
+        var res = util.getValueFromObject(this, "CALL");
+        if (res !== null) {
+          var args2 = [this];
+          Array.prototype.push.apply(args2, args);
+          return util.call(res, args2);
+        }
+        return super.call(args);
       }
 
     }
@@ -1609,7 +1623,7 @@
       },
 
       call: function(func, args) {
-        if (func instanceof FluoriteFunction) {
+        if (func instanceof FluoriteValue) {
           return func.call(args);
         }
         throw new Error("Cannot call a non-function object: " + func);
