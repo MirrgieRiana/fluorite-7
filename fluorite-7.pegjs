@@ -721,6 +721,10 @@
         throw new FluoriteRuntimeError("Not Implemented");
       }
 
+      getType() {
+        return "UNKNOWN";
+      }
+
     }
 
     //
@@ -781,6 +785,10 @@
           if (!util.equal(nextActual, nextExpected)) return false;
         }
         return true;
+      }
+
+      getType() {
+        return "STREAMER";
       }
 
     }
@@ -1009,6 +1017,10 @@
         return "[FluoriteFunction]";
       }
 
+      getType() {
+        return "FUNCTION";
+      }
+
     }
 
     //
@@ -1134,6 +1146,10 @@
         return super.call(args);
       }
 
+      getType() {
+        return "OBJECT";
+      }
+
     }
 
     class FluoriteObjectInitializer {
@@ -1201,6 +1217,10 @@
 
       toString() {
         return "" + this._pattern;
+      }
+
+      getType() {
+        return "REGEXP";
       }
 
     }
@@ -2537,6 +2557,19 @@
           j += Math.floor(Math.random() * faces) + 1;
         }
         return j;
+      }));
+      c("TYPE", new fl7.FluoriteFunction(args => {
+        if (args.length == 1) {
+          var value = args[0];
+          if (value === null) return "NULL";
+          if (Number.isFinite(value)) return "NUMBER";
+          if (typeof value === 'string' || value instanceof String) return "STRING";
+          if (typeof value === 'boolean') return "BOOLEAN";
+          if (value instanceof Array) return "ARRAY";
+          if (value instanceof fl7.FluoriteValue) return value.getType();
+          return "UNKNOWN";
+        }
+        throw new Error("Illegal argument");
       }));
       m("_LITERAL_INTEGER", e => {
         if (e.arg(0) instanceof fl7c.FluoriteNodeTokenInteger) {
