@@ -2686,10 +2686,21 @@
         };
         var getCodeGetterOfIdentifier = node => {
           if (node instanceof fl7c.FluoriteNodeTokenIdentifier) {
-            var key = "UNIT_" + node.getValue();
-            var alias = e.pc().getAliasOrUndefined(node.getLocation(), key);
-            if (alias === undefined) throw new Error("No such alias '" + key + "'");
-            return alias.getCodeGetter(e.pc(), node.getLocation());
+            a:
+            {
+              var key = "UNIT_" + node.getValue();
+              var alias = e.pc().getAliasOrUndefined(node.getLocation(), key);
+              if (alias === undefined) break a;
+              return alias.getCodeGetter(e.pc(), node.getLocation());
+            }
+            a:
+            {
+              var key = node.getValue();
+              var alias = e.pc().getAliasOrUndefined(node.getLocation(), key);
+              if (alias === undefined) break a;
+              return alias.getCodeGetter(e.pc(), node.getLocation());
+            }
+            throw new Error("No such alias '" + key + "'");
           }
           throw new Error("Illegal argument of identifier: " + node);
         };
