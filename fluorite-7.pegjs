@@ -2511,6 +2511,33 @@
         }
         throw new Error("Illegal argument");
       }));
+      c("UC", new fl7.FluoriteFunction(args => {
+        if (args.length != 1) throw new Error("Illegal argument");
+        return util.toString(args[0]).toUpperCase();
+      }));
+      c("LC", new fl7.FluoriteFunction(args => {
+        if (args.length != 1) throw new Error("Illegal argument");
+        return util.toString(args[0]).toLowerCase();
+      }));
+      c("UNIT_d", new fl7.FluoriteFunction(args => {
+        var count;
+        var faces;
+        if (args.length == 1) {
+          count = util.toNumber(args[0]);
+          faces = 6;
+        } else if (args.length == 2) {
+          count = util.toNumber(args[0]);
+          faces = util.toNumber(args[1]);
+        } else {
+          throw new Error("Illegal argument");
+        }
+
+        var j = 0;
+        for (var i = 0; i < count; i++) {
+          j += Math.floor(Math.random() * faces) + 1;
+        }
+        return j;
+      }));
       m("_LITERAL_INTEGER", e => {
         if (e.arg(0) instanceof fl7c.FluoriteNodeTokenInteger) {
           return inline("(" + e.arg(0).getValue() + ")");
@@ -2609,6 +2636,52 @@
         var node = e.arg(1);
 
         return wrap(e.pc(), node, c => "(util.format(" + JSON.stringify(format) + ", " + c + "))");
+      });
+      m("_COMPOSITE", e => {
+
+        var count = e.node().getArgumentCount();
+        if (count < 1) throw new Error("Illegal argument count: " + count);
+
+        var getCodeGetterOfNumber = node => {
+          if (node instanceof fl7c.FluoriteNodeTokenInteger) {
+            return inline("(" + node.getValue() + ")");
+          }
+          if (node instanceof fl7c.FluoriteNodeTokenFloat) {
+            return inline("(" + node.getValue() + ")");
+          }
+          throw new Error("Illegal argument of number: " + node);
+        };
+        var getCodeGetterOfIdentifier = node => {
+          if (node instanceof fl7c.FluoriteNodeTokenIdentifier) {
+            var key = "UNIT_" + node.getValue();
+            var alias = e.pc().getAliasOrUndefined(node.getLocation(), key);
+            if (alias === undefined) throw new Error("No such alias '" + key + "'");
+            return alias.getCodeGetter(e.pc(), node.getLocation());
+          }
+          throw new Error("Illegal argument of identifier: " + node);
+        };
+        var call = (codeFunction, codesArg) => {
+          return [
+            codeFunction[0] +
+            codesArg.map(code => code[0]).join(""),
+            "(util.call(" + codeFunction[1] + ", [" + codesArg.map(code => code[1]).join(", ") + "]))",
+          ];
+        };
+
+        var codeResult = getCodeGetterOfNumber(e.node().getArgument(0));
+
+        for (var i = 1; i < count; i += 2) {
+          if (i + 1 >= count) {
+            var codeBody = getCodeGetterOfIdentifier(e.node().getArgument(i));
+            codeResult = call(codeBody, [codeResult]);
+          } else {
+            var codeBody = getCodeGetterOfIdentifier(e.node().getArgument(i));
+            var codeTail = getCodeGetterOfNumber(e.node().getArgument(i + 1));
+            codeResult = call(codeBody, [codeResult, codeTail]);
+          }
+        }
+
+        return codeResult;
       });
       m("_ROUND", e => {
 
@@ -3598,6 +3671,9 @@ CharacterIdentifierHead
 CharacterIdentifierBody
   = [a-zA-Z_0-9\u0080-\uFFFF]
 
+CharacterIdentifierNonNumber
+  = [a-zA-Z_\u0080-\uFFFF]
+
 Identifier
   = $(CharacterIdentifierHead CharacterIdentifierBody*)
 
@@ -3770,8 +3846,41 @@ Brackets
     / "{" _ "}" { return [location(), "_EMPTY_CURLY", null]; }
   ) { return new fl7c.FluoriteNodeMacro(main[0], main[1], main[2] != null ? [main[2]] : []); }
 
+TokenCompositeSectionInteger
+  = [0-9]+ { return new fl7c.FluoriteNodeTokenInteger(location(), parseInt(text(), 10), text()); }
+
+TokenCompositeSectionFloat
+  = [0-9]+ [.] [0-9]+ { return new fl7c.FluoriteNodeTokenFloat(location(), parseFloat(text()), text()); }
+
+TokenCompositeSectionIdentifier
+  = main:$CharacterIdentifierNonNumber+ & { return main !== "e" && main !== "E"; } {
+    return new fl7c.FluoriteNodeTokenIdentifier(location(), text(), text());
+  }
+
+Composite "Composite"
+  = head:(
+    (TokenCompositeSectionFloat / TokenCompositeSectionInteger)
+    TokenCompositeSectionIdentifier
+  )
+  body:(
+    (TokenCompositeSectionFloat / TokenCompositeSectionInteger)
+    TokenCompositeSectionIdentifier
+  )*
+  tail:(
+    (TokenCompositeSectionFloat / TokenCompositeSectionInteger)
+  )? {
+    var result = [];
+    Array.prototype.push.apply(result, head);
+    for (var i = 0; i < body.length; i++) {
+      Array.prototype.push.apply(result, body[i]);
+    }
+    if (tail != null) result.push(tail);
+    return new fl7c.FluoriteNodeMacro(location(), "_COMPOSITE", result);
+  }
+
 Factor
-  = Literal
+  = Composite
+  / Literal
   / Brackets
   / Execution
 
