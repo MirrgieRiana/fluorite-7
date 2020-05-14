@@ -2767,14 +2767,76 @@
       });
       m("_EMPTY_ROUND", e => inline("(util.empty())"));
       m("_SQUARE", e => {
+
+        var nodeElements = e.arg(0);
+
+        var nodesElement = [];
+        a:
+        {
+
+          if (nodeElements instanceof fl7c.FluoriteNodeMacro) {
+            if (nodeElements.getKey() === "_SEMICOLON") {
+              for (var i = 0; i < nodeElements.getArgumentCount(); i++) {
+                nodesElement.push(nodeElements.getArgument(i));
+              }
+              break a;
+            }
+          }
+
+          nodesElement.push(nodeElements);
+        }
+
+        var nodesStreamer = [];
+        var entriesAssignment = [];
+        for (var i = 0; i < nodesElement.length; i++) {
+          var nodeElement = nodesElement[i];
+
+          if (nodeElement instanceof fl7c.FluoriteNodeMacro) {
+            if (nodeElement.getKey() === "_COLON") {
+              var nodeKey = nodeElement.getArgument(0);
+              var nodeValue = nodeElement.getArgument(1);
+              if (nodeKey instanceof fl7c.FluoriteNodeMacro) {
+                if (nodeKey.getKey() === "_LITERAL_INTEGER") {
+                  if (nodeKey.getArgument(0) instanceof fl7c.FluoriteNodeTokenInteger) {
+                    entriesAssignment.push([nodeKey.getArgument(0).getValue(), nodeValue]);
+                    continue;
+                  }
+                }
+              }
+              throw new Error("Illegal array assignment element key: " + nodeKey);
+            }
+          }
+
+          if (nodeElement instanceof fl7c.FluoriteNodeMacro) { // TODO
+            if (nodeElement.getKey() === "_EQUAL") {
+              throw new Error("Illegal array element: " + nodeElement);
+            }
+          }
+
+          if (nodeElement instanceof fl7c.FluoriteNodeVoid) {
+            continue;
+          }
+
+          nodesStreamer.push(nodeElement);
+        }
+
         var variable = "v_" + e.pc().allocateVariableId();
         return [
           "const " + variable + " = [];\n" +
-          e.arg(0).getCodeIterator(e.pc(), codeItemOrStreamer => {
-            return functionUnpackStreamer(e.pc(), codeItemOrStreamer, (pc, codeItem) => {
-              return "" + variable + "[" + variable + ".length] = " + codeItem + ";\n";
-            });
-          })[0],
+          nodesStreamer.map(nodeStreamer => {
+            return nodeStreamer.getCodeIterator(e.pc(), codeItemOrStreamer => {
+              return functionUnpackStreamer(e.pc(), codeItemOrStreamer, (pc, codeItem) => {
+                return "" + variable + "[" + variable + ".length] = " + codeItem + ";\n";
+              });
+            })[0];
+          }).join("") +
+          entriesAssignment.map(entryAssignment => {
+            var code = entryAssignment[1].getCodeGetter(e.pc());
+            return (
+              code[0] +
+              "" + variable + "[" + entryAssignment[0] + "] = " + code[1] + ";\n"
+            );
+          }).join(""),
           "(" + variable + ")",
         ];
       });
