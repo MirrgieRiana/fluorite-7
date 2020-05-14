@@ -2834,7 +2834,7 @@
             var code = entryAssignment[1].getCodeGetter(e.pc());
             return (
               code[0] +
-              "" + variable + "[" + entryAssignment[0] + "] = " + code[1] + ";\n"
+              "util.setToArray(" + variable + ", " + entryAssignment[0] + ", " + code[1] + ");\n"
             );
           }).join(""),
           "(" + variable + ")",
