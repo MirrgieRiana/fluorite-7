@@ -3708,6 +3708,7 @@
           ];
         }
       });
+      m("_EMPTY_ROOT", e => inline("(util.empty())"));
     }
   }
 
@@ -3716,7 +3717,10 @@
 //////////////////////////////////////////////////////////////////
 
 RootDemonstration
-  = _ main:Expression _ {
+  = main:
+    ( _ main:Expression _ { return main; }
+    / _ { return new fl7c.FluoriteNodeMacro(location(), "_EMPTY_ROOT", []); }
+  ) {
 
     var pc = new fl7c.Environment();
 
@@ -3750,7 +3754,10 @@ RootDemonstration
   }
 
 Root
-  = _ main:Expression _ { return {
+  = main:
+    ( _ main:Expression _ { return main; }
+    / _ { return new fl7c.FluoriteNodeMacro(location(), "_EMPTY_ROOT", []); }
+  ) { return {
     fl7,
     fl7c,
     loadAliases,
