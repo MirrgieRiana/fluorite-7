@@ -1,6 +1,14 @@
 
 {
 
+  function isNumber(value) {
+    return typeof value === "number";
+  }
+
+  function isString(value) {
+    return typeof value === "string" || value instanceof String;
+  }
+
   var fl7c = (() => {
 
     function getLocationString(location) {
@@ -1231,10 +1239,10 @@
 
       toNumberOrUndefined: function(value) {
         if (value === null) return 0;
-        if (Number.isFinite(value)) return value;
+        if (isNumber(value)) return value;
         if (value === true) return 1;
         if (value === false) return 0;
-        if (typeof value === 'string' || value instanceof String) {
+        if (isString(value)) {
           var result = Number(value);
           if (!Number.isNaN(result)) return result;
         }
@@ -1256,7 +1264,7 @@
         if (value === null) return false;
         if (value === 0) return false;
         if (value === false) return false;
-        if (typeof value === 'string' || value instanceof String) return value.length > 0;
+        if (isString(value)) return value.length > 0;
         if (value instanceof Array) return value.length > 0;
         if (value instanceof FluoriteValue) {
           var result = value.toBoolean();
@@ -1304,7 +1312,7 @@
       },
 
       plus: function(a, b) {
-        if (Number.isFinite(a)) {
+        if (isNumber(a)) {
           return a + util.toNumber(b);
         }
         if (a instanceof Array) {
@@ -1315,7 +1323,7 @@
             return result;
           }
         }
-        if (typeof a === 'string' || a instanceof String) {
+        if (isString(a)) {
           return a + util.toString(b);
         }
         if (a instanceof FluoriteValue) {
@@ -1326,7 +1334,7 @@
       },
 
       minus: function(a, b) {
-        if (Number.isFinite(a)) {
+        if (isNumber(a)) {
           return a - util.toNumber(b);
         }
         if (a instanceof FluoriteValue) {
@@ -1337,7 +1345,7 @@
       },
 
       asterisk: function(a, b) {
-        if (Number.isFinite(a)) {
+        if (isNumber(a)) {
           return a * util.toNumber(b);
         }
         if (a instanceof Array) {
@@ -1348,7 +1356,7 @@
           }
           return result;
         }
-        if (typeof a === 'string' || a instanceof String) {
+        if (isString(a)) {
           return a.repeat(util.toNumber(b));
         }
         if (a instanceof FluoriteValue) {
@@ -1359,7 +1367,7 @@
       },
 
       slash: function(a, b) {
-        if (Number.isFinite(a)) {
+        if (isNumber(a)) {
           return a / util.toNumber(b);
         }
         if (a instanceof FluoriteValue) {
@@ -1375,7 +1383,7 @@
         if (value instanceof Array) {
           return value.slice(start, end);
         }
-        if (typeof value === 'string' || value instanceof String) {
+        if (isString(value)) {
           if (start < 0) start = value.length + start;
           if (end < 0) end = value.length + end;
           if (start > end) return "";
@@ -1388,7 +1396,7 @@
         if (value instanceof Array) {
           return value.length;
         }
-        if (typeof value === 'string' || value instanceof String) {
+        if (isString(value)) {
           return value.length;
         }
         throw new Error("Illegal argument: " + value);
@@ -1451,8 +1459,8 @@
       },
 
       compare: function(a, b)  { // TODO
-        //if (Number.isFinite(a)) {
-        //  if (Number.isFinite(b)) {
+        //if (isNumber(a)) {
+        //  if (isNumber(b)) {
         if (a > b) return 1;
         if (a < b) return -1
         return 0;
@@ -1464,12 +1472,12 @@
       equal: function(actual, expected)  {
         if (actual === expected) return true;
         if (expected === null) return actual === null;
-        if (Number.isFinite(expected)) {
+        if (isNumber(expected)) {
           return util.toNumberOrUndefined(actual) === expected;
         }
         if (expected === true) return util.toBoolean(actual) === true;
         if (expected === false) return util.toBoolean(actual) === false;
-        if (typeof expected === 'string' || expected instanceof String) {
+        if (isString(expected)) {
           return util.toString(actual) === expected;
         }
         if (expected instanceof Array) {
@@ -1505,11 +1513,11 @@
           }
           return false;
         }
-        if (typeof container === 'string' || container instanceof String) {
+        if (isString(container)) {
           item = util.toString(item);
           return container.includes(item);
         }
-        if (Number.isFinite(container)) {
+        if (isNumber(container)) {
           item = util.toString(item);
           return String(container).includes(item);
         }
@@ -1525,11 +1533,11 @@
           item = util.toString(item);
           return Object.getOwnPropertyDescriptor(container.map, item) !== undefined;
         }
-        if (typeof container === 'string' || container instanceof String) {
+        if (isString(container)) {
           item = util.toNumber(item);
           return item >= 0 && item < container.length;
         }
-        if (Number.isFinite(container)) {
+        if (isNumber(container)) {
           item = util.toNumber(item);
           return item >= 0 && item < String(container).length;
         }
@@ -1537,7 +1545,7 @@
       },
 
       match: function(value, predicate) {
-        if (typeof predicate === 'string' || predicate instanceof String) {
+        if (isString(predicate)) {
           return new FluoriteRegExpProvider(predicate, "").match(value);
         }
         if (predicate instanceof FluoriteValue) {
@@ -1581,11 +1589,11 @@
         if (array instanceof FluoriteValue) {
           return array.getStream();
         }
-        if (Number.isFinite(array)) {
+        if (isNumber(array)) {
           array = String(array);
           return util.toStreamFromArray(array.split(""));
         }
-        if (typeof array === 'string' || array instanceof String) {
+        if (isString(array)) {
           return util.toStreamFromArray(array.split(""));
         }
         throw new Error("Illegal argument: " + array); // TODO utilの中のエラーを全部FluRuErrに
@@ -1599,7 +1607,7 @@
           if (result === undefined) return null;
           return result;
         }
-        if (typeof array === 'string' || array instanceof String) {
+        if (isString(array)) {
           index = util.toNumber(index);
           if (index < 0) index = array.length + index;
           return array.charAt(index);
@@ -1624,7 +1632,7 @@
           return;
         }
         /* // TODO 実装
-        if (typeof array === 'string' || array instanceof String) {
+        if (isString(array)) {
           index = util.toNumber(index);
           if (index < 0) index = array.length + index;
           return array.charAt(index);
@@ -2474,8 +2482,8 @@
         var indent = args[1];
         if (indent === undefined) {
           indent = null;
-        } else if (Number.isFinite(indent)) {
-        } else if (typeof indent === 'string' || indent instanceof String) {
+        } else if (isNumber(indent)) {
+        } else if (isString(indent)) {
         } else {
           throw new Error("Illegal argument");
         }
@@ -2567,8 +2575,8 @@
         if (args.length == 1) {
           var value = args[0];
           if (value === null) return "NULL";
-          if (Number.isFinite(value)) return "NUMBER";
-          if (typeof value === 'string' || value instanceof String) return "STRING";
+          if (isNumber(value)) return "NUMBER";
+          if (isString(value)) return "STRING";
           if (typeof value === 'boolean') return "BOOLEAN";
           if (value instanceof Array) return "ARRAY";
           if (value instanceof fl7.FluoriteValue) return value.getType();
