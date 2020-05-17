@@ -2058,6 +2058,8 @@
       };
       c("PI", Math.PI);
       c("E", Math.E);
+      c("NAN", NaN);
+      c("INFINITY", Infinity);
       c("FLOOR", new fl7.FluoriteFunction(args => {
         if (args.length == 1) {
           return Math.floor(util.toNumber(args[0]));
