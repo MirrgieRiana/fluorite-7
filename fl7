@@ -45,6 +45,7 @@ export app_dir
 export NODE_PATH="$NODE_PATH:$app_dir"
 node -e "$(cat << 'END'
 const fs = require("fs");
+const child_process = require("child_process");
 const parser = require(process.env.app_dir + "/fluorite-7.js");
 
 let globalResult;
@@ -201,6 +202,38 @@ function parse(source) {
       return null;
     });
   })());
+  c("EXEC", new result.fl7.FluoriteFunction(args => {
+
+    const filename = args[0];
+    if (filename === undefined) throw new Error("Illegal argument");
+
+    const argsExec = [];
+    {
+      let streamer = args[1];
+      if (streamer === undefined) throw new Error("Illegal argument");
+      streamer = result.fl7.util.toStream(streamer);
+      const stream = streamer.start();
+      while (true) {
+        const next = stream.next();
+        if (next === undefined) break;
+        argsExec[argsExec.length] = result.fl7.util.toString(next);
+      }
+    }
+
+    let stdin = args[2];
+    if (stdin === undefined) throw new Error("Illegal argument");
+    stdin = result.fl7.util.toString(stdin);
+
+    const stringOut = child_process.execFileSync(filename, argsExec, {
+      input: stdin,
+      encoding: "utf8",
+    });
+
+    const arrayOut = stringOut.split("\n");
+    if (arrayOut[arrayOut.length - 1] === "") arrayOut.pop();
+
+    return result.fl7.util.toStreamFromArray(arrayOut);
+  }));
   c("REQUIRE", (function(){
     return new result.fl7.FluoriteFunction(args => {
       var filename = args[0];
