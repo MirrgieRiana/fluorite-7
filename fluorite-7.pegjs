@@ -2171,10 +2171,21 @@
         }
         return result;
       }));
-      c("ARRAY", new fl7.FluoriteFunction(args => {
-        var value = args[0];
-        if (value === undefined) throw new Error("Illegal argument");
-        return util.toStream(value).toArray();
+      c("ARRAY", fl7.util.createObject(null, {
+        CALL: new fl7.FluoriteFunction(args => {
+          var value = args[1];
+          if (value === undefined) throw new Error("Illegal argument");
+          return util.toStream(value).toArray();
+        }),
+        removeRandom:  new fl7.FluoriteFunction(args => {
+          var array = args[0];
+          if (!(array instanceof Array)) throw new Error("Illegal argument");
+          if (array.length < 1) throw new Error("Illegal argument: array length: " + array.length);
+          var index = Math.floor(Math.random() * array.length);
+          var value = array[index];
+          array.splice(index, 1);
+          return value;
+        }),
       }));
       c("STRING", new fl7.FluoriteFunction(args => {
         var value = args[0];
