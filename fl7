@@ -280,6 +280,7 @@ function parse(source) {
 
   return {
     fl7: result.fl7,
+    objects: objects,
     env: env,
     code: code,
   };
@@ -296,7 +297,7 @@ if (process.env.compile !== "0") {
   }
   Util.prototype = result.fl7.util;
   const util = new Util();
-  util.objects = objects;
+  util.objects = result.objects;
   const constants = result.env.getConstants();
   const stream = util.toStreamer(eval(result.code)).start();
 
