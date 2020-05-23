@@ -55,7 +55,8 @@ function parse(source) {
   const result = parser.parse(source);
 
   const env = new result.fl7c.Environment();
-  result.loadAliases(env);
+  var objects = {};
+  result.loadAliases(env, objects);
   const c = (key, value) => {
     var constantId = env.allocateConstantId();
     env.setAlias(key, new result.fl7c.FluoriteAliasConstant(constantId));
@@ -291,7 +292,11 @@ if (process.env.compile !== "0") {
   console.log(result.code);
 } else {
   const fl7 = result.fl7;
-  const util = result.fl7.util;
+  function Util() {
+  }
+  Util.prototype = result.fl7.util;
+  const util = new Util();
+  util.objects = objects;
   const constants = result.env.getConstants();
   const stream = util.toStreamer(eval(result.code)).start();
 
