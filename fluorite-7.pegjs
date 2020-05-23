@@ -1734,39 +1734,51 @@
       },
 
       getValueFromObject: function(object, key) {
-        if (object instanceof FluoriteObject) {
-          var objectClass = object;
-          while (objectClass !== null) {
-            var descriptor = Object.getOwnPropertyDescriptor(objectClass.map, key);
-            if (descriptor !== undefined) {
-              if (descriptor.value instanceof FluoriteObjectInitializer) {
-                descriptor.value = descriptor.value.get();
-              }
-              return descriptor.value;
-            }
-            objectClass = objectClass.parent;
-          }
-          return null;
+
+        var objectClass;
+        if (object instanceof Array) {
+          objectClass = this.objects.ARRAY;
+        } else if (object instanceof FluoriteObject) {
+          objectClass = object;
+        } else {
+          throw new Error("Illegal argument: " + object + ", " + key);
         }
-        throw new Error("Illegal argument: " + object + ", " + key);
+
+        while (objectClass !== null) {
+          var descriptor = Object.getOwnPropertyDescriptor(objectClass.map, key);
+          if (descriptor !== undefined) {
+            if (descriptor.value instanceof FluoriteObjectInitializer) {
+              descriptor.value = descriptor.value.get();
+            }
+            return descriptor.value;
+          }
+          objectClass = objectClass.parent;
+        }
+        return null;
       },
 
       getDelegate: function(object, key) {
-        if (object instanceof FluoriteObject) {
-          var objectClass = object;
-          while (objectClass !== null) {
-            var descriptor = Object.getOwnPropertyDescriptor(objectClass.map, key);
-            if (descriptor !== undefined) {
-              if (descriptor.value instanceof FluoriteObjectInitializer) {
-                descriptor.value = descriptor.value.get();
-              }
-              return util.bind(descriptor.value, object);
-            }
-            objectClass = objectClass.parent;
-          }
-          throw new Error("No such method: " + key + " of " + object);
+
+        var objectClass;
+        if (object instanceof Array) {
+          objectClass = this.objects.ARRAY;
+        } else if (object instanceof FluoriteObject) {
+          objectClass = object;
+        } else {
+          throw new Error("Illegal argument: " + object + ", " + key); // TODO エラーが起こったら引数をログに出す
         }
-        throw new Error("Illegal argument: " + object + ", " + key); // TODO エラーが起こったら引数をログに出す
+
+        while (objectClass !== null) {
+          var descriptor = Object.getOwnPropertyDescriptor(objectClass.map, key);
+          if (descriptor !== undefined) {
+            if (descriptor.value instanceof FluoriteObjectInitializer) {
+              descriptor.value = descriptor.value.get();
+            }
+            return util.bind(descriptor.value, object);
+          }
+          objectClass = objectClass.parent;
+        }
+        throw new Error("No such method: " + key + " of " + object);
       },
 
     };
@@ -1791,7 +1803,7 @@
 
   // TODO FluoriteFunction廃止
 
-  function loadAliases(env) { // TODO
+  function loadAliases(env, objects) { // TODO
     {
       var util = fl7.util;
       var c = (key, value) => {
@@ -2171,7 +2183,7 @@
         }
         return result;
       }));
-      c("ARRAY", fl7.util.createObject(null, {
+      objects.ARRAY = fl7.util.createObject(null, {
         CALL: new fl7.FluoriteFunction(args => {
           var value = args[1];
           if (value === undefined) throw new Error("Illegal argument");
@@ -2186,7 +2198,8 @@
           array.splice(index, 1);
           return value;
         }),
-      }));
+      });
+      c("ARRAY", objects.ARRAY);
       c("STRING", new fl7.FluoriteFunction(args => {
         var value = args[0];
         if (value === undefined) throw new Error("Illegal argument");
@@ -3745,7 +3758,8 @@ RootDemonstration
 
     var pc = new fl7c.Environment();
 
-    loadAliases(pc);
+    var objects = {};
+    loadAliases(pc, objects);
 
     var code;
     try {
@@ -3760,7 +3774,11 @@ RootDemonstration
     var result;
     var resultString;
     try {
-      var util = fl7.util;
+      function Util() {
+      }
+      Util.prototype = fl7.util;
+      var util = new Util();
+      util.objects = objects;
       var constants = pc.getConstants();
       result = util.toStream(eval(code)).toArray();
       resultString = result.map(a => util.toString(a) + "\n").join("");
