@@ -1652,9 +1652,12 @@
 
       call: function(func, args) {
         if (func instanceof Array) {
-          var func2 = func[args.length];
-          if (func2 === undefined) throw new Error("Can not resolve function: obj=" + func + ", length=" + args.length);
-          return util.call(func2, args);
+          var array = func;
+          func = new FluoriteFunction(args => {
+            var func2 = array[args.length];
+            if (func2 === undefined) throw new Error("Can not resolve function: obj=" + func + ", length=" + args.length);
+            return util.call(func2, args);
+          });
         }
         if (func instanceof FluoriteValue) {
           return func.call(args);
@@ -1663,6 +1666,14 @@
       },
 
       bind: function(func, value) { // TODO -> bindLeft
+        if (func instanceof Array) {
+          var array = func;
+          func = new FluoriteFunction(args => {
+            var func2 = array[args.length];
+            if (func2 === undefined) throw new Error("Can not resolve function: obj=" + func + ", length=" + args.length);
+            return util.call(func2, args);
+          });
+        }
         if (func instanceof FluoriteFunction) {
           return func.bind(value);
         }
@@ -1670,6 +1681,14 @@
       },
 
       curryLeft: function(func, values) { // TODO -> bindLeft
+        if (func instanceof Array) {
+          var array = func;
+          func = new FluoriteFunction(args => {
+            var func2 = array[args.length];
+            if (func2 === undefined) throw new Error("Can not resolve function: obj=" + func + ", length=" + args.length);
+            return util.call(func2, args);
+          });
+        }
         if (func instanceof FluoriteFunction) {
           return func.bindLeft(values);
         }
@@ -1677,6 +1696,14 @@
       },
 
       curryRight: function(func, values) { // TODO -> bindRight
+        if (func instanceof Array) {
+          var array = func;
+          func = new FluoriteFunction(args => {
+            var func2 = array[args.length];
+            if (func2 === undefined) throw new Error("Can not resolve function: obj=" + func + ", length=" + args.length);
+            return util.call(func2, args);
+          });
+        }
         if (func instanceof FluoriteFunction) {
           return func.bindRight(values);
         }
