@@ -2216,10 +2216,53 @@
           if (value === undefined) throw new Error("Illegal argument");
           return util.toStream(value).toArray();
         }),
-        removeRandom:  new fl7.FluoriteFunction(args => {
+        remove:  new fl7.FluoriteFunction(args => {
+          if (args.length != 2) throw new Error("Illegal argument count: " + args.length);
           var array = args[0];
-          if (!(array instanceof Array)) throw new Error("Illegal argument");
-          if (array.length < 1) throw new Error("Illegal argument: array length: " + array.length);
+          if (!(array instanceof Array)) throw new Error("Illegal argument type: " + array);
+          var index = args[1];
+          index = util.toNumber(index);
+
+          if (array.length < 1) throw new Error("Illegal array length: " + array.length);
+          if (index < 0) index += array.length;
+          if (index < 0) throw new Error("Illegal index: " + index + " < " + 0);
+          if (index >= array.length) throw new Error("Illegal index: " + index + " >= " + array.length);
+
+          var value = array[index];
+          array.splice(index, 1);
+          return value;
+        }),
+        removeFirst:  new fl7.FluoriteFunction(args => {
+          if (args.length != 1) throw new Error("Illegal argument count: " + args.length);
+          var array = args[0];
+          if (!(array instanceof Array)) throw new Error("Illegal argument type: " + array);
+
+          if (array.length < 1) throw new Error("Illegal array length: " + array.length);
+
+          var index = 0;
+          var value = array[index];
+          array.splice(index, 1);
+          return value;
+        }),
+        removeLast:  new fl7.FluoriteFunction(args => {
+          if (args.length != 1) throw new Error("Illegal argument count: " + args.length);
+          var array = args[0];
+          if (!(array instanceof Array)) throw new Error("Illegal argument type: " + array);
+
+          if (array.length < 1) throw new Error("Illegal array length: " + array.length);
+
+          var index = array.length - 1;
+          var value = array[index];
+          array.splice(index, 1);
+          return value;
+        }),
+        removeRandom:  new fl7.FluoriteFunction(args => {
+          if (args.length != 1) throw new Error("Illegal argument count: " + args.length);
+          var array = args[0];
+          if (!(array instanceof Array)) throw new Error("Illegal argument type: " + array);
+
+          if (array.length < 1) throw new Error("Illegal array length: " + array.length);
+
           var index = Math.floor(Math.random() * array.length);
           var value = array[index];
           array.splice(index, 1);
