@@ -2168,6 +2168,18 @@
         }
         throw new Error("Illegal argument");
       }));
+      c("THROW", new fl7.FluoriteFunction(args => {
+        if (args.length == 1) {
+          throw args[0];
+        }
+        throw new Error("Illegal argument");
+      }));
+      c("ERROR", new fl7.FluoriteFunction(args => {
+        if (args.length == 1) {
+          throw new Error(util.toString(args[0]));
+        }
+        throw new Error("Illegal argument");
+      }));
       c("TRUE", true);
       c("FALSE", false);
       c("NULL", null);
