@@ -2228,7 +2228,7 @@
           if (value === undefined) throw new Error("Illegal argument");
           return util.toStream(value).toArray();
         }),
-        remove:  new fl7.FluoriteFunction(args => {
+        remove: new fl7.FluoriteFunction(args => {
           if (args.length != 2) throw new Error("Illegal argument count: " + args.length);
           var array = args[0];
           if (!(array instanceof Array)) throw new Error("Illegal argument type: " + array);
@@ -2244,7 +2244,7 @@
           array.splice(index, 1);
           return value;
         }),
-        removeFirst:  new fl7.FluoriteFunction(args => {
+        removeFirst: new fl7.FluoriteFunction(args => {
           if (args.length != 1) throw new Error("Illegal argument count: " + args.length);
           var array = args[0];
           if (!(array instanceof Array)) throw new Error("Illegal argument type: " + array);
@@ -2256,7 +2256,7 @@
           array.splice(index, 1);
           return value;
         }),
-        removeLast:  new fl7.FluoriteFunction(args => {
+        removeLast: new fl7.FluoriteFunction(args => {
           if (args.length != 1) throw new Error("Illegal argument count: " + args.length);
           var array = args[0];
           if (!(array instanceof Array)) throw new Error("Illegal argument type: " + array);
@@ -2268,7 +2268,7 @@
           array.splice(index, 1);
           return value;
         }),
-        removeRandom:  new fl7.FluoriteFunction(args => {
+        removeRandom: new fl7.FluoriteFunction(args => {
           if (args.length != 1) throw new Error("Illegal argument count: " + args.length);
           var array = args[0];
           if (!(array instanceof Array)) throw new Error("Illegal argument type: " + array);
@@ -2280,6 +2280,43 @@
           array.splice(index, 1);
           return value;
         }),
+        splice: [
+          null,
+          null,
+          null,
+          new fl7.FluoriteFunction(args => {
+            if (args.length != 3) throw new Error("Illegal argument count: " + args.length);
+            var array = args[0];
+            if (!(array instanceof Array)) throw new Error("Illegal argument type: " + array);
+            var start = util.toNumber(args[1]);
+            if (start < 0) start += array.length;
+            if (start < 0) throw new Error("Illegal start: " + start + " < 0");
+            if (start > array.length) throw new Error("Illegal start: " + start + " > " + array.length);
+            var count = util.toNumber(args[2]);
+            if (count < 0) throw new Error("Illegal count: " + count + " < 0");
+            if (count + start > array.length) throw new Error("Illegal count: " + count + " + " + start + " > " + array.length);
+
+            return array.splice(start, count);
+          }),
+          new fl7.FluoriteFunction(args => {
+            if (args.length != 4) throw new Error("Illegal argument count: " + args.length);
+            var array = args[0];
+            if (!(array instanceof Array)) throw new Error("Illegal argument type: " + array);
+            var start = util.toNumber(args[1]);
+            if (start < 0) start += array.length;
+            if (start < 0) throw new Error("Illegal start: " + start + " < 0");
+            if (start > array.length) throw new Error("Illegal start: " + start + " > " + array.length);
+            var count = util.toNumber(args[2]);
+            if (count < 0) throw new Error("Illegal count: " + count + " < 0");
+            if (count + start > array.length) throw new Error("Illegal count: " + count + " + " + start + " > " + array.length);
+            var array2 = args[3];
+            if (!(array2 instanceof Array)) throw new Error("Illegal argument type: array2 : " + array2);
+
+            var args2 = [start, count];
+            Array.prototype.push.apply(args2, array2);
+            return Array.prototype.splice.apply(array, args2);
+          }),
+        ],
       });
       c("ARRAY", objects.ARRAY);
       c("STRING", new fl7.FluoriteFunction(args => {
