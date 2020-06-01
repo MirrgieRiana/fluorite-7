@@ -622,7 +622,7 @@
     var util = {
 
       indent: function(code) {
-        return "  " + code.replace(/\n(?<!$)/g, "\n  ");
+        return "  " + code.replace(/\n(?!$)/g, "\n  ");
       },
 
     };
