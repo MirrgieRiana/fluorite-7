@@ -2697,6 +2697,24 @@
         if (args.length != 1) throw new Error("Illegal argument");
         return util.toString(args[0]).toLowerCase();
       }));
+      c("LOOP", (function() {
+        class FluoriteStreamerLoop extends fl7.FluoriteStreamer {
+
+          constructor() {
+            super();
+          }
+
+          start() {
+            return {
+              next: () => {
+                return null;
+              },
+            };
+          }
+
+        }
+        return new FluoriteStreamerLoop();
+      }()));
       c("UNIT_d", new fl7.FluoriteFunction(args => {
         var count;
         var faces;
