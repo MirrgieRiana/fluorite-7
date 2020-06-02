@@ -1,7 +1,7 @@
 <html style="height: 100%;">
 	<body style="margin: 0; height: 100%;">
 
-		<div id="container"></div>
+		<div id="container" style="height: 100%;"></div>
 
 		<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
 		<script>
@@ -25,25 +25,6 @@
 				});
 				$("#container")[0].editor = editor;
 			});
-			/*var editor;
-			$(function() {
-				$("#frame").contents().find("body").append(");
-				require(['vs/editor/editor.main'], function() {
-					var container = $("#frame").contents().find("#container")[0];
-					editor = monaco.editor.create(container, {
-						value: "",
-						language: "perl",
-						//automaticLayout: true
-					});
-					editor.getModel().updateOptions({
-						tabSize: 2,
-						insertSpaces: true
-					});
-				});
-			});/*
-			$("#container").resize(function() {
-				editor.layout();
-			});*/
 		</script>
 	</body>
 </html>
