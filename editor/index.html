@@ -1,9 +1,39 @@
-<html>
+<html style="height:100%;">
 	<head>
 		<title>Online fluorite-7 Editor</title>
 	</head>
-	<body style="overflow: hidden;">
-		<div id="container" style="height:100%;"></div>
+	<body style="overflow: hidden; height:100%;">
+		<table style="height: 100%; width: 100%;">
+			<tr>
+				<td>
+					<div id="container" style="height:100%;"></div>
+				</td>
+			</tr>
+			<tr style="height: 100%;">
+				<td>
+					Indent: <select id="tabSize" onChange="
+						editor.getModel().updateOptions({
+							insertSpaces: this.value
+						});
+					">
+						<option value="true" selected>Spaces</option>
+						<option value="false">Tabs</option>
+					</select>
+					Tab Size: <select id="tabSize" onChange="
+						editor.getModel().updateOptions({
+							tabSize: this.value
+						});
+					">
+						<option value="1">1</option>
+						<option value="2" selected>2</option>
+						<option value="3">3</option>
+						<option value="4">4</option>
+						<option value="8">8</option>
+					</select>
+				</td>
+			</tr>
+		</table>
+		<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
 		<script>
 			var require = {
 				paths: {
@@ -13,12 +43,16 @@
 		</script>
 		<script src="https://microsoft.github.io/monaco-editor/node_modules/monaco-editor/min/vs/loader.js"></script>
 		<script>
-			var model;
+			var editor;
 			require(['vs/editor/editor.main'], function() {
-				model = monaco.editor.create(document.getElementById("container"), {
+				editor = monaco.editor.create(document.getElementById("container"), {
 					value: "",
 					language: "perl",
-					automaticLayout: true,
+					automaticLayout: true
+				});
+			});
+			$(function() {
+				editor.getModel().updateOptions({
 					tabSize: 2,
 					insertSpaces: true
 				});
