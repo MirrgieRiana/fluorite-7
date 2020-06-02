@@ -13,7 +13,7 @@
 				<td>
 					Indent: <select id="tabSize" onChange="
 						editor.getModel().updateOptions({
-							insertSpaces: this.value
+							insertSpaces: this.value === "true"
 						});
 					">
 						<option value="true" selected>Spaces</option>
@@ -45,10 +45,10 @@
 		<script>
 			var editor;
 			require(['vs/editor/editor.main'], function() {
-				editor = monaco.editor.create(document.getElementById("container"), {
+				editor = monaco.editor.create($("#container")[0], {
 					value: "",
 					language: "perl",
-					automaticLayout: true
+					//automaticLayout: true
 				});
 			});
 			$(function() {
@@ -56,6 +56,9 @@
 					tabSize: 2,
 					insertSpaces: true
 				});
+			});
+			$("#container").resize(function() {
+				editor.layout();
 			});
 		</script>
 	</body>
