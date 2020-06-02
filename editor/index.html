@@ -1,28 +1,22 @@
-<div id="container" style="height:100%;"></div>
-<script>
-	var require = {
-		paths: {
-			'vs': 'https://microsoft.github.io/monaco-editor/node_modules/monaco-editor/min/vs'
-		}
-	};
-</script>
-<script src="https://microsoft.github.io/monaco-editor/node_modules/monaco-editor/min/vs/loader.js"></script>
-<script>/*
-	require.config({ 
-		paths: {
-			'vs': 'https://microsoft.github.io/monaco-editor/node_modules/monaco-editor/min/vs'
-		},
-		'vs/nls': {
-			availableLanguages: {
-				"*" : "ja"
-			}
-		}
-	});*/
-	require(['vs/editor/editor.main'], function() {
-		monaco.editor.create(document.getElementById("container"), {
-			value: "",
-			language: "perl",
-			automaticLayout: true
-		});
-	});
-</script>
+<html>
+	<body style="overflow: hidden;">
+		<div id="container" style="height:100%;"></div>
+		<script>
+			var require = {
+				paths: {
+					'vs': 'https://microsoft.github.io/monaco-editor/node_modules/monaco-editor/min/vs'
+				}
+			};
+		</script>
+		<script src="https://microsoft.github.io/monaco-editor/node_modules/monaco-editor/min/vs/loader.js"></script>
+		<script>
+			require(['vs/editor/editor.main'], function() {
+				monaco.editor.create(document.getElementById("container"), {
+					value: "",
+					language: "perl",
+					automaticLayout: true
+				});
+			});
+		</script>
+	</body>
+</html>
