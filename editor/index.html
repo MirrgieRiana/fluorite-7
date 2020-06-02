@@ -12,7 +12,8 @@
 			<tr>
 				<td>
 					Indent: <select id="tabSize" onChange='
-						$("#frame").contents().find("#container").editor.getModel().updateOptions({
+						getEditor().layout()
+						getEditor().getModel().updateOptions({
 							insertSpaces: this.value === "true"
 						});
 					'>
@@ -20,7 +21,7 @@
 						<option value="false">Tabs</option>
 					</select>
 					Tab Size: <select id="tabSize" onChange='
-						$("#frame").contents().find("#container").editor.getModel().updateOptions({
+						getEditor().getModel().updateOptions({
 							tabSize: this.value
 						});
 					'>
@@ -34,5 +35,13 @@
 			</tr>
 		</table>
 		<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+		<script>
+			function getEditor() {
+				return $("#frame").contents().find("#container")[0].editor;
+			}
+			$("#frame").resize(function() {
+				getEditor().layout();
+			});
+		</script>
 	</body>
 </html>
