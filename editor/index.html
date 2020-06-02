@@ -1,7 +1,20 @@
 <div id="container" style="height:100%;"></div>
+<script src="https://microsoft.github.io/node_modules/monaco-editor/dev/vs/loader.js"></script>
 <script>
-monaco.editor.create(document.getElementById("container"), {
-	value: "",
-	language: "perl"
+require.config({ 
+	paths: {
+		'vs': 'https://microsoft.github.io/node_modules/monaco-editor/min/vs'
+	},
+	'vs/nls': {
+		availableLanguages: {
+			"*" : "ja"
+		}
+	}
+});
+require(['vs/editor/editor.main'], function() {
+	monaco.editor.create(document.getElementById("container"), {
+		value: "",
+		language: "perl"
+	});
 });
 </script>
