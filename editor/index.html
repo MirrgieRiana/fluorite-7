@@ -21,7 +21,8 @@
 	require(['vs/editor/editor.main'], function() {
 		monaco.editor.create(document.getElementById("container"), {
 			value: "",
-			language: "perl"
+			language: "perl",
+			automaticLayout: true
 		});
 	});
 </script>
