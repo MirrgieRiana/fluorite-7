@@ -15,3 +15,7 @@ Install on `/usr/local/bin`:
 ```
 
 It is assumed that git, node and npm is installed.
+
+# Online Editor
+
+https://mirrgieriana.github.io/fluorite-7/editor/
