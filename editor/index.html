@@ -13,13 +13,14 @@
 		</script>
 		<script src="https://microsoft.github.io/monaco-editor/node_modules/monaco-editor/min/vs/loader.js"></script>
 		<script>
+			var model;
 			require(['vs/editor/editor.main'], function() {
-				monaco.editor.create(document.getElementById("container"), {
+				model = monaco.editor.create(document.getElementById("container"), {
 					value: "",
 					language: "perl",
 					automaticLayout: true,
 					tabSize: 2,
-					insertSpaces: false
+					insertSpaces: true
 				});
 			});
 		</script>
