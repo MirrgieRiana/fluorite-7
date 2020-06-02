@@ -39,7 +39,7 @@
 			function getEditor() {
 				return $("#frame").contents().find("#container")[0].editor;
 			}
-			$("#frame").resize(function() {
+			$(window).resize(function() {
 				getEditor().layout();
 			});
 		</script>
