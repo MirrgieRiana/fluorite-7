@@ -1,19 +1,19 @@
-<html>
+<html style="height: 100%;">
 	<head>
 		<title>Online fluorite-7 Editor</title>
 	</head>
-	<body style="margin: 0;">
+	<body style="margin: 0; height: 100%;">
 		<table style="height: 100%; width: 100%;">
 			<tr style="height: 100%;">
 				<td>
-					<iframe id="frame" style="height: 100%; width: 100%;"></iframe>
+					<iframe id="frame" style="height: 100%; width: 100%; border-style: none;"></iframe>
 				</td>
 			</tr>
 			<tr>
 				<td>
 					Indent: <select id="tabSize" onChange="
 						editor.getModel().updateOptions({
-							insertSpaces: this.value === "true"
+							insertSpaces: this.value === 'true'
 						});
 					">
 						<option value="true" selected>Spaces</option>
