@@ -44,20 +44,19 @@
 		<script src="https://microsoft.github.io/monaco-editor/node_modules/monaco-editor/min/vs/loader.js"></script>
 		<script>
 			var editor;
-			require(['vs/editor/editor.main'], function() {
-
-			});
 			$(function() {
 				$("#frame").contents().find("body").append("<div id='container'></div>");
-				var container = $("#frame").contents().find("#container")[0];
-				editor = monaco.editor.create(container, {
-					value: "",
-					language: "perl",
-					//automaticLayout: true
-				});
-				editor.getModel().updateOptions({
-					tabSize: 2,
-					insertSpaces: true
+				require(['vs/editor/editor.main'], function() {
+					var container = $("#frame").contents().find("#container")[0];
+					editor = monaco.editor.create(container, {
+						value: "",
+						language: "perl",
+						//automaticLayout: true
+					});
+					editor.getModel().updateOptions({
+						tabSize: 2,
+						insertSpaces: true
+					});
 				});
 			});/*
 			$("#container").resize(function() {
