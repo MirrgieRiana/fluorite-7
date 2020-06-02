@@ -6,7 +6,7 @@
 		<table style="height: 100%; width: 100%;">
 			<tr style="height: 100%;">
 				<td>
-					<div id="container" style="height:100%;"></div>
+					<iframe id="frame" style="height: 100%; width: 100%;"></iframe>
 				</td>
 			</tr>
 			<tr>
@@ -45,21 +45,24 @@
 		<script>
 			var editor;
 			require(['vs/editor/editor.main'], function() {
-				editor = monaco.editor.create($("#container")[0], {
+
+			});
+			$(function() {
+				$("#frame").contents().find("body").append("<div id='container'></div>");
+				var container = $("#frame").contents().find("#container")[0];
+				editor = monaco.editor.create(container, {
 					value: "",
 					language: "perl",
 					//automaticLayout: true
 				});
-			});
-			$(function() {
 				editor.getModel().updateOptions({
 					tabSize: 2,
 					insertSpaces: true
 				});
-			});
+			});/*
 			$("#container").resize(function() {
 				editor.layout();
-			});
+			});*/
 		</script>
 	</body>
 </html>
