@@ -1926,19 +1926,24 @@
           var keys = []; // [key : string...]
           var entries = []; // [[key : string, node : Node, delay : boolean]...]
           for (var i = 0; i < nodesEntry.length; i++) {
-            var nodeEntry = nodesEntry[i];
+            const nodeEntry = nodesEntry[i];
 
             // 宣言文
             if (nodeEntry instanceof fl7c.FluoriteNodeMacro) {
               if (nodeEntry.getKey() === "_COLON") {
 
-                var nodeKey = nodeEntry.getArgument(0);
+                const nodeKey = nodeEntry.getArgument(0);
                 var key = undefined;
                 if (nodeKey instanceof fl7c.FluoriteNodeMacro) {
                   if (nodeKey.getKey() === "_LITERAL_IDENTIFIER") {
                     if (nodeKey.getArgument(0) instanceof fl7c.FluoriteNodeTokenIdentifier) {
-                      key = nodeKey.getArgument(0).getValue();
+                      key = pc => [
+                        "",
+                        JSON.stringify(nodeKey.getArgument(0).getValue()),
+                      ];
                     }
+                  } else {
+                    key = pc => nodeKey.getCodeGetter(pc);
                   }
                 }
                 if (key === undefined) throw new Error("Illegal object key");
@@ -1955,13 +1960,18 @@
             if (nodeEntry instanceof fl7c.FluoriteNodeMacro) {
               if (nodeEntry.getKey() === "_EQUAL") {
 
-                var nodeKey = nodeEntry.getArgument(0);
+                const nodeKey = nodeEntry.getArgument(0);
                 var key = undefined;
                 if (nodeKey instanceof fl7c.FluoriteNodeMacro) {
                   if (nodeKey.getKey() === "_LITERAL_IDENTIFIER") {
                     if (nodeKey.getArgument(0) instanceof fl7c.FluoriteNodeTokenIdentifier) {
-                      key = nodeKey.getArgument(0).getValue();
+                      key = pc => [
+                        "",
+                        JSON.stringify(nodeKey.getArgument(0).getValue()),
+                      ];
                     }
+                  } else {
+                    key = pc => nodeKey.getCodeGetter(pc);
                   }
                 }
                 if (key === undefined) throw new Error("Illegal object key");
@@ -1977,7 +1987,10 @@
             if (nodeEntry instanceof fl7c.FluoriteNodeMacro) {
               if (nodeEntry.getKey() === "_LITERAL_IDENTIFIER") {
                 if (nodeEntry.getArgument(0) instanceof fl7c.FluoriteNodeTokenIdentifier) {
-                  entries.push([nodeEntry.getArgument(0).getValue(), nodeEntry, false]);
+                  entries.push([pc => [
+                    "",
+                    JSON.stringify(nodeEntry.getArgument(0).getValue()),
+                  ], nodeEntry, false]);
                   continue;
                 }
               }
@@ -2004,10 +2017,12 @@
           var codesEntries = [];
           for (var i = 0; i < entries.length; i++) {
             var entry = entries[i];
+            var codesKey = entry[0](pc);
             var codesEntry = entry[1].getCodeGetter(pc);
             if (entry[2]) {
               codesEntries.push(
-                "" + variableMap + "[" + JSON.stringify(entry[0]) + "] = util.initializer(function() {\n" +
+                codesKey[0] +
+                "" + variableMap + "[util.toString(" + codesKey[1] + ")] = util.initializer(function() {\n" +
                 fl7c.util.indent(
                   codesEntry[0] +
                   "return " + codesEntry[1] + ";\n"
@@ -2016,8 +2031,9 @@
               );
             } else {
               codesEntries.push(
+                codesKey[0] +
                 codesEntry[0] +
-                "" + variableMap + "[" + JSON.stringify(entry[0]) + "] = " + codesEntry[1] + ";\n"
+                "" + variableMap + "[util.toString(" + codesKey[1] + ")] = " + codesEntry[1] + ";\n"
               );
             }
           }
