@@ -2862,6 +2862,44 @@
         }
         throw new Error("Illegal argument");
       });
+      m("_LITERAL_EMBEDDED_HERE_DOCUMENT", e => {
+        var codesHeader = [];
+
+        var variable = "v_" + e.pc().allocateVariableId();
+        codesHeader.push("const " + variable + " = [];\n");
+
+        var nodes = e.node().getArguments();
+        for (var i = 0; i < nodes.length; i++) {
+          var node = nodes[i];
+          if (node instanceof fl7c.FluoriteNodeTokenString) {
+            codesHeader.push("" + variable + "[" + variable + ".length] = " + JSON.stringify(node.getValue()) + ";\n");
+          } else {
+            var variable2 = "v_" + e.pc().allocateVariableId();
+            codesHeader.push("let " + variable2 + " = true;\n");
+            codesHeader.push(node.getCodeIterator(e.pc(), codeItemOrStreamer => {
+              return functionUnpackStreamer(e.pc(), codeItemOrStreamer, (pc, codeItem) => {
+                return (
+                  "if (" + variable2 + ") {\n" +
+                  fl7c.util.indent(
+                    "" + variable2 + " = false;\n"
+                  ) +
+                  "} else {\n" +
+                  fl7c.util.indent(
+                    "" + variable + "[" + variable + ".length] = \"\\n\";\n"
+                  ) +
+                  "}\n" +
+                  "" + variable + "[" + variable + ".length] = " + codeItem + ";\n"
+                );
+              });
+            })[0]);
+          }
+        }
+
+        return [
+          codesHeader.join(""),
+          "(" + variable + ".join(\"\"))",
+        ];
+      });
       m("_STRING_FORMAT", e => {
 
         var format = undefined;
@@ -4098,6 +4136,22 @@ TokenHereDocument "HereDocument"
     (LB delimiter2:Identifier (ex:$[^\r\n]* &{ return ex === ""; }) &{ return delimiter === delimiter2; })
   { return new fl7c.FluoriteNodeTokenString(location(), main.join(""), text() + lb); }
 
+TokenEmbeddedHereDocument "EmbeddedHereDocument"
+  = "<<" _ "\"" delimiter:Identifier "\"" lb:LB
+    main:
+    ( main:(
+        !(LB delimiter2:Identifier (ex:$[^\r\n]* &{ return ex === ""; }) &{ return delimiter === delimiter2; }) main:[^$] { return main; }
+      )+ { return new fl7c.FluoriteNodeTokenString(location(), main.join(""), text() + lb); }
+    / "$$" { return new fl7c.FluoriteNodeTokenString(location(), "$", "\"$\""); }
+    / "$" main:LiteralIdentifier { return main; }
+    / "$" "(" _ main:Expression _ ")" { return main; }
+    / "$" format:TokenEmbeddedStringFormat "(" _ main:Expression _ ")" {
+      return new fl7c.FluoriteNodeMacro(location(), "_STRING_FORMAT", [format, main]);
+    }
+    )*
+    (LB delimiter2:Identifier (ex:$[^\r\n]* &{ return ex === ""; }) &{ return delimiter === delimiter2; })
+  { return main; }
+
 //
 
 LiteralInteger
@@ -4124,6 +4178,9 @@ LiteralEmbeddedString
 LiteralHereDocument
   = main:TokenHereDocument { return new fl7c.FluoriteNodeMacro(location(), "_LITERAL_HERE_DOCUMENT", [main]); }
 
+LiteralEmbeddedHereDocument
+  = main:TokenEmbeddedHereDocument { return new fl7c.FluoriteNodeMacro(location(), "_LITERAL_EMBEDDED_HERE_DOCUMENT", main); }
+
 Literal
   = LiteralFloat
   / LiteralBasedInteger
@@ -4133,6 +4190,7 @@ Literal
   / LiteralString
   / LiteralEmbeddedString
   / LiteralHereDocument
+  / LiteralEmbeddedHereDocument
 
 //
 
