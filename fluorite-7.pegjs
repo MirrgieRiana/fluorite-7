@@ -2820,29 +2820,26 @@
       });
       m("_LITERAL_EMBEDDED_STRING", e => {
         var codesHeader = [];
-        var codesBody = [];
+
+        var variable = "v_" + e.pc().allocateVariableId();
+        codesHeader.push("const " + variable + " = [];\n");
+
         var nodes = e.node().getArguments();
         for (var i = 0; i < nodes.length; i++) {
           var node = nodes[i];
           if (node instanceof fl7c.FluoriteNodeTokenString) {
-            codesBody.push(JSON.stringify(node.getValue()));
+            codesHeader.push("" + variable + "[" + variable + ".length] = " + JSON.stringify(node.getValue()) + ";\n");
           } else {
             var codes = node.getCodeGetter(e.pc());
             codesHeader.push(codes[0]);
-            codesBody.push("util.toString(" + codes[1] + ")");
+            codesHeader.push("" + variable + "[" + variable + ".length] = " + "util.toString(" + codes[1] + ")" + ";\n");
           }
         }
-        if (codesBody.length !== 0) {
-          return [
-            codesHeader.join(""),
-            "(" + codesBody.join(" + ") + ")",
-          ];
-        } else {
-          return [
-            codesHeader.join(""),
-            "(\"\")",
-          ];
-        }
+
+        return [
+          codesHeader.join(""),
+          "(" + variable + ".join(\"\"))",
+        ];
       });
       m("_LITERAL_HERE_DOCUMENT", e => {
         if (e.arg(0) instanceof fl7c.FluoriteNodeTokenString) {
