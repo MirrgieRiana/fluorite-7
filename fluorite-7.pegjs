@@ -4129,7 +4129,10 @@ TokenEmbeddedString
   = "\"" main:TokenEmbeddedStringSection* "\"" { return main; }
 
 TokenHereDocument "HereDocument"
-  = "<<" _ "'" delimiter:Identifier "'" lb:LB
+  = "<<" _ delimiter:
+    ( "'" main:Identifier "'" { return main; }
+    / Identifier
+    ) lb:LB
     main:(
       !(LB [ \t]* delimiter2:Identifier (ex:$[^\r\n]* &{ return ex === ""; }) &{ return delimiter === delimiter2; }) main:. { return main; }
     )*
