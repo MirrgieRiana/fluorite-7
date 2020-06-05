@@ -4131,16 +4131,16 @@ TokenEmbeddedString
 TokenHereDocument "HereDocument"
   = "<<" _ "'" delimiter:Identifier "'" lb:LB
     main:(
-      !(LB delimiter2:Identifier (ex:$[^\r\n]* &{ return ex === ""; }) &{ return delimiter === delimiter2; }) main:. { return main; }
+      !(LB [ \t]* delimiter2:Identifier (ex:$[^\r\n]* &{ return ex === ""; }) &{ return delimiter === delimiter2; }) main:. { return main; }
     )*
-    (LB delimiter2:Identifier (ex:$[^\r\n]* &{ return ex === ""; }) &{ return delimiter === delimiter2; })
+    (LB [ \t]* delimiter2:Identifier (ex:$[^\r\n]* &{ return ex === ""; }) &{ return delimiter === delimiter2; })
   { return new fl7c.FluoriteNodeTokenString(location(), main.join(""), text() + lb); }
 
 TokenEmbeddedHereDocument "EmbeddedHereDocument"
   = "<<" _ "\"" delimiter:Identifier "\"" lb:LB
     main:
     ( main:(
-        !(LB delimiter2:Identifier (ex:$[^\r\n]* &{ return ex === ""; }) &{ return delimiter === delimiter2; }) main:[^$] { return main; }
+        !(LB [ \t]* delimiter2:Identifier (ex:$[^\r\n]* &{ return ex === ""; }) &{ return delimiter === delimiter2; }) main:[^$] { return main; }
       )+ { return new fl7c.FluoriteNodeTokenString(location(), main.join(""), text() + lb); }
     / "$$" { return new fl7c.FluoriteNodeTokenString(location(), "$", "\"$\""); }
     / "$" main:LiteralIdentifier { return main; }
@@ -4149,7 +4149,7 @@ TokenEmbeddedHereDocument "EmbeddedHereDocument"
       return new fl7c.FluoriteNodeMacro(location(), "_STRING_FORMAT", [format, main]);
     }
     )*
-    (LB delimiter2:Identifier (ex:$[^\r\n]* &{ return ex === ""; }) &{ return delimiter === delimiter2; })
+    (LB [ \t]* delimiter2:Identifier (ex:$[^\r\n]* &{ return ex === ""; }) &{ return delimiter === delimiter2; })
   { return main; }
 
 //
