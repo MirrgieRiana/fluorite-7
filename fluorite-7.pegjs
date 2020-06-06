@@ -2912,20 +2912,9 @@
           if (node instanceof fl7c.FluoriteNodeTokenString) {
             codesHeader.push("" + variable + "[" + variable + ".length] = " + JSON.stringify(node.getValue()) + ";\n");
           } else {
-            var variable2 = "v_" + e.pc().allocateVariableId();
-            codesHeader.push("let " + variable2 + " = true;\n");
             codesHeader.push(node.getCodeIterator(e.pc(), codeItemOrStreamer => {
               return functionUnpackStreamer(e.pc(), codeItemOrStreamer, (pc, codeItem) => {
                 return (
-                  "if (" + variable2 + ") {\n" +
-                  fl7c.util.indent(
-                    "" + variable2 + " = false;\n"
-                  ) +
-                  "} else {\n" +
-                  fl7c.util.indent(
-                    "" + variable + "[" + variable + ".length] = \"\\n\";\n"
-                  ) +
-                  "}\n" +
                   "" + variable + "[" + variable + ".length] = " + codeItem + ";\n"
                 );
               });
