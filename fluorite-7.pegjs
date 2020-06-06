@@ -4198,6 +4198,7 @@ TokenEmbeddedFluorite "EmbeddedFluorite"
     ( main:
       ( !"<%" main:. { return main; }
       / "<%%" { return "<%"; }
+      / "<%#" (!"%>" .)* "%>" { return ""; }
       )+ { return new fl7c.FluoriteNodeTokenString(location(), main.join(""), JSON.stringify(main.join(""))); }
     / "<%=" _ main:Expression _ "%>" { return main; }
     )* "<%" { return main; }
