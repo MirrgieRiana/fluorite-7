@@ -47,6 +47,7 @@ fi
 
 export exec
 export output_json
+export embedded_fluorite
 export compile
 export app_dir
 export NODE_PATH="$NODE_PATH:$app_dir"
@@ -295,7 +296,7 @@ function parse(source, startRule) {
   };
 }
 
-let result = parse(process.env.exec, embedded_fluorite ? "RootEmbeddedFluorite" : "Root");
+let result = parse(process.env.exec, process.env.embedded_fluorite ? "RootEmbeddedFluorite" : "Root");
 globalResult = result;
 
 if (process.env.compile !== "0") {
