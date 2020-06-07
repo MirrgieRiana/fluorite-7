@@ -296,7 +296,7 @@ function parse(source, startRule) {
   };
 }
 
-let result = parse(process.env.exec, process.env.embedded_fluorite ? "RootEmbeddedFluorite" : "Root");
+let result = parse(process.env.exec, process.env.embedded_fluorite !== "0" ? "RootEmbeddedFluorite" : "Root");
 globalResult = result;
 
 if (process.env.compile !== "0") {
