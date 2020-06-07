@@ -4033,6 +4033,16 @@ Root
     node: main,
   }; }
 
+RootEmbeddedFluorite
+  = main:
+    ( main:TokenEmbeddedFluoriteContents { return new fl7c.FluoriteNodeMacro(location(), "_LITERAL_EMBEDDED_FLUORITE", main); }
+  ) { return {
+    fl7,
+    fl7c,
+    loadAliases,
+    node: main,
+  }; }
+
 //
 
 NestedComment
@@ -4182,15 +4192,17 @@ TokenEmbeddedHereDocument "EmbeddedHereDocument"
     (LB [ \t]* delimiter2:Identifier (ex:$[^\r\n]* &{ return ex === ""; }) &{ return delimiter === delimiter2; })
   { return main; }
 
-TokenEmbeddedFluorite "EmbeddedFluorite"
-  = "%>" main:
-    ( main:
+TokenEmbeddedFluoriteContents
+  = ( main:
       ( !"<%" main:. { return main; }
       / "<%%" { return "<%"; }
       / "<%#" (!"%>" .)* "%>" { return ""; }
       )+ { return new fl7c.FluoriteNodeTokenString(location(), main.join(""), JSON.stringify(main.join(""))); }
     / "<%=" _ main:Expression _ "%>" { return main; }
-    )* "<%" { return main; }
+    )*
+
+TokenEmbeddedFluorite "EmbeddedFluorite"
+  = "%>" main:TokenEmbeddedFluoriteContents "<%" { return main; }
 
 //
 
