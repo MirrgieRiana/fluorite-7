@@ -1,12 +1,13 @@
 #!/usr/bin/env bash
 
 usage() {
-	echo "Usage $0 [-j] [-c] CODE" >&2
+	echo "Usage $0 [-j] [-c] [-] CODE" >&2
 	exit 1
 }
 
 output_json=0
 compile=0
+embedded_fluorite=0
 
 if [ "$1" = "-j" ]
 then
@@ -18,6 +19,12 @@ if [ "$1" = "-c" ]
 then
   shift
   compile=1
+fi
+
+if [ "$1" = "-e" ]
+then
+  shift
+  embedded_fluorite=1
 fi
 
 (($# > 0)) || usage
@@ -50,9 +57,11 @@ const parser = require(process.env.app_dir + "/fluorite-7.js");
 
 let globalResult;
 
-function parse(source) {
+function parse(source, startRule) {
 
-  const result = parser.parse(source);
+  const result = parser.parse(source, {
+    startRule: startRule,
+  });
 
   const env = new result.fl7c.Environment();
   var objects = {};
@@ -266,7 +275,7 @@ function parse(source) {
 
       const source = Buffer.concat(buffers, length).toString('utf8', 0, length);
 
-      const result = parse(source);
+      const result = parse(source, "Root");
 
       const fl7 = globalResult.fl7;
       const util = globalResult.fl7.util;
@@ -286,7 +295,7 @@ function parse(source) {
   };
 }
 
-let result = parse(process.env.exec);
+let result = parse(process.env.exec, embedded_fluorite ? "RootEmbeddedFluorite" : "Root");
 globalResult = result;
 
 if (process.env.compile !== "0") {
