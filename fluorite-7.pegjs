@@ -3293,7 +3293,7 @@
         return [
           codesLeft[0] +
           codesAlias[0],
-          "(util.call(" + codesLeft[1] + ",[" + codesAlias[1] + "]))",
+          "(util.call(" + codesLeft[1] + ", [" + codesAlias[1] + "]))",
         ];
       });
       m("_LEFT_BACKSLASH", e => {
@@ -3321,6 +3321,26 @@
         );
       });
       m("_LEFT_DOLLAR_HASH", e => wrap_0(e, c => "(util.getLength(" + c + "))"));
+      m("_LEFT_BACKQUOTES", e => {
+        var codesFunction = e.arg(0).getCodeGetter(e.pc());
+        var codesRight = e.arg(1).getCodeGetter(e.pc());
+        return [
+          codesRight[0] +
+          codesFunction[0],
+          "(util.call(" + codesFunction[1] + ", [" + codesRight[1] + "]))",
+        ];
+      });
+      m("_BACKQUOTES", e => {
+        var codesLeft = e.arg(0).getCodeGetter(e.pc());
+        var codesFunction = e.arg(1).getCodeGetter(e.pc());
+        var codesRight = e.arg(2).getCodeGetter(e.pc());
+        return [
+          codesLeft[0] +
+          codesRight[0] +
+          codesFunction[0],
+          "(util.call(" + codesFunction[1] + ", [" + codesLeft[1] + ", " + codesRight[1] + "]))",
+        ];
+      });
       m("_CIRCUMFLEX", e => wrap2_01(e, (c0, c1) => "(Math.pow(" + c0 + ", " + c1 + "))"));
       m("_ASTERISK", e => wrap2_01(e, (c0, c1) => "(util.asterisk(" + c0 + ", " + c1 + "))"));
       m("_SLASH", e => wrap2_01(e, (c0, c1) => "(util.slash(" + c0 + ", " + c1 + "))"));
@@ -4382,23 +4402,39 @@ RightWithoutComment
 Left
   = Right
   / head:
-    ( "+" { return [location(), "_LEFT_PLUS"]; }
-    / "-" { return [location(), "_LEFT_MINUS"]; }
-    / "?" { return [location(), "_LEFT_QUESTION"]; }
-    / "!" !"!" { return [location(), "_LEFT_EXCLAMATION"]; }
-    / "&" { return [location(), "_LEFT_AMPERSAND"]; }
-    / "*" { return [location(), "_LEFT_ASTERISK"]; }
-    / "\\" { return [location(), "_LEFT_BACKSLASH"]; }
-    / "$#" { return [location(), "_LEFT_DOLLAR_HASH"]; }
+    ( "+" { return [location(), "_LEFT_PLUS", []]; }
+    / "-" { return [location(), "_LEFT_MINUS", []]; }
+    / "?" { return [location(), "_LEFT_QUESTION", []]; }
+    / "!" !"!" { return [location(), "_LEFT_EXCLAMATION", []]; }
+    / "&" { return [location(), "_LEFT_AMPERSAND", []]; }
+    / "*" { return [location(), "_LEFT_ASTERISK", []]; }
+    / "\\" { return [location(), "_LEFT_BACKSLASH", []]; }
+    / "$#" { return [location(), "_LEFT_DOLLAR_HASH", []]; }
+    / "`" main:Right "`" { return [location(), "_LEFT_BACKQUOTES", [main]]; }
   ) _ tail:Left {
-    return new fl7c.FluoriteNodeMacro(head[0], head[1], [tail]);
+    var args = [];
+    Array.prototype.push.apply(args, head[2]);
+    args[args.length] = tail;
+    return new fl7c.FluoriteNodeMacro(head[0], head[1], args);
+  }
+
+Backquotes
+  = head:Left tail:(_
+    ( "`" main:Right "`" { return [location(), "_BACKQUOTES", main]; }
+  ) _ Left)* {
+    var result = head;
+    for (var i = 0; i < tail.length; i++) {
+      var t = tail[i];
+      result = new fl7c.FluoriteNodeMacro(t[1][0], t[1][1], [result, t[1][2], t[3]]);
+    }
+    return result;
   }
 
 Pow
-  = head:(Left _
+  = head:(Backquotes _
     ( "^" { return [location(), "_CIRCUMFLEX"]; }
     / "**" { return [location(), "_ASTERISK2"]; }
-  ) _)* tail:Left {
+  ) _)* tail:Backquotes {
     var result = tail;
     for (var i = head.length - 1; i >= 0; i--) {
       var h = head[i];
