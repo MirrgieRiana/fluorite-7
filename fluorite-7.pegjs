@@ -1050,6 +1050,15 @@
         }
       }
 
+      isInstanceOf(clazz) {
+        var o = this;
+        while (o !== null) {
+          if (o == clazz) return true;
+          o = o.parent;
+        }
+        return false;
+      }
+
       toNumber() {
         var res = util.getValueFromObject(this, "TO_NUMBER");
         if (res !== null) return util.toNumber(util.call(res, [this]));
@@ -2760,6 +2769,16 @@
           if (value instanceof Array) return "ARRAY";
           if (value instanceof fl7.FluoriteValue) return value.getType();
           return "UNKNOWN";
+        }
+        throw new Error("Illegal argument");
+      }));
+      c("IS", new fl7.FluoriteFunction(args => {
+        if (args.length == 2) {
+          var object = args[0];
+          var clazz = args[1];
+          if (!(clazz instanceof fl7.FluoriteObject)) throw new Error("Illegal argument");
+          if (!(object instanceof fl7.FluoriteObject)) return false;
+          return object.isInstanceOf(clazz);
         }
         throw new Error("Illegal argument");
       }));
