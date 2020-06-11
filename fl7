@@ -72,6 +72,32 @@ function parse(source, startRule) {
     env.setAlias(key, new result.fl7c.FluoriteAliasConstant(constantId));
     env.setConstant(constantId, value);
   };
+  function loadStringUtf8(fd) {
+
+    var buffers = [];
+    var length = 0;
+    while (true) {
+      var buffer = new Buffer(4096);
+      var bytesRead;
+      while (true) {
+        try {
+          bytesRead = fs.readSync(fd, buffer, 0, 4096, null);
+        } catch (e) {
+          if (e.code === "EAGAIN") {
+            continue;
+          } else {
+            throw e;
+          }
+        }
+        break;
+      }
+      if (bytesRead === 0) break;
+      buffers.push(buffer.subarray(0, bytesRead));
+      length += bytesRead;
+    }
+
+    return Buffer.concat(buffers, length).toString('utf8', 0, length);
+  }
   c("IN", (function(){
     class FluoriteStreamerStdin extends result.fl7.FluoriteStreamer {
 
@@ -81,31 +107,10 @@ function parse(source, startRule) {
 
       start() { // TODO 徐々に読み込む
 
-        var fd = process.stdin.fd;
-        var buffers = [];
-        var length = 0;
-        while (true) {
-          var buffer = new Buffer(4096);
-          var bytesRead;
-          while (true) {
-            try {
-              bytesRead = fs.readSync(fd, buffer, 0, 4096, null);
-            } catch (e) {
-              if (e.code === "EAGAIN") {
-                continue;
-              } else {
-                throw e;
-              }
-            }
-            break;
-          }
-          if (bytesRead === 0) break;
-          buffers.push(buffer.subarray(0, bytesRead));
-          length += bytesRead;
-        }
+        const fd = process.stdin.fd;
+        const input = loadStringUtf8(fd);
         fs.closeSync(fd);
 
-        const input = Buffer.concat(buffers, length).toString('utf8', 0, length);
         const inputs = input.split("\n");
 
         var i = 0;
@@ -138,31 +143,10 @@ function parse(source, startRule) {
 
       start() { // TODO 徐々に読み込む
 
-        var fd = fs.openSync(this._filename, "r");
-        var buffers = [];
-        var length = 0;
-        while (true) {
-          var buffer = new Buffer(4096);
-          var bytesRead;
-          while (true) {
-            try {
-              bytesRead = fs.readSync(fd, buffer, 0, 4096, null);
-            } catch (e) {
-              if (e.code === "EAGAIN") {
-                continue;
-              } else {
-                throw e;
-              }
-            }
-            break;
-          }
-          if (bytesRead === 0) break;
-          buffers.push(buffer.subarray(0, bytesRead));
-          length += bytesRead;
-        }
+        const fd = fs.openSync(this._filename, "r");
+        const input = loadStringUtf8(fd);
         fs.closeSync(fd);
 
-        const input = Buffer.concat(buffers, length).toString('utf8', 0, length);
         const inputs = input.split("\n");
 
         var i = 0;
@@ -249,39 +233,44 @@ function parse(source, startRule) {
     return new result.fl7.FluoriteFunction(args => {
       var filename = args[0];
       if (filename === undefined) throw new Error("Illegal argument");
+      filename = result.fl7.util.toString(filename);
 
-      var fd = fs.openSync(filename, "r");
-      var buffers = [];
-      var length = 0;
-      while (true) {
-        var buffer = new Buffer(4096);
-        var bytesRead;
-        while (true) {
-          try {
-            bytesRead = fs.readSync(fd, buffer, 0, 4096, null);
-          } catch (e) {
-            if (e.code === "EAGAIN") {
-              continue;
-            } else {
-              throw e;
-            }
-          }
-          break;
-        }
-        if (bytesRead === 0) break;
-        buffers.push(buffer);
-	length += bytesRead;
-      }
+      const fd = fs.openSync(filename, "r");
+      const input = loadStringUtf8(fd);
       fs.closeSync(fd);
 
-      const source = Buffer.concat(buffers, length).toString('utf8', 0, length);
-
-      const result = parse(source, "Root");
+      const result = parse(input, "Root");
 
       const fl7 = globalResult.fl7;
       const util = globalResult.fl7.util;
       const constants = globalResult.env.getConstants();
       return eval(result.code);
+    });
+  })());
+  const cacheUse = new Map();
+  c("USE", (function(){
+    return new result.fl7.FluoriteFunction(args => {
+      var filename = args[0];
+      if (filename === undefined) throw new Error("Illegal argument");
+      filename = result.fl7.util.toString(filename);
+
+      let result = cacheUse.get(filename);
+      if (result === undefined) {
+
+        const fd = fs.openSync(filename, "r");
+        const input = loadStringUtf8(fd);
+        fs.closeSync(fd);
+
+        const result = parse(input, "Root");
+
+        const fl7 = globalResult.fl7;
+        const util = globalResult.fl7.util;
+        const constants = globalResult.env.getConstants();
+        result = eval(result.code);
+
+	cacheUse.set(filename, result);
+      }
+      return result;
     });
   })());
 
