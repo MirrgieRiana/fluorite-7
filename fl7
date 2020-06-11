@@ -58,6 +58,7 @@ const parser = require(process.env.app_dir + "/fluorite-7.js");
 
 let globalResult;
 
+const cacheUse = new Map();
 function parse(source, startRule) {
 
   const result = parser.parse(source, {
@@ -247,7 +248,6 @@ function parse(source, startRule) {
       return eval(result2.code);
     });
   })());
-  const cacheUse = new Map();
   c("USE", (function(){
     return new result.fl7.FluoriteFunction(args => {
       var filename = args[0];
