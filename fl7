@@ -254,8 +254,8 @@ function parse(source, startRule) {
       if (filename === undefined) throw new Error("Illegal argument");
       filename = result.fl7.util.toString(filename);
 
-      let result = cacheUse.get(filename);
-      if (result === undefined) {
+      let res = cacheUse.get(filename);
+      if (res === undefined) {
 
         const fd = fs.openSync(filename, "r");
         const input = loadStringUtf8(fd);
@@ -266,11 +266,11 @@ function parse(source, startRule) {
         const fl7 = globalResult.fl7;
         const util = globalResult.fl7.util;
         const constants = globalResult.env.getConstants();
-        result = eval(result.code);
+        res = eval(result.code);
 
-	cacheUse.set(filename, result);
+	cacheUse.set(filename, res);
       }
-      return result;
+      return res;
     });
   })());
 
