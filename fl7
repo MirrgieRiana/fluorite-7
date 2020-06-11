@@ -239,12 +239,12 @@ function parse(source, startRule) {
       const input = loadStringUtf8(fd);
       fs.closeSync(fd);
 
-      const result = parse(input, "Root");
+      const result2 = parse(input, "Root");
 
       const fl7 = globalResult.fl7;
       const util = globalResult.fl7.util;
       const constants = globalResult.env.getConstants();
-      return eval(result.code);
+      return eval(result2.code);
     });
   })());
   const cacheUse = new Map();
@@ -261,12 +261,12 @@ function parse(source, startRule) {
         const input = loadStringUtf8(fd);
         fs.closeSync(fd);
 
-        const result = parse(input, "Root");
+        const result2 = parse(input, "Root");
 
         const fl7 = globalResult.fl7;
         const util = globalResult.fl7.util;
         const constants = globalResult.env.getConstants();
-        res = eval(result.code);
+        res = eval(result2.code);
 
 	cacheUse.set(filename, res);
       }
