@@ -2124,6 +2124,18 @@
       c("E", Math.E);
       c("NAN", NaN);
       c("INFINITY", Infinity);
+      c("DIV", new fl7.FluoriteFunction(args => {
+        if (args.length == 2) {
+          return Math.trunc(util.toNumber(args[0]) / util.toNumber(args[1]));
+        }
+        throw new Error("Illegal argument");
+      }));
+      c("TRUNC", new fl7.FluoriteFunction(args => {
+        if (args.length == 1) {
+          return Math.trunc(util.toNumber(args[0]));
+        }
+        throw new Error("Illegal argument");
+      }));
       c("FLOOR", new fl7.FluoriteFunction(args => {
         if (args.length == 1) {
           return Math.floor(util.toNumber(args[0]));
