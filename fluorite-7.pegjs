@@ -2656,7 +2656,7 @@
 
         return util.toStreamFromValues(array);
       }));
-      c("UNIQUE", new fl7.FluoriteFunction(args => {
+      c("UNIQ", new fl7.FluoriteFunction(args => {
 
         var streamer = args[0];
         if (streamer === undefined) throw new Error("Illegal argument");
@@ -2683,7 +2683,7 @@
 
         return util.toStreamFromValues(array);
       }));
-      c("UNIQUE_BY", new fl7.FluoriteFunction(args => {
+      c("UNIQ_BY", new fl7.FluoriteFunction(args => {
 
         var streamer = args[0];
         if (streamer === undefined) throw new Error("Illegal argument");
