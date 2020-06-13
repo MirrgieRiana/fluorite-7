@@ -2672,10 +2672,13 @@
         while (true) {
           var next = stream.next();
           if (next === undefined) break;
-          if (last === undefined || !(matcher != null ? util.call(matcher, [last, next]) : util.equal(next, last))) {
-            array[array.length] = next;
-            last = next;
+          if (last !== undefined) {
+            if (matcher != null ? util.call(matcher, [last, next]) : util.equal(next, last)) {
+              continue;
+            }
           }
+          array[array.length] = next;
+          last = next;
         }
 
         return util.toStreamFromValues(array);
@@ -2696,12 +2699,15 @@
         while (true) {
           var next = stream.next();
           if (next === undefined) break;
-          var a = util.call(keySelector, [last]);
-          var b = util.call(keySelector, [next]);
-          if (last === undefined || !util.equal(b, a)) {
-            array[array.length] = next;
-            last = next;
+          if (last !== undefined) {
+            var a = util.call(keySelector, [last]);
+            var b = util.call(keySelector, [next]);
+            if (util.equal(b, a)) {
+              continue;
+            }
           }
+          array[array.length] = next;
+          last = next;
         }
 
         return util.toStreamFromValues(array);
