@@ -7,7 +7,6 @@ then
     git checkout -f
     git clean -fd
     git pull
-    ./compile.bash
   )
 else
   GIT_SSH_COMMAND='ssh -o StrictHostKeyChecking=no' git clone --depth=1 https://github.com/MirrgieRiana/fluorite-7.git
@@ -17,4 +16,5 @@ chmod +x fl7
 (
   cd fluorite-7
   npm install
+  ./compile.bash
 )
