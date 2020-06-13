@@ -2656,6 +2656,110 @@
 
         return util.toStreamFromValues(array);
       }));
+      c("UNIQUE", new fl7.FluoriteFunction(args => {
+
+        var streamer = args[0];
+        if (streamer === undefined) throw new Error("Illegal argument");
+        streamer = util.toStream(streamer);
+
+        var matcher = args[1];
+        if (matcher === undefined) matcher = null;
+
+        var array = [];
+        var last = undefined;
+        var stream = streamer.start();
+        a:
+        while (true) {
+          var next = stream.next();
+          if (next === undefined) break;
+          if (last === undefined || !(matcher != null ? util.call(matcher, [last, next]) : util.equal(next, last))) {
+            array[array.length] = next;
+            last = next;
+          }
+        }
+
+        return util.toStreamFromValues(array);
+      }));
+      c("UNIQUE_BY", new fl7.FluoriteFunction(args => {
+
+        var streamer = args[0];
+        if (streamer === undefined) throw new Error("Illegal argument");
+        streamer = util.toStream(streamer);
+
+        var keySelector = args[1];
+        if (keySelector === undefined) throw new Error("Illegal argument");
+
+        var array = [];
+        var last = undefined;
+        var stream = streamer.start();
+        a:
+        while (true) {
+          var next = stream.next();
+          if (next === undefined) break;
+          var a = util.call(keySelector, [last]);
+          var b = util.call(keySelector, [next]);
+          if (last === undefined || !util.equal(b, a)) {
+            array[array.length] = next;
+            last = next;
+          }
+        }
+
+        return util.toStreamFromValues(array);
+      }));
+      c("DISTINCT", new fl7.FluoriteFunction(args => {
+
+        var streamer = args[0];
+        if (streamer === undefined) throw new Error("Illegal argument");
+        streamer = util.toStream(streamer);
+
+        var matcher = args[1];
+        if (matcher === undefined) matcher = null;
+
+        var array = [];
+        var stream = streamer.start();
+        a:
+        while (true) {
+          var next = stream.next();
+          if (next === undefined) break;
+          for (var i = 0; i < array.length; i++) {
+            var a = array[i];
+            var b = next;
+            if (matcher != null ? util.call(matcher, [a, b]) : util.equal(b, a)) {
+              continue a;
+            }
+          }
+          array[array.length] = next;
+        }
+
+        return util.toStreamFromValues(array);
+      }));
+      c("DISTINCT_BY", new fl7.FluoriteFunction(args => {
+
+        var streamer = args[0];
+        if (streamer === undefined) throw new Error("Illegal argument");
+        streamer = util.toStream(streamer);
+
+        var keySelector = args[1];
+        if (keySelector === undefined) throw new Error("Illegal argument");
+
+        var array = [];
+        var stream = streamer.start();
+        a:
+        while (true) {
+          var next = stream.next();
+          if (next === undefined) break;
+          for (var i = 0; i < array.length; i++) {
+            var a = util.call(keySelector, [array[i]]);
+            var b = util.call(keySelector, [next]);
+            if (util.equal(b, a)) {
+              continue a;
+            }
+          }
+          array[array.length] = next;
+        }
+
+        return util.toStreamFromValues(array);
+      }));
       c("JSON", new fl7.FluoriteFunction(args => {
 
         var value = args[0];
