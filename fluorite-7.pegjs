@@ -2397,8 +2397,47 @@
         }
 
         var limit = args[2];
+        if (limit !== undefined) limit = util.toNumber(limit);
 
         return util.toStreamFromValues(string.split(delimiter, limit));
+      }));
+      c("REPLACE", new fl7.FluoriteFunction(args => {
+
+        var string = args[0];
+        if (string === undefined) throw new Error("Illegal argument");
+        string = util.toString(string);
+
+        var matcher = args[1];
+        if (matcher === undefined) throw new Error("Illegal argument");
+        if (matcher instanceof fl7.FluoriteRegExpProvider) {
+          matcher = matcher.create();
+        } else {
+          matcher = util.toString(matcher);
+        }
+
+        var replacer = args[2];
+        if (replacer === undefined) throw new Error("Illegal argument");
+
+        if (replacer instanceof fl7.FluoriteFunction) {
+          return string.replace(matcher, function() {
+            var map = {};
+            var match = arguments[0];
+            map[0] = match;
+            for (var i = 0; i < arguments.length - 3; i++) {
+              map[i + 1] = arguments[i + 1];
+            }
+            map.offset = arguments[arguments.length - 2];
+            map.TO_STRING = new fl7.FluoriteFunction(args => {
+              return match;
+            });
+            return util.toString(util.call(replacer, [new fl7.FluoriteObject(null, map)]));
+          });
+        } else if (isString(replacer)) {
+          replacer = util.toString(replacer);
+          return string.replace(matcher, replacer);
+        } else {
+          throw new Error("Illegal argument");
+        }
       }));
       c("MAX", new fl7.FluoriteFunction(args => {
 
