@@ -2371,6 +2371,14 @@
         if (value === undefined) throw new Error("Illegal argument");
         return util.toBoolean(value);
       }));
+      c("REGEXP", new fl7.FluoriteFunction(args => {
+        if (args.length == 1) {
+          return new fl7.FluoriteRegExpProvider(util.toString(args[0]), "");
+        } else if (args.length == 2) {
+          return new fl7.FluoriteRegExpProvider(util.toString(args[0]), util.toString(args[1]));
+        }
+        throw new Error("Illegal argument");
+      }));
       c("JOIN", new fl7.FluoriteFunction(args => {
         var delimiter = args[1];
         if (delimiter === undefined) delimiter = ",";
