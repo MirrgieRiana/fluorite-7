@@ -1,37 +1,69 @@
 #!/usr/bin/env bash
 
 usage() {
-	echo "Usage $0 [-j] [-c] [-] CODE" >&2
+	echo "Usage: $0 [OPTION...] [--] [CODE] [ARGUMENT...]" >&2
+	echo "OPTION:" >&2
+	echo "	-j  output json" >&2
+	echo "	-c  show javascript" >&2
+	echo "	-e  parse as EFL" >&2
+	echo "	-f  source file" >&2
 	exit 1
 }
 
 output_json=0
 compile=0
 embedded_fluorite=0
+while (($# > 0))
+do
 
-if [ "$1" = "-j" ]
+  if [ "$1" = "-j" ]
+  then
+    shift
+    output_json=1
+    continue
+  fi
+
+  if [ "$1" = "-c" ]
+  then
+    shift
+    compile=1
+    continue
+  fi
+
+  if [ "$1" = "-e" ]
+  then
+    shift
+    embedded_fluorite=1
+    continue
+  fi
+
+  if [ "$1" = "-f" ]
+  then
+    shift
+    (($# > 0)) || usage
+    exec=$(cat "$1")
+    shift
+    continue
+  fi
+
+  if [ "$1" = "--" ]
+  then
+    shift
+    break
+  fi
+
+  break
+done
+
+
+if [ ! -v exec ]
 then
+  (($# > 0)) || usage
+  exec=$1
   shift
-  output_json=1
 fi
 
-if [ "$1" = "-c" ]
-then
-  shift
-  compile=1
-fi
-
-if [ "$1" = "-e" ]
-then
-  shift
-  embedded_fluorite=1
-fi
-
-(($# > 0)) || usage
-exec=$1
-shift
-
-(($# > 0)) && usage
+argv=($@)
 
 #
 
@@ -273,6 +305,15 @@ function parse(source, startRule) {
       return res;
     });
   })());
+  c("ARGV", process.argv.slice(1));
+  c("ENV", (function() {
+    const map = {};
+    const names = Object.getOwnPropertyNames(process.env);
+    for (let i = 0; i < names.length; i++) {
+      map[names[i]] = String(Object.getOwnPropertyDescriptor(process.env, names[i]).value);
+    }
+    return new result.fl7.FluoriteObject(null, map);
+  })());
 
   const codes = result.node.getCodeGetter(env);
   const code = "(function() {\n" + result.fl7c.util.indent(codes[0] + "return " + codes[1] + ";\n") + "}())";
@@ -316,4 +357,4 @@ if (process.env.compile !== "0") {
 }
 
 END
-)"
+)" "${argv[@]}"
