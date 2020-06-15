@@ -1217,6 +1217,7 @@
           for (var i = 0; i < res.length - 1; i++) {
             map[i + 1] = res[i + 1];
           }
+          map.count = res.length - 1;
           map.offset = res.index;
           map.input = res.input;
           map.TO_STRING = new fl7.FluoriteFunction(args => {
@@ -1241,6 +1242,7 @@
                   for (var i = 0; i < res.length - 1; i++) {
                     map[i + 1] = res[i + 1];
                   }
+                  map.count = res.length - 1;
                   map.offset = res.index;
                   map.input = res.input;
                   map.TO_STRING = new fl7.FluoriteFunction(args => {
@@ -2458,6 +2460,7 @@
             for (var i = 0; i < arguments.length - 3; i++) {
               map[i + 1] = arguments[i + 1];
             }
+            map.count = arguments.length - 3;
             map.offset = arguments[arguments.length - 2];
             map.input = arguments[arguments.length - 1];
             map.TO_STRING = new fl7.FluoriteFunction(args => {
