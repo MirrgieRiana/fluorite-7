@@ -1209,7 +1209,20 @@
         value = util.toString(value);
         var regexp = this.create();
         if (!this.isGlobal()) {
-          return regexp.exec(value);
+          var res = regexp.exec(value);
+          if (res === null) return null;
+          var map = {};
+          var match = res[0];
+          map[0] = match;
+          for (var i = 0; i < res.length - 1; i++) {
+            map[i + 1] = res[i + 1];
+          }
+          map.offset = res.index;
+          map.input = res.input;
+          map.TO_STRING = new fl7.FluoriteFunction(args => {
+            return match;
+          });
+          return new fl7.FluoriteObject(null, map);
         } else {
           class FluoriteStreamerFindAll extends FluoriteStreamer {
 
@@ -1222,7 +1235,18 @@
                 next: () => {
                   var res = regexp.exec(value);
                   if (res === null) return undefined;
-                  return res;
+                  var map = {};
+                  var match = res[0];
+                  map[0] = match;
+                  for (var i = 0; i < res.length - 1; i++) {
+                    map[i + 1] = res[i + 1];
+                  }
+                  map.offset = res.index;
+                  map.input = res.input;
+                  map.TO_STRING = new fl7.FluoriteFunction(args => {
+                    return match;
+                  });
+                  return new fl7.FluoriteObject(null, map);
                 },
               };
             }
@@ -2435,6 +2459,7 @@
               map[i + 1] = arguments[i + 1];
             }
             map.offset = arguments[arguments.length - 2];
+            map.input = arguments[arguments.length - 1];
             map.TO_STRING = new fl7.FluoriteFunction(args => {
               return match;
             });
