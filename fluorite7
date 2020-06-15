@@ -1,0 +1,56 @@
+#!/usr/bin/env bash
+
+usage() {
+	echo "Usage: $0 [OPTION...] [--] SOURCE_FILE [ARGUMENT...]" >&2
+	echo "OPTION:" >&2
+	echo "	-j  output json" >&2
+	echo "	-c  show javascript" >&2
+	echo "	-e  parse as EFL" >&2
+	exit 1
+}
+
+options=()
+while (($# > 0))
+do
+
+  if [ "$1" = "-j" ]
+  then
+    options+=("$1")
+    shift
+    continue
+  fi
+
+  if [ "$1" = "-c" ]
+  then
+    options+=("$1")
+    shift
+    continue
+  fi
+
+  if [ "$1" = "-e" ]
+  then
+    options+=("$1")
+    shift
+    continue
+  fi
+
+  if [ "$1" = "--" ]
+  then
+    shift
+    break
+  fi
+
+  break
+done
+
+(($# > 0)) || usage
+source_file=$1
+shift
+
+argv=($@)
+
+#
+
+app_dir=$(cd "$(dirname "$0")"; pwd)
+
+"$app_dir/fl7" "${options[@]}" -f "$source_file" -- "${argv[@]}"
