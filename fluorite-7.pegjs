@@ -2841,6 +2841,35 @@
 
         return util.toStreamFromValues(array);
       }));
+      c("SLICE", new fl7.FluoriteFunction(args => {
+
+        var streamer = args[0];
+        if (streamer === undefined) throw new Error("Illegal argument");
+        streamer = util.toStream(streamer);
+
+        var number = args[1];
+        if (number === undefined) number = 10;
+        number = util.toNumber(number);
+        if (number < 1) throw new Error("Illegal argument: number = " + number);
+
+        var array = [];
+        var stream = streamer.start();
+        a:
+        while (true) {
+          var array2 = [];
+          for (var i = 0; i < number; i++) {
+            var next = stream.next();
+            if (next === undefined) {
+              if (array2.length > 0) array[array.length] = array2;
+              break a;
+            }
+            array2[array2.length] = next;
+          }
+          array[array.length] = array2;
+        }
+
+        return util.toStreamFromValues(array);
+      }));
       c("JSON", new fl7.FluoriteFunction(args => {
 
         var value = args[0];
