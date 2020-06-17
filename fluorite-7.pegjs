@@ -1346,6 +1346,39 @@
         return util.toStream(value);
       },
 
+      mount: function(path, resolver) {
+        if (!(path instanceof Array)) throw new Error("path is not an Array");
+        if (resolver instanceof FluoriteObject) {
+          path[path.length] = new FluoriteFunction(args => {
+            if (args.length != 2) throw new Error("Illegal argument");
+            var name = util.toString(args[0]);
+
+            if (util.containedKey(name, resolver)) {
+              return util.getOwnValueFromObject(resolver, name);
+            } else {
+              return args[1];
+            }
+          });
+        } else {
+          path[path.length] = resolver;
+        }
+      },
+
+      resolve: function(path, name) {
+        var array;
+        if (path instanceof Array) {
+          array = path;
+        } else {
+          array = [path];
+        }
+        var pass = [];
+        for (var i = array.length - 1; i >= 0; i--) {
+          var res = util.call(array[i], [name, pass]);
+          if (res !== pass) return res;
+        }
+        throw new Error("Can not resolve: name = " + name);
+      },
+
       plus: function(a, b) {
         if (isNumber(a)) {
           return a + util.toNumber(b);
@@ -2150,6 +2183,12 @@
       c("E", Math.E);
       c("NAN", NaN);
       c("INFINITY", Infinity);
+      c("PATH", [
+        new fl7.FluoriteFunction(args => {
+          if (args.length != 2) throw new Error("Illegal argument");
+          return args[0];
+        }),
+      ]);
       c("DIV", new fl7.FluoriteFunction(args => {
         if (args.length == 2) {
           return Math.trunc(util.toNumber(args[0]) / util.toNumber(args[1]));
@@ -3031,7 +3070,18 @@
         if (nodeKey instanceof fl7c.FluoriteNodeTokenIdentifier) {
           var key = nodeKey.getValue();
           var alias = e.pc().getAliasOrUndefined(e.node().getLocation(), key);
-          if (alias === undefined) return JSON.stringify(key); // throw new Error("No such alias '" + key + "'");
+          if (alias === undefined) {
+            var aliasPath = e.pc().getAliasOrUndefined(e.node().getLocation(), "PATH");
+            if (aliasPath !== undefined) {
+              var codePath = aliasPath.getCodeGetter(e.pc(), e.node().getLocation());
+              return [
+                codePath[0],
+                "(util.resolve(" + codePath[1] + ", " + JSON.stringify(key) + "))",
+              ];
+              return JSON.stringify(key);
+            }
+            throw new Error("No such alias '" + key + "'");
+          }
           return alias.getCodeGetter(e.pc(), e.node().getLocation());
         }
         throw new Error("Illegal argument");
@@ -3547,6 +3597,24 @@
         );
       });
       m("_LEFT_DOLLAR_HASH", e => wrap_0(e, c => "(util.getLength(" + c + "))"));
+      m("_LEFT_ATSIGN", e => {
+
+        var node = e.arg(0);
+        var code = node.getCodeGetter(e.pc());
+
+        var aliasPath = e.pc().getAliasOrUndefined(e.node().getLocation(), "PATH");
+        if (aliasPath === undefined) throw new Error("No alias: PATH");
+        var codePath = aliasPath.getCodeGetter(e.pc(), e.node().getLocation());
+
+        var variable = "v_" + e.pc().allocateVariableId();
+        return [
+          code[0] +
+          codePath[0] +
+          "const " + variable +" = " + code[1] + ";\n" +
+          "util.mount(" + codePath[1] + ", " + variable +");\n",
+          "" + variable,
+        ];
+      });
       m("_LEFT_BACKQUOTES", e => {
         var codesFunction = e.arg(0).getCodeGetter(e.pc());
         var codesRight = e.arg(1).getCodeGetter(e.pc());
@@ -4636,6 +4704,7 @@ Left
     / "*" { return [location(), "_LEFT_ASTERISK", []]; }
     / "\\" { return [location(), "_LEFT_BACKSLASH", []]; }
     / "$#" { return [location(), "_LEFT_DOLLAR_HASH", []]; }
+    / "@" { return [location(), "_LEFT_ATSIGN", []]; }
     / "`" main:Right "`" { return [location(), "_LEFT_BACKQUOTES", [main]]; }
   ) _ tail:Left {
     var args = [];
