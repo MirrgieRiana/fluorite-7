@@ -3264,6 +3264,28 @@
               if (alias === undefined) break a;
               return alias.getCodeGetter(e.pc(), node.getLocation());
             }
+            a:
+            {
+              var key = "UNIT_" + node.getValue();
+              var aliasPath = e.pc().getAliasOrUndefined(node.getLocation(), "PATH");
+              if (aliasPath === undefined) break a;
+              var codePath = aliasPath.getCodeGetter(e.pc(), node.getLocation());
+              return [
+                codePath[0],
+                "util.resolve(" + codePath[1] + ", " + JSON.stringify(key) + ")",
+              ];
+            }
+            a:
+            {
+              var key = node.getValue();
+              var aliasPath = e.pc().getAliasOrUndefined(node.getLocation(), "PATH");
+              if (aliasPath === undefined) break a;
+              var codePath = aliasPath.getCodeGetter(e.pc(), node.getLocation());
+              return [
+                codePath[0],
+                "util.resolve(" + codePath[1] + ", " + JSON.stringify(key) + ")",
+              ];
+            }
             throw new Error("No such alias '" + key + "'");
           }
           throw new Error("Illegal argument of identifier: " + node);
