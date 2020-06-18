@@ -2444,6 +2444,26 @@
         }
         throw new Error("Illegal argument");
       }));
+      c("GREP", new fl7.FluoriteFunction(args => {
+
+        var streamer = args[0];
+        if (streamer === undefined) throw new Error("Illegal argument");
+        streamer = util.toStream(streamer);
+
+        var predicate = args[1];
+        if (predicate === undefined) throw new Error("Illegal argument");
+
+        var array = [];
+        var stream = streamer.start();
+        while (true) {
+          var next = stream.next();
+          if (next === undefined) break;
+          if (util.toBoolean(util.call(predicate, [next]))) {
+            array[array.length] = next;
+          }
+        }
+        return util.toStreamFromValues(array);
+      }));
       c("JOIN", new fl7.FluoriteFunction(args => {
         var delimiter = args[1];
         if (delimiter === undefined) delimiter = ",";
