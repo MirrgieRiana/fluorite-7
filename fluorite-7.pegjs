@@ -1272,6 +1272,10 @@
 
     var util = {
 
+      isStreamer: function(value) {
+        return value instanceof FluoriteStreamer;
+      },
+
       toNumberOrUndefined: function(value) {
         if (value === null) return 0;
         if (isNumber(value)) return value;
@@ -4037,14 +4041,30 @@
           e.pc().prevLabelFrame();
           e.pc().popFrame();
 
+          var variableIdFunction = "v_" + e.pc().allocateVariableId();
+          var variableIdValue = "v_" + e.pc().allocateVariableId();
+          var variableIdResult = "v_" + e.pc().allocateVariableId();
+
           return [
-            codesLeft[0], // TODO 内部でreturnすると　　　　　↓この関数が反応する問題
-            "(util.map(util.toStream(" + codesLeft[1] + "), function(" + variable + ") {\n" +
+            codesLeft[0] +
+            "const " + variableIdFunction + " = function(" + variable + ") {\n" +
             fl7c.util.indent(
               codesRight[0] +
               "return " + codesRight[1] + ";\n"
             ) +
-            "}))",
+            "};\n" +
+            "const " + variableIdValue + " = " + codesLeft[1] + ";\n" +
+            "let " + variableIdResult + ";\n" +
+            "if (util.isStreamer(" + variableIdValue + ")) {\n" +
+            fl7c.util.indent(
+              "" + variableIdResult + " = util.map(" + variableIdValue + ", " + variableIdFunction + ");\n"
+            ) +
+            "} else {\n" +
+            fl7c.util.indent(
+              "" + variableIdResult + " = " + variableIdFunction + "(" + variableIdValue + ");\n"
+            ) +
+            "}\n",
+            "(" + variableIdResult + ")",
           ];
         } else {
 
