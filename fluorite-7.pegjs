@@ -4117,7 +4117,7 @@
             "const " + variable + " = " + codesLeft[1] + ";\n" +
             "let " + variableIdResult + ";\n" +
             (
-              "if (" + functionCodeFilter(variable) + ") {\n" + 
+              "if (" + (functionCodeFilter === null ? "true" : functionCodeFilter(variable)) + ") {\n" + 
               fl7c.util.indent(
                 codesRight[0]+
                 "" + variableIdResult + " = " + codesRight[1] + ";\n"
