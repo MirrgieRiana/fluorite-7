@@ -3809,6 +3809,26 @@
           "(" + variable + ")",
         ];
       });
+      m("_EXCLAMATION_COLON", e => {
+        var variable = "v_" + e.pc().allocateVariableId();
+        var codesLeft = e.arg(0).getCodeGetter(e.pc());
+
+        e.pc().pushFrame();
+        var codesRight = e.arg(1).getCodeGetter(e.pc());
+        e.pc().popFrame();
+
+        return [
+          codesLeft[0] + 
+          "let " + variable + " = " + codesLeft[1] + ";\n" +
+          "if (" + variable + " !== null) {\n" +
+          fl7c.util.indent(
+            codesRight[0] +
+            variable + " = " + codesRight[1] + ";\n"
+          ) +
+          "}\n",
+          "(" + variable + ")",
+        ];
+      });
       m("_COMMA", e => {
 
         var codesHeader = [];
@@ -4929,6 +4949,9 @@ Condition
   }
   / head:Or _ op:("?:" { return location(); }) _ b:Condition {
     return new fl7c.FluoriteNodeMacro(op, "_QUESTION_COLON", [head, b]);
+  }
+  / head:Or _ op:("!:" { return location(); }) _ b:Condition {
+    return new fl7c.FluoriteNodeMacro(op, "_EXCLAMATION_COLON", [head, b]);
   }
   / Or
 
