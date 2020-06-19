@@ -4043,7 +4043,7 @@
 
         return {key, nodesLeft, iterate};
       };
-      m("_PIPE", e => {
+      var functionPipe = function(e, functionCodeFilter) {
 
         var args = functionExtractPipeArguments(e.arg(0));
         var codesLeft = args.nodesLeft.getCodeGetter(e.pc());
@@ -4064,6 +4064,7 @@
           var variableIdFunction = "v_" + e.pc().allocateVariableId();
           var variableIdValue = "v_" + e.pc().allocateVariableId();
           var variableIdResult = "v_" + e.pc().allocateVariableId();
+          var variableIdFilterFunctionArgument = "v_" + e.pc().allocateVariableId();
 
           return [
             codesLeft[0] +
@@ -4077,11 +4078,27 @@
             "let " + variableIdResult + ";\n" +
             "if (util.isStreamer(" + variableIdValue + ")) {\n" +
             fl7c.util.indent(
-              "" + variableIdResult + " = util.map(" + variableIdValue + ", " + variableIdFunction + ");\n"
+              functionCodeFilter !== null ? (
+                "" + variableIdResult + " = util.map(util.grep(" + variableIdValue + ", " + variableIdFilterFunctionArgument + " => " + functionCodeFilter(variableIdFilterFunctionArgument) + "), " + variableIdFunction + ");\n"
+              ) : (
+                "" + variableIdResult + " = util.map(" + variableIdValue + ", " + variableIdFunction + ");\n"
+              )
             ) +
             "} else {\n" +
             fl7c.util.indent(
-              "" + variableIdResult + " = " + variableIdFunction + "(" + variableIdValue + ");\n"
+              functionCodeFilter !== null ? (
+                "if (" + functionCodeFilter(variableIdValue) + ") {\n" + 
+                fl7c.util.indent(
+                  "" + variableIdResult + " = " + variableIdFunction + "(" + variableIdValue + ");\n"
+                ) +
+                "} else {\n" + 
+                fl7c.util.indent(
+                  "" + variableIdResult + " = util.empty();\n"
+                ) +
+                "}\n"
+              ) : (
+                "" + variableIdResult + " = " + variableIdFunction + "(" + variableIdValue + ");\n"
+              )
             ) +
             "}\n",
             "(" + variableIdResult + ")",
@@ -4093,15 +4110,29 @@
           var codesRight = e.arg(1).getCodeGetter(e.pc());
           e.pc().popFrame();
 
+          var variableIdResult = "v_" + e.pc().allocateVariableId();
+
           return [
             codesLeft[0] +
             "const " + variable + " = " + codesLeft[1] + ";\n" +
-            codesRight[0],
-            codesRight[1],
+            "let " + variableIdResult + ";\n" +
+            (
+              "if (" + functionCodeFilter(variable) + ") {\n" + 
+              fl7c.util.indent(
+                codesRight[0]+
+                "" + variableIdResult + " = " + codesRight[1] + ";\n"
+              ) +
+              "} else {\n" + 
+              fl7c.util.indent(
+                "" + variableIdResult + " = util.empty();\n"
+              ) +
+              "}\n"
+            ),
+            "(" + variableIdResult + ")",
           ];
         }
-      });
-      m("_ITERATE_PIPE", (e, funcCode) => {
+      };
+      var functionIteratePipe = function(e, funcCode, functionCodeFilter) {
 
         var args = functionExtractPipeArguments(e.arg(0));
 
@@ -4119,101 +4150,15 @@
                 var codesRight = e.arg(1).getCodeGetter(pc);
                 e.pc().popFrame();
 
-                return (
-                  "const " + variable + " = " + codeItem + ";\n" +
-                  codesRight[0] +
-                  funcCode(codesRight[1])
-                );
-              });
-            })[0],
-          ];
-        } else {
-
-          var variableId = e.pc().allocateVariableId();
-          var variable = "v_" + variableId;
-          var alias = new fl7c.FluoriteAliasVariable(variableId);
-
-          var codesLeft = args.nodesLeft.getCodeGetter(e.pc());
-
-          e.pc().pushFrame();
-          e.pc().getFrame()[args.key] = alias;
-          var codesRight = e.arg(1).getCodeGetter(e.pc());
-          e.pc().popFrame();
-
-          return [
-            codesLeft[0] +
-            "const " + variable + " = " + codesLeft[1] + ";\n" +
-            codesRight[0] +
-            funcCode(codesRight[1]),
-          ];
-        }
-      });
-      m("_QUESTION_PIPE", e => {
-
-        var args = functionExtractPipeArguments(e.arg(0));
-        var codesLeft = args.nodesLeft.getCodeGetter(e.pc());
-
-        var variableId = e.pc().allocateVariableId();
-        var variable = "v_" + variableId;
-        var alias = new fl7c.FluoriteAliasVariable(variableId);
-
-        if (args.iterate) {
-
-          e.pc().pushFrame();
-          e.pc().nextLabelFrame();
-          e.pc().getFrame()[args.key] = alias;
-          var codesRight = e.arg(1).getCodeGetter(e.pc());
-          e.pc().prevLabelFrame();
-          e.pc().popFrame();
-
-          return [ // TODO パイプ内でreturnできるように
-            codesLeft[0], // TODO 内部でreturnすると　　　　　↓この関数が反応する問題
-            "(util.grep(util.toStream(" + codesLeft[1] + "), function(" + variable + ") {\n" +
-            fl7c.util.indent(
-              codesRight[0] +
-              "return util.toBoolean(" + codesRight[1] + ");\n"
-            ) +
-            "}))",
-          ];
-        } else {
-
-          e.pc().pushFrame();
-          e.pc().getFrame()[args.key] = alias;
-          var codesRight = e.arg(1).getCodeGetter(e.pc());
-          e.pc().popFrame();
-
-          return [
-            codesLeft[0] +
-            "const " + variable + " = " + codesLeft[1] + ";\n" +
-            codesRight[0],
-            "(util.toBoolean(" + codesRight[1] + ") ? util.toStreamFromValues([" + variable + "]) : util.empty())",
-          ];
-        }
-      });
-      m("_ITERATE_QUESTION_PIPE", (e, funcCode) => {
-
-        var args = functionExtractPipeArguments(e.arg(0));
-
-        if (args.iterate) {
-          return [
-            args.nodesLeft.getCodeIterator(e.pc(), codeItemOrStreamer => {
-              return functionUnpackStreamer(e.pc(), codeItemOrStreamer, (pc, codeItem) => {
-
-                var variableId = e.pc().allocateVariableId();
-                var variable = "v_" + variableId;
-                var alias = new fl7c.FluoriteAliasVariable(variableId);
-
-                e.pc().pushFrame();
-                e.pc().getFrame()[args.key] = alias;
-                var codesRight = e.arg(1).getCodeGetter(pc);
-                e.pc().popFrame();
+                var variableIdItem = "v_" + e.pc().allocateVariableId();
 
                 return (
-                  "const " + variable + " = " + codeItem + ";\n" +
-                  codesRight[0] +
-                  "if (util.toBoolean(" + codesRight[1] + ")) {\n" +
+                  "const " + variableIdItem + " = " + codeItem + ";\n" +
+                  "if (" + (functionCodeFilter === null ? "true" : functionCodeFilter(variableIdItem)) + ") {\n" +
                   fl7c.util.indent(
-                    funcCode(variable)
+                    "const " + variable + " = " + variableIdItem + ";\n" +
+                    codesRight[0] +
+                    funcCode(codesRight[1])
                   ) +
                   "}\n"
                 );
@@ -4236,112 +4181,21 @@
           return [
             codesLeft[0] +
             "const " + variable + " = " + codesLeft[1] + ";\n" +
-            codesRight[0] +
-            "if (util.toBoolean(" + codesRight[1] + ")) {\n" +
-            fl7c.util.indent(
-              funcCode(variable)
-            ) +
-            "}\n",
-          ];
-        }
-      });
-      m("_EXCLAMATION_PIPE", e => {
-
-        var args = functionExtractPipeArguments(e.arg(0));
-        var codesLeft = args.nodesLeft.getCodeGetter(e.pc());
-
-        var variableId = e.pc().allocateVariableId();
-        var variable = "v_" + variableId;
-        var alias = new fl7c.FluoriteAliasVariable(variableId);
-
-        if (args.iterate) {
-
-          e.pc().pushFrame();
-          e.pc().nextLabelFrame();
-          e.pc().getFrame()[args.key] = alias;
-          var codesRight = e.arg(1).getCodeGetter(e.pc());
-          e.pc().prevLabelFrame();
-          e.pc().popFrame();
-
-          return [ // TODO パイプ内でreturnできるように
-            codesLeft[0], // TODO 内部でreturnすると　　　　　↓この関数が反応する問題
-            "(util.grep(util.toStream(" + codesLeft[1] + "), function(" + variable + ") {\n" +
+            "if (" + (functionCodeFilter === null ? "true" : functionCodeFilter(variable)) + ") {\n" +
             fl7c.util.indent(
               codesRight[0] +
-              "return !util.toBoolean(" + codesRight[1] + ");\n"
-            ) +
-            "}))",
-          ];
-        } else {
-
-          e.pc().pushFrame();
-          e.pc().getFrame()[args.key] = alias;
-          var codesRight = e.arg(1).getCodeGetter(e.pc());
-          e.pc().popFrame();
-
-          return [
-            codesLeft[0] +
-            "const " + variable + " = " + codesLeft[1] + ";\n" +
-            codesRight[0],
-            "(!util.toBoolean(" + codesRight[1] + ") ? util.toStreamFromValues([" + variable + "]) : util.empty())",
-          ];
-        }
-      });
-      m("_ITERATE_EXCLAMATION_PIPE", (e, funcCode) => {
-
-        var args = functionExtractPipeArguments(e.arg(0));
-
-        if (args.iterate) {
-          return [
-            args.nodesLeft.getCodeIterator(e.pc(), codeItemOrStreamer => {
-              return functionUnpackStreamer(e.pc(), codeItemOrStreamer, (pc, codeItem) => {
-
-                var variableId = e.pc().allocateVariableId();
-                var variable = "v_" + variableId;
-                var alias = new fl7c.FluoriteAliasVariable(variableId);
-
-                e.pc().pushFrame();
-                e.pc().getFrame()[args.key] = alias;
-                var codesRight = e.arg(1).getCodeGetter(pc);
-                e.pc().popFrame();
-
-                return (
-                  "const " + variable + " = " + codeItem + ";\n" +
-                  codesRight[0] +
-                  "if (!util.toBoolean(" + codesRight[1] + ")) {\n" +
-                  fl7c.util.indent(
-                    funcCode(variable)
-                  ) +
-                  "}\n"
-                );
-              });
-            })[0],
-          ];
-        } else {
-
-          var variableId = e.pc().allocateVariableId();
-          var variable = "v_" + variableId;
-          var alias = new fl7c.FluoriteAliasVariable(variableId);
-
-          var codesLeft = args.nodesLeft.getCodeGetter(e.pc());
-
-          e.pc().pushFrame();
-          e.pc().getFrame()[args.key] = alias;
-          var codesRight = e.arg(1).getCodeGetter(e.pc());
-          e.pc().popFrame();
-
-          return [
-            codesLeft[0] +
-            "const " + variable + " = " + codesLeft[1] + ";\n" +
-            codesRight[0] +
-            "if (!util.toBoolean(" + codesRight[1] + ")) {\n" +
-            fl7c.util.indent(
-              funcCode(variable)
+              funcCode(codesRight[1])
             ) +
             "}\n",
           ];
         }
-      });
+      };
+      m("_PIPE", e => functionPipe(e, null));
+      m("_ITERATE_PIPE", (e, funcCode) => functionIteratePipe(e, funcCode, null));
+      m("_QUESTION_PIPE", e => functionPipe(e, code => code + " !== null"));
+      m("_ITERATE_QUESTION_PIPE", (e, funcCode) => functionIteratePipe(e, funcCode, code => code + " !== null"));
+      m("_EXCLAMATION_PIPE", e => functionPipe(e, code => code + " === null"));
+      m("_ITERATE_EXCLAMATION_PIPE", (e, funcCode) => functionIteratePipe(e, funcCode, code => code + " === null"));
       m("_EQUAL_GREATER", e => {
         var codesLeft = as2c2(e.pc(), e.arg(0));
         var codesRight = e.arg(1).getCodeGetter(e.pc());
