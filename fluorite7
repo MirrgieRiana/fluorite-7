@@ -47,7 +47,7 @@ done
 source_file=$1
 shift
 
-argv=($@)
+argv=("$@")
 
 #
 
