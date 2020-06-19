@@ -63,7 +63,7 @@ then
   shift
 fi
 
-argv=($@)
+argv=("$@")
 
 #
 
@@ -262,6 +262,20 @@ function parse(source, startRule) {
 
     return result.fl7.util.toStreamFromArray(arrayOut);
   }));
+  c("EVAL", (function(){
+    return new result.fl7.FluoriteFunction(args => {
+      var source = args[0];
+      if (source === undefined) throw new Error("Illegal argument");
+      source = result.fl7.util.toString(source);
+
+      const result2 = parse(source, "Root");
+
+      const fl7 = globalResult.fl7;
+      const util = globalResult.fl7.util;
+      const constants = globalResult.env.getConstants();
+      return eval(result2.code);
+    });
+  })());
   c("REQUIRE", (function(){
     return new result.fl7.FluoriteFunction(args => {
       var filename = args[0];
