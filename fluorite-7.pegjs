@@ -1322,6 +1322,9 @@
         if (value === null) return "NULL";
         if (value === true) return "TRUE";
         if (value === false) return "FALSE";
+        if (value === Infinity) return "INFINITY";
+        if (value === -Infinity) return "-INFINITY";
+        if (isNaN(value)) return "NAN";
         if (value instanceof Array) return value.map(a => util.toString(a)).join(",");
         if (value instanceof FluoriteValue) {
           var result = value.toString();
