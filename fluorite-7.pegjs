@@ -4445,7 +4445,12 @@ TokenEmbeddedStringFormat
 
 TokenEmbeddedStringSection
   = main:TokenEmbeddedStringCharacter+ { return new fl7c.FluoriteNodeTokenString(location(), main.join(""), "\"" + text() + "\""); }
-  / "$" main:RightWithoutComment { return main; }
+  / "$$" { return new fl7c.FluoriteNodeTokenString(location(), "$", "\"$\""); }
+  / "$" main:LiteralIdentifier { return main; }
+  / "$" "(" _ main:Expression _ ")" { return main; }
+  / "$" format:TokenEmbeddedStringFormat "(" _ main:Expression _ ")" {
+    return new fl7c.FluoriteNodeMacro(location(), "_STRING_FORMAT", [format, main]);
+  }
   / "\\" "(" _ main:Expression _ ")" { return main; }
   / "\\" format:TokenEmbeddedStringFormat "(" _ main:Expression _ ")" {
     return new fl7c.FluoriteNodeMacro(location(), "_STRING_FORMAT", [format, main]);
