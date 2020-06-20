@@ -2951,18 +2951,31 @@
         }
 
         if (value instanceof fl7.FluoriteStreamer) {
-          return util.map(value, item => JSON.stringify(item, null, indent));
+          return util.map(value, item => {
+            return JSON.stringify(item, null, indent);
+          });
         } else {
           return JSON.stringify(value, null, indent);
         }
       }));
       c("FROM_JSON", new fl7.FluoriteFunction(args => {
+
         var value = args[0];
         if (value === undefined) throw new Error("Illegal argument");
-        return JSON.parse(util.toString(value), (k, v) => {
-          if (typeof v === "object" && v !== null && !Array.isArray(v)) return util.createObject(null, v);
-          return v;
-        });
+
+        if (value instanceof fl7.FluoriteStreamer) {
+          return util.map(value, item => {
+            return JSON.parse(util.toString(item), (k, v) => {
+              if (typeof v === "object" && v !== null && !Array.isArray(v)) return util.createObject(null, v);
+              return v;
+            });
+          });
+        } else {
+          return JSON.parse(util.toString(value), (k, v) => {
+            if (typeof v === "object" && v !== null && !Array.isArray(v)) return util.createObject(null, v);
+            return v;
+          });
+        }
       }));
       c("REVERSE", new fl7.FluoriteFunction(args => {
         var stream = args[0];
