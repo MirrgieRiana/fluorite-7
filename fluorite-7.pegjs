@@ -2950,7 +2950,11 @@
           throw new Error("Illegal argument");
         }
 
-        return JSON.stringify(value, null, indent);
+        if (value instanceof fl7.FluoriteStreamer) {
+          return util.map(value, item => JSON.stringify(item, null, indent));
+        } else {
+          return JSON.stringify(value, null, indent);
+        }
       }));
       c("FROM_JSON", new fl7.FluoriteFunction(args => {
         var value = args[0];
