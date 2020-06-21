@@ -1837,6 +1837,10 @@
 
       getValueFromObject: function(object, key) {
 
+        if ((object instanceof Array) && isNumber(key)) {
+          return util.getFromArray(object, key);
+        }
+
         var objectClass;
         if (object instanceof Array) {
           objectClass = this.objects.ARRAY;
@@ -1845,6 +1849,8 @@
         } else {
           throw new Error("Illegal argument: " + object + ", " + key);
         }
+
+        key = util.toString(key);
 
         while (objectClass !== null) {
           var descriptor = Object.getOwnPropertyDescriptor(objectClass.map, key);
@@ -3473,36 +3479,51 @@
         var nodeObject = e.arg(0);
         var nodeKey = e.arg(1);
 
-        var key = undefined;
+        var codeObject = nodeObject.getCodeGetter(e.pc());
+
+        var codeKey = undefined;
         if (nodeKey instanceof fl7c.FluoriteNodeMacro) {
           if (nodeKey.getKey() === "_LITERAL_IDENTIFIER") {
             if (nodeKey.getArgument(0) instanceof fl7c.FluoriteNodeTokenIdentifier) {
-              key = nodeKey.getArgument(0).getValue();
+              codeKey = [
+                "",
+                "(" + JSON.stringify(nodeKey.getArgument(0).getValue()) + ")",
+              ];
             }
           }
         }
-        if (key === undefined) throw new Error("Illegal member access key");
+        if (codeKey === undefined) codeKey = nodeKey.getCodeGetter(e.pc());
 
-        return wrap(e.pc(), nodeObject, c => "(util.getValueFromObject(" + c + ", " + JSON.stringify(key) + "))");
+        return [
+          codeObject[0] +
+          codeKey[0],
+          "(util.getValueFromObject(" + codeObject[1] + ", " + codeKey[1] + "))",
+        ];
       });
       m("_SET_PERIOD", (e, code) => {
 
-        var codesLeft = e.arg(0).getCodeGetter(e.pc());
-
+        var nodeObject = e.arg(0);
         var nodeKey = e.arg(1);
-        var key = undefined;
+
+        var codeObject = nodeObject.getCodeGetter(e.pc());
+
+        var codeKey = undefined;
         if (nodeKey instanceof fl7c.FluoriteNodeMacro) {
           if (nodeKey.getKey() === "_LITERAL_IDENTIFIER") {
             if (nodeKey.getArgument(0) instanceof fl7c.FluoriteNodeTokenIdentifier) {
-              key = nodeKey.getArgument(0).getValue();
+              codeKey = [
+                "",
+                "(" + JSON.stringify(nodeKey.getArgument(0).getValue()) + ")",
+              ];
             }
           }
         }
-        if (key === undefined) throw new Error("Illegal member access key");
+        if (codeKey === undefined) codeKey = nodeKey.getCodeGetter(e.pc());
 
         return [
-          codesLeft[0] +
-          "util.setToArray(" + codesLeft[1] + ", " + JSON.stringify(key) + ", " + code + ");\n",
+          codeObject[0] +
+          codeKey[0] +
+          "util.setToArray(" + codeObject[1] + ", " + codeKey[1] + ", " + code + ");\n",
         ];
       });
       m("_COLON2", e => {
