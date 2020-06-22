@@ -6,8 +6,13 @@
 	<body style="margin: 0; height: 100%;">
 		<table style="height: 100%; width: 100%;">
 			<tr style="height: 100%;">
-				<td>
+				<td colspan="2">
 					<iframe id="frame" style="height: 100%; width: 100%; border-style: none;" src="inner.html"></iframe>
+				</td>
+			</tr>
+			<tr>
+				<td colspan="2">
+					<textarea id="output" style="font-family: monospace"></textarea>
 				</td>
 			</tr>
 			<tr>
@@ -33,6 +38,15 @@
 						<option value="8">8</option>
 					</select>
 				</td>
+				<td style="
+					width: 100%;
+					border-style: solid none none;
+					text-align: right;
+					font-family: monospace;
+					resize: vertical;
+				">
+					<input type="button" onclick="runScript();">
+				</td>
 			</tr>
 		</table>
 		<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
@@ -44,6 +58,30 @@
 			$(window).resize(function() {
 				getEditor().layout();
 			});
+
+			var parser;
+			$.ajax("../fluorite-7.pegjs", {
+				dataType: "text",
+			}).done(data => parser = peg.generate(data, {
+				cache: true,
+				allowedStartRules: ["Root"],
+			}));
+
+			function runScript() {
+				var result = parser.parse(getEditor().getValue(), {
+					cache: true,
+					startRule: "Root",
+				});
+				var env = new result.fl7c.Environment();
+				var objects = {};
+				result.loadAliases(env, objects);
+				var codeNode = result.node.getCodeGetter(env);
+				var util = result.fl7.util;
+				util.objects = objects;
+				var constants = env.getConstants();
+				var res = eval("(function() { " + codeNode[0] + "return " + codeNode[1] + "; }())");
+				$("#output").val(util.toString(res));
+			}
 		</script>
 	</body>
 </html>
