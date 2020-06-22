@@ -93,7 +93,10 @@
 				} catch (e) {
 					res = "" + e;
 				}
-				$("#output").val(res);
+				$("#output")
+					.val(res)
+					.css("opacity", 0.3)
+					.animate({opacity: 1}, 200);
 			}
 
 			function linkThisPage() {
