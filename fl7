@@ -13,6 +13,7 @@ usage() {
 output_json=0
 compile=0
 embedded_fluorite=0
+script_file="<eval>"
 while (($# > 0))
 do
 
@@ -42,6 +43,7 @@ do
     shift
     (($# > 0)) || usage
     exec=$(cat "$1")
+    script_file=$1
     shift
     continue
   fi
@@ -80,22 +82,26 @@ fi
 export exec
 export output_json
 export embedded_fluorite
+export script_file
 export compile
 export app_dir
 export NODE_PATH="$NODE_PATH:$app_dir"
 node -e "$(cat << 'END'
 const fs = require("fs");
+const path = require("path");
 const child_process = require("child_process");
 const parser = require(process.env.app_dir + "/fluorite-7.js");
 
 let globalResult;
 
 const cacheUse = new Map();
-function parse(source, startRule) {
+function parse(source, startRule, scriptFile) {
 
   const result = parser.parse(source, {
     startRule: startRule,
   });
+
+  const constantIdsScript = [];
 
   const env = new result.fl7c.Environment();
   var objects = {};
@@ -104,6 +110,7 @@ function parse(source, startRule) {
     var constantId = env.allocateConstantId();
     env.setAlias(key, new result.fl7c.FluoriteAliasConstant(constantId));
     env.setConstant(constantId, value);
+    return constantId;
   };
   function loadStringUtf8(fd) {
 
@@ -131,6 +138,11 @@ function parse(source, startRule) {
 
     return Buffer.concat(buffers, length).toString('utf8', 0, length);
   }
+  c("RESOLVE", new result.fl7.FluoriteFunction(args => {
+    if (args.length < 1) throw new Error("Illegal Argument");
+    var pathes = result.fl7.util.toStream(args[0]).toArray();
+    return path.resolve.apply(null, pathes);
+  }));
   c("IN", (function(){
     class FluoriteStreamerStdin extends result.fl7.FluoriteStreamer {
 
@@ -268,11 +280,14 @@ function parse(source, startRule) {
       if (source === undefined) throw new Error("Illegal argument");
       source = result.fl7.util.toString(source);
 
-      const result2 = parse(source, "Root");
+      const result2 = parse(source, "Root", path.resolve(scriptFile, "../<eval>"));
 
       const fl7 = globalResult.fl7;
       const util = globalResult.fl7.util;
-      const constants = globalResult.env.getConstants();
+      const constants = Array.from(globalResult.env.getConstants());
+      for (let i = 0; i < globalResult.constantIdsScript.length; i++) {
+        constants[globalResult.constantIdsScript[i]] = result2.env.getConstants()[globalResult.constantIdsScript[i]];
+      }
       return eval(result2.code);
     });
   })());
@@ -286,11 +301,14 @@ function parse(source, startRule) {
       const input = loadStringUtf8(fd);
       fs.closeSync(fd);
 
-      const result2 = parse(input, "Root");
+      const result2 = parse(input, "Root", path.resolve(scriptFile, "..", filename));
 
       const fl7 = globalResult.fl7;
       const util = globalResult.fl7.util;
-      const constants = globalResult.env.getConstants();
+      const constants = Array.from(globalResult.env.getConstants());
+      for (let i = 0; i < globalResult.constantIdsScript.length; i++) {
+        constants[globalResult.constantIdsScript[i]] = result2.env.getConstants()[globalResult.constantIdsScript[i]];
+      }
       return eval(result2.code);
     });
   })());
@@ -307,11 +325,14 @@ function parse(source, startRule) {
         const input = loadStringUtf8(fd);
         fs.closeSync(fd);
 
-        const result2 = parse(input, "Root");
+        const result2 = parse(input, "Root", path.resolve(scriptFile, "..", filename));
 
         const fl7 = globalResult.fl7;
         const util = globalResult.fl7.util;
-        const constants = globalResult.env.getConstants();
+        const constants = Array.from(globalResult.env.getConstants());
+        for (let i = 0; i < globalResult.constantIdsScript.length; i++) {
+          constants[globalResult.constantIdsScript[i]] = result2.env.getConstants()[globalResult.constantIdsScript[i]];
+        }
         res = eval(result2.code);
 
 	cacheUse.set(filename, res);
@@ -319,6 +340,7 @@ function parse(source, startRule) {
       return res;
     });
   })());
+  constantIdsScript.push(c("FILE", path.resolve(scriptFile)));
   c("ARGV", process.argv.slice(1));
   c("ENV", (function() {
     const map = {};
@@ -337,10 +359,11 @@ function parse(source, startRule) {
     objects: objects,
     env: env,
     code: code,
+    constantIdsScript: constantIdsScript,
   };
 }
 
-let result = parse(process.env.exec, process.env.embedded_fluorite !== "0" ? "RootEmbeddedFluorite" : "Root");
+let result = parse(process.env.exec, process.env.embedded_fluorite !== "0" ? "RootEmbeddedFluorite" : "Root", process.env.script_file);
 globalResult = result;
 
 if (process.env.compile !== "0") {
