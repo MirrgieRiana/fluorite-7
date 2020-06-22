@@ -70,26 +70,25 @@
 			}));
 
 			function runScript() {
-				var result = parser.parse(getEditor().getValue(), {
-					cache: true,
-					startRule: "Root",
-				});
-				var fl7 = result.fl7;
-				var env = new result.fl7c.Environment();
-				var objects = {};
-				result.loadAliases(env, objects);
-				var codeNode = result.node.getCodeGetter(env);
-				var util = result.fl7.util;
-				util.objects = objects;
-				var constants = env.getConstants();
-				
 				var res;
 				try {
-					resutil.toString(eval("(function() { " + codeNode[0] + "return " + codeNode[1] + "; }())"));
+					var result = parser.parse(getEditor().getValue(), {
+						cache: true,
+						startRule: "Root",
+					});
+					var fl7 = result.fl7;
+					var env = new result.fl7c.Environment();
+					var objects = {};
+					result.loadAliases(env, objects);
+					var codeNode = result.node.getCodeGetter(env);
+					var util = result.fl7.util;
+					util.objects = objects;
+					var constants = env.getConstants();
+					res = resutil.toString(eval("(function() { " + codeNode[0] + "return " + codeNode[1] + "; }())"));
 				} catch (e) {
 					res = "" + e;
 				}
-				$("#output").val(res));
+				$("#output").val(res);
 			}
 		</script>
 	</body>
