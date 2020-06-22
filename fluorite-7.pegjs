@@ -4549,7 +4549,7 @@ LiteralIdentifier
   = main:TokenIdentifier { return new fl7c.FluoriteNodeMacro(location(), "_LITERAL_IDENTIFIER", [main]); }
 
 LiteralDollar
-  = "$" { return new fl7c.FluoriteNodeMacro(location(), "_LITERAL_DOLLAR", []); }
+  = "$" !"#" { return new fl7c.FluoriteNodeMacro(location(), "_LITERAL_DOLLAR", []); }
 
 LiteralCircumflex
   = "^" { return new fl7c.FluoriteNodeMacro(location(), "_LITERAL_CIRCUMFLEX", []); }
