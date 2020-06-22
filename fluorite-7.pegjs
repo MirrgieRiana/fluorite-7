@@ -2085,12 +2085,16 @@
             throw new Error("Illegal object pair");
           }
 
+          var variableIdParent = pc.allocateVariableId();
+          var variableParent = "v_" + variableIdParent;
           var variableIdMap = pc.allocateVariableId();
           var variableMap = "v_" + variableIdMap;
           var variableIdObject = pc.allocateVariableId();
           var variableObject = "v_" + variableIdObject;
 
           pc.pushFrame();
+          pc.getFrame()["_PARENT"] = new fl7c.FluoriteAliasVariable(variableIdParent);
+          pc.getFrame()["_OBJECT"] = new fl7c.FluoriteAliasVariable(variableIdObject);
           for (var i = 0; i < keys.length; i++) {
             var key = keys[i];
             pc.getFrame()[key] = new fl7c.FluoriteAliasMember(variableIdObject, key);
@@ -2122,8 +2126,9 @@
 
           return [
             codesParent[0] +
+            "const " + variableParent + " = " + codesParent[1] + ";\n" +
             "const " + variableMap + " = {};\n" +
-            "const " + variableObject + " = util.createObject(" + codesParent[1] + ", " + variableMap + ");\n" +
+            "const " + variableObject + " = util.createObject(" + variableParent + ", " + variableMap + ");\n" +
             codesEntries.join("") +
             "" + variableObject + ".initialize();\n",
             "(" + variableObject + ")",
@@ -3150,6 +3155,16 @@
           throw new Error("Cannot assign: variable=" + alias);
         }
         throw new Error("Illegal argument");
+      });
+      m("_LITERAL_DOLLAR", e => {
+        var alias = e.pc().getAliasOrUndefined(e.node().getLocation(), "_OBJECT");
+        if (alias === undefined) throw new Error("No such alias: name=" + "_OBJECT");
+        return alias.getCodeGetter(e.pc(), e.node().getLocation());
+      });
+      m("_LITERAL_CIRCUMFLEX", e => {
+        var alias = e.pc().getAliasOrUndefined(e.node().getLocation(), "_PARENT");
+        if (alias === undefined) throw new Error("No such alias: name=" + "_PARENT");
+        return alias.getCodeGetter(e.pc(), e.node().getLocation());
       });
       m("_LITERAL_PATTERN_STRING", e => {
         if (e.arg(0) instanceof fl7c.FluoriteNodeTokenPattern) {
@@ -4533,6 +4548,12 @@ LiteralFloat
 LiteralIdentifier
   = main:TokenIdentifier { return new fl7c.FluoriteNodeMacro(location(), "_LITERAL_IDENTIFIER", [main]); }
 
+LiteralDollar
+  = "$" { return new fl7c.FluoriteNodeMacro(location(), "_LITERAL_DOLLAR", []); }
+
+LiteralCircumflex
+  = "^" { return new fl7c.FluoriteNodeMacro(location(), "_LITERAL_CIRCUMFLEX", []); }
+
 LiteralPatternString
   = main:TokenPatternString { return new fl7c.FluoriteNodeMacro(location(), "_LITERAL_PATTERN_STRING", [main]); }
 
@@ -4556,6 +4577,8 @@ Literal
   / LiteralBasedInteger
   / LiteralInteger
   / LiteralIdentifier
+  / LiteralDollar
+  / LiteralCircumflex
   / LiteralPatternString
   / LiteralString
   / LiteralEmbeddedString
