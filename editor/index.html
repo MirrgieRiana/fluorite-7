@@ -48,6 +48,7 @@
 				</td>
 				<td style="text-align: right;">
 					<input type="button" value="Evaluate" onclick="runScript();">
+					<input type="button" value="Evaluate" onclick="linkThisPage();">
 				</td>
 			</tr>
 		</table>
@@ -68,7 +69,6 @@
 				cache: true,
 				allowedStartRules: ["Root"],
 			}));
-
 			function runScript() {
 				var res;
 				try {
@@ -90,6 +90,16 @@
 				}
 				$("#output").val(res);
 			}
+
+			function linkThisPage() {
+				window.location = window.location.href.replace(/\?.*$/, "") + "?s=" + encodeURI(getEditor().getValue());
+			}
+
+			$(function() {
+				var query = [...new URLSearchParams(window.location.search).entries()].reduce((obj, e) => ({...obj, [e[0]]: e[1]}), {});
+				
+				getEditor().setValue(query.s);
+			})
 		</script>
 	</body>
 </html>
