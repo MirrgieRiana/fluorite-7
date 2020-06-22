@@ -84,7 +84,7 @@
 					var util = result.fl7.util;
 					util.objects = objects;
 					var constants = env.getConstants();
-					res = resutil.toString(eval("(function() { " + codeNode[0] + "return " + codeNode[1] + "; }())"));
+					res = util.toString(eval("(function() { " + codeNode[0] + "return " + codeNode[1] + "; }())"));
 				} catch (e) {
 					res = "" + e;
 				}
