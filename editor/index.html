@@ -7,7 +7,7 @@
 		<table style="height: 100%; width: 100%;">
 			<tr style="height: 100%;">
 				<td colspan="2">
-					<iframe id="frame" style="height: 100%; width: 100%; border-style: none;" src="inner.html"></iframe>
+					<iframe id="frame" style="height: 100%; width: 100%; border-style: none;" src="inner.html" onload="onLoadInner();"></iframe>
 				</td>
 			</tr>
 			<tr>
@@ -55,6 +55,11 @@
 		<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
 		<script src="https://pegjs.org/vendor/pegjs/peg.js"></script>
 		<script>
+			var query = [...new URLSearchParams(window.location.search).entries()].reduce((obj, e) => ({...obj, [e[0]]: e[1]}), {});
+
+			function onLoadInner() {
+				getEditor().setValue(query.s);
+			}
 			function getEditor() {
 				return $("#frame").contents().find("#container")[0].editor;
 			}
@@ -94,12 +99,6 @@
 			function linkThisPage() {
 				window.location = window.location.href.replace(/\?.*$/, "") + "?s=" + encodeURI(getEditor().getValue());
 			}
-
-			$(function() {
-				var query = [...new URLSearchParams(window.location.search).entries()].reduce((obj, e) => ({...obj, [e[0]]: e[1]}), {});
-				
-				getEditor().setValue(query.s);
-			})
 		</script>
 	</body>
 </html>
