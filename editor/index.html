@@ -12,7 +12,12 @@
 			</tr>
 			<tr>
 				<td colspan="2">
-					<textarea id="output" style="font-family: monospace"></textarea>
+					<textarea id="output" style="
+						width: 100%;
+						border-style: solid none none;
+						font-family: monospace;
+						resize: vertical;
+					"></textarea>
 				</td>
 			</tr>
 			<tr>
@@ -39,14 +44,6 @@
 					</select>
 				</td>
 				<td style="text-align: right;">
-					<textarea id="output" style="
-						width: 100%;
-						border-style: solid none none;
-						font-family: monospace;
-						resize: vertical;
-					"></textarea>
-				</td>
-				<td>
 					<input type="button" onclick="runScript();">
 				</td>
 			</tr>
