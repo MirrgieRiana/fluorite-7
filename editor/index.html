@@ -97,7 +97,7 @@
 			}
 
 			function linkThisPage() {
-				window.location = window.location.href.replace(/\?.*$/, "") + "?s=" + encodeURI(getEditor().getValue());
+				window.location = window.location.href.replace(/\?.*$/, "") + "?s=" + encodeURIComponent(getEditor().getValue());
 			}
 		</script>
 	</body>
