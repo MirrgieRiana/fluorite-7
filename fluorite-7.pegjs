@@ -3204,7 +3204,7 @@
                     "" + variable + "[" + variable + ".length] = \"\\n\";\n"
                   ) +
                   "}\n" +
-                  "" + variable + "[" + variable + ".length] = " + codeItem + ";\n"
+                  "" + variable + "[" + variable + ".length] = util.toString(" + codeItem + ");\n"
                 );
               });
             })[0]);
