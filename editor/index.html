@@ -48,8 +48,8 @@
 					</select>
 				</td>
 				<td style="text-align: right;">
-					<input type="button" value="▶︎" onclick="runScript();">
-					<input type="button" value="🔗" onclick="linkThisPage();">
+					<input type="button" value="▶︎" title="Run Script (F9)" onclick="runScript();">
+					<input type="button" value="🔗" title="Link This Code" onclick="linkThisCode();">
 				</td>
 			</tr>
 		</table>
@@ -60,6 +60,12 @@
 
 			function onLoadInner() {
 				getEditor().setValue(query.s);
+				getEditor().addCommand(getMonaco().KeyCode.F9, () => {
+					runScript();
+				});
+			}
+			function getMonaco() {
+				return $("#frame").contents().find("#container")[0].monaco;
 			}
 			function getEditor() {
 				return $("#frame").contents().find("#container")[0].editor;
@@ -100,7 +106,7 @@
 					.animate({opacity: 1}, 200);
 			}
 
-			function linkThisPage() {
+			function linkThisCode() {
 				window.location = window.location.href.replace(/\?.*$/, "") + "?s=" + encodeURIComponent(getEditor().getValue());
 			}
 		</script>
