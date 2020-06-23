@@ -59,7 +59,7 @@
 			var query = [...new URLSearchParams(window.location.search).entries()].reduce((obj, e) => ({...obj, [e[0]]: e[1]}), {});
 
 			function onLoadInner() {
-				getEditor().setValue(query.s);
+				if (query.s !== undefined) getEditor().setValue(query.s);
 				getEditor().addCommand(getMonaco().KeyCode.F9, () => {
 					runScript();
 				});
