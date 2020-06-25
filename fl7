@@ -244,7 +244,7 @@ function parse(source, startRule, scriptFile) {
   })());
   c("READDIR", new result.fl7.FluoriteFunction(args => {
     if (args.length != 1) throw new Error("Illegal argument");
-    return fs.readdirSync(result.fl7.util.toString(args[0]));
+    return result.fl7.util.toStreamFromArray(fs.readdirSync(result.fl7.util.toString(args[0])));
   }));
   c("EXEC", new result.fl7.FluoriteFunction(args => {
 
