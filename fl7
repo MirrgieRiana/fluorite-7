@@ -242,6 +242,10 @@ function parse(source, startRule, scriptFile) {
       return null;
     });
   })());
+  c("READDIR", new result.fl7.FluoriteFunction(args => {
+    if (args.length != 1) throw new Error("Illegal argument");
+    return fs.readdirSync(util.toString(args[0]));
+  }));
   c("EXEC", new result.fl7.FluoriteFunction(args => {
 
     const filename = args[0];
