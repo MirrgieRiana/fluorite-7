@@ -2284,7 +2284,7 @@
             if (next === undefined) break;
             console.log(util.toString(next));
           }
-          return null;
+          return args[0];
         }
         throw new Error("Illegal argument");
       }));
@@ -3006,6 +3006,17 @@
         var array = args[0];
         if (!(array instanceof Array)) throw new Error("Illegal argument");
         return String.fromCharCode.apply(null, array);
+      }));
+      c("CHARCODE", new fl7.FluoriteFunction(args => {
+        var string = args[0];
+        string = util.toString(string);
+        if (string.length < 1) throw new Error("Illegal argument: string.length=" + string.length + " < 1");
+        return string.charCodeAt(0);
+      }));
+      c("FROM_CHARCODE", new fl7.FluoriteFunction(args => {
+        var charcode = args[0];
+        charcode = util.toNumber(charcode);
+        return String.fromCharCode.apply(null, [charcode]);
       }));
       c("YN", new fl7.FluoriteFunction(args => {
         return util.toBoolean(args[0]) ? "Yes" : "No";
