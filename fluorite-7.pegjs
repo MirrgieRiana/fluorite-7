@@ -3259,7 +3259,7 @@
                     "" + variable + "[" + variable + ".length] = \"\\n\";\n"
                   ) +
                   "}\n" +
-                  "" + variable + "[" + variable + ".length] = " + codeItem + ";\n"
+                  "" + variable + "[" + variable + ".length] = util.toString(" + codeItem + ");\n"
                 );
               });
             })[0]);
@@ -3286,7 +3286,7 @@
             codesHeader.push(node.getCodeIterator(e.pc(), codeItemOrStreamer => {
               return functionUnpackStreamer(e.pc(), codeItemOrStreamer, (pc, codeItem) => {
                 return (
-                  "" + variable + "[" + variable + ".length] = " + codeItem + ";\n"
+                  "" + variable + "[" + variable + ".length] = util.toString(" + codeItem + ");\n"
                 );
               });
             })[0]);
@@ -4304,7 +4304,7 @@
           return [
             codeHeader +
             codesLast[0],
-            "(" + codesLast[1] +")",
+            codesLast[1],
           ];
         }
       });
