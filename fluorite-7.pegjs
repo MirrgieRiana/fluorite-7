@@ -3536,6 +3536,13 @@
               codeKey[0],
               "(util.setValuesToObject(" + codeObject[1] + ", " + codeKey[1] + "))",
             ];
+          } else if (nodeKey.getKey() === "_EMPTY_CURLY") {
+            var codeKey = nodeKey.getCodeGetter(e.pc());
+            return [
+              codeObject[0] +
+              codeKey[0],
+              "(util.setValuesToObject(" + codeObject[1] + ", " + codeKey[1] + "))",
+            ];
           }
         }
 
