@@ -1147,6 +1147,13 @@
         this.map[util.toString(index)] = value;
       }
 
+      setValues(object) {
+        var names = Object.getOwnPropertyNames(object.map);
+        for (var i = 0; i < names.length; i++) {
+          this.map[names[i]] = object.map[names[i]];
+        }
+      }
+
       match(value) {
         var res = util.getValueFromObject(this, "MATCH");
         if (res !== null) return util.call(res, [this, value]);
@@ -1863,6 +1870,13 @@
           objectClass = objectClass.parent;
         }
         return null;
+      },
+
+      setValuesToObject: function(object, object2) {
+        if (!(object instanceof FluoriteObject)) throw new Error("Illegal argument");
+        if (!(object2 instanceof FluoriteObject)) throw new Error("Illegal argument");
+        object.setValues(object2);
+        return object;
       },
 
       getDelegate: function(object, key) {
@@ -3507,19 +3521,25 @@
 
         var codeObject = nodeObject.getCodeGetter(e.pc());
 
-        var codeKey = undefined;
         if (nodeKey instanceof fl7c.FluoriteNodeMacro) {
           if (nodeKey.getKey() === "_LITERAL_IDENTIFIER") {
             if (nodeKey.getArgument(0) instanceof fl7c.FluoriteNodeTokenIdentifier) {
-              codeKey = [
-                "",
-                "(" + JSON.stringify(nodeKey.getArgument(0).getValue()) + ")",
+              return [
+                codeObject[0],
+                "(util.getValueFromObject(" + codeObject[1] + ", " + "(" + JSON.stringify(nodeKey.getArgument(0).getValue()) + ")" + "))",
               ];
             }
+          } else if (nodeKey.getKey() === "_CURLY") {
+            var codeKey = nodeKey.getCodeGetter(e.pc());
+            return [
+              codeObject[0] +
+              codeKey[0],
+              "(util.setValuesToObject(" + codeObject[1] + ", " + codeKey[1] + "))",
+            ];
           }
         }
-        if (codeKey === undefined) codeKey = nodeKey.getCodeGetter(e.pc());
 
+        var codeKey = nodeKey.getCodeGetter(e.pc());
         return [
           codeObject[0] +
           codeKey[0],
