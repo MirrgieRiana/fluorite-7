@@ -1309,6 +1309,7 @@
       toBooleanOrUndefined: function(value) {
         if (value === null) return false;
         if (value === 0) return false;
+        if (Number.isNaN(value)) return false;
         if (value === false) return false;
         if (isString(value)) return value.length > 0;
         if (value instanceof Array) return value.length > 0;
