@@ -3087,8 +3087,9 @@
         return new FluoriteStreamerLoop();
       }()));
       c("WHILE", new fl7.FluoriteFunction(args => {
-        if (args.length != 1) throw new Error("Illegal argument");
+        if (args.length != 1 && args.length != 2) throw new Error("Illegal argument");
         var func = args[0];
+        var funcUpdate = args[1];
         class FluoriteStreamerLoop extends fl7.FluoriteStreamer {
 
           constructor() {
@@ -3096,10 +3097,45 @@
           }
 
           start() {
+            var first = true;
             return {
               next: () => {
+                if (first) {
+                  first = false;
+                } else {
+                  if (funcUpdate !== undefined) util.call(funcUpdate, []);
+                }
                 var a = util.call(func, []);
                 if (!util.toBoolean(a)) return undefined;
+                return a;
+              },
+            };
+          }
+
+        }
+        return new FluoriteStreamerLoop();
+      }));
+      c("UNTIL", new fl7.FluoriteFunction(args => {
+        if (args.length != 1 && args.length != 2) throw new Error("Illegal argument");
+        var func = args[0];
+        var funcUpdate = args[1];
+        class FluoriteStreamerLoop extends fl7.FluoriteStreamer {
+
+          constructor() {
+            super();
+          }
+
+          start() {
+            var first = true;
+            return {
+              next: () => {
+                if (first) {
+                  first = false;
+                } else {
+                  if (funcUpdate !== undefined) util.call(funcUpdate, []);
+                }
+                var a = util.call(func, []);
+                if (util.toBoolean(a)) return undefined;
                 return a;
               },
             };
