@@ -3144,6 +3144,37 @@
         }
         return new FluoriteStreamerLoop();
       }));
+      c("FOR", new fl7.FluoriteFunction(args => {
+        if (args.length != 3) throw new Error("Illegal argument");
+        var funcInit = args[0];
+        var funcCond = args[1];
+        var funcUpdate = args[2];
+        class FluoriteStreamerLoop extends fl7.FluoriteStreamer {
+
+          constructor() {
+            super();
+          }
+
+          start() {
+            var first = true;
+            var i;
+            return {
+              next: () => {
+                if (first) {
+                  first = false;
+                  i = util.call(funcInit, []);
+                } else {
+                  if (funcUpdate !== undefined) i = util.call(funcUpdate, [i]);
+                }
+                if (!util.toBoolean(util.call(funcCond, [i]))) return undefined;
+                return i;
+              },
+            };
+          }
+
+        }
+        return new FluoriteStreamerLoop();
+      }));
       c("UNIT_d", new fl7.FluoriteFunction(args => {
         var count;
         var faces;
