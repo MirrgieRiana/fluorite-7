@@ -3086,6 +3086,28 @@
         }
         return new FluoriteStreamerLoop();
       }()));
+      c("WHILE", new fl7.FluoriteFunction(args => {
+        if (args.length != 1) throw new Error("Illegal argument");
+        var func = args[0];
+        class FluoriteStreamerLoop extends fl7.FluoriteStreamer {
+
+          constructor() {
+            super();
+          }
+
+          start() {
+            return {
+              next: () => {
+                var a = util.call(func, []);
+                if (!util.toBoolean(a)) return undefined;
+                return a;
+              },
+            };
+          }
+
+        }
+        return new FluoriteStreamerLoop();
+      }));
       c("UNIT_d", new fl7.FluoriteFunction(args => {
         var count;
         var faces;
