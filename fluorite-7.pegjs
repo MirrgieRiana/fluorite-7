@@ -697,6 +697,10 @@
         throw new Error("Illegal operation: getStream of '" + this + "'");
       }
 
+      getLength() {
+        throw new FluoriteRuntimeError("Not Implemented");
+      }
+
       equals(actual) {
         return actual === this;
       }
@@ -780,6 +784,17 @@
 
       toJSON() {
         throw new Error("Cannot convert streamer to json ");
+      }
+
+      getLength() {
+        var result = 0;
+        var stream = this.start();
+        while (true) {
+          var item = stream.next();
+          if (item === undefined) break;
+          result += util.getLength(item);
+        }
+        return result;
       }
 
       equals(actual) {
@@ -1097,6 +1112,12 @@
           }));
         }
         return util.toStreamFromValues(array);
+      }
+
+      getLength() {
+        var res = util.getValueFromObject(this, "LENGTH");
+        if (res !== null) return util.toJSON(util.call(res, [this]));
+        return super.getLength();
       }
 
       equals(actual) {
@@ -1482,6 +1503,9 @@
         if (isString(value)) {
           return value.length;
         }
+        if (value instanceof FluoriteValue) {
+          return value.getLength();
+        }
         throw new Error("Illegal argument: " + value);
       },
 
@@ -1696,7 +1720,13 @@
           return array.charAt(index);
         }
         if (array instanceof FluoriteObject) {
-          return util.getOwnValueFromObject(array, util.toString(index));
+          if (isNumber(index)) {
+            var res = util.getValueFromObject(array, "GET");
+            if (res !== null) return util.call(res, [array, index]);
+            return util.getValueFromObject(array, String(index));
+          } else {
+            return util.getOwnValueFromObject(array, util.toString(index));
+          }
         }
         throw new Error("Illegal argument: " + array + ", " + index);
       },
@@ -1845,8 +1875,18 @@
 
       getValueFromObject: function(object, key) {
 
-        if ((object instanceof Array) && isNumber(key)) {
-          return util.getFromArray(object, key);
+        if (isNumber(key)) {
+
+          if (object instanceof Array) {
+            return util.getFromArray(object, key);
+          }
+
+          if (object instanceof FluoriteObject) {
+            var res = util.getValueFromObject(object, "GET");
+            if (res !== null) return util.call(res, [object, key]);
+            return util.getValueFromObject(object, String(key));
+          }
+
         }
 
         var objectClass;
@@ -3815,6 +3855,7 @@
         e.pc().popFrame();
 
         var variableObject = "v_" + e.pc().allocateVariableId();
+        var variable1 = "v_" + e.pc().allocateVariableId();
         return inline(
           "(util.createLambda(function(args) {\n" +
           fl7c.util.indent(
