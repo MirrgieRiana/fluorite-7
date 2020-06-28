@@ -1251,6 +1251,9 @@
           map.TO_STRING = new fl7.FluoriteFunction(args => {
             return match;
           });
+          map.LENGTH = new fl7.FluoriteFunction(args => {
+            return res.length;
+          });
           return new fl7.FluoriteObject(null, map);
         } else {
           class FluoriteStreamerFindAll extends FluoriteStreamer {
