@@ -1276,6 +1276,9 @@
                   map.TO_STRING = new fl7.FluoriteFunction(args => {
                     return match;
                   });
+                  map.LENGTH = new fl7.FluoriteFunction(args => {
+                    return res.length;
+                  });
                   return new fl7.FluoriteObject(null, map);
                 },
               };
@@ -2597,6 +2600,9 @@
             map.input = arguments[arguments.length - 1];
             map.TO_STRING = new fl7.FluoriteFunction(args => {
               return match;
+            });
+            map.LENGTH = new fl7.FluoriteFunction(args => {
+              return arguments.length - 2;
             });
             return util.toString(util.call(replacer, [new fl7.FluoriteObject(null, map)]));
           });
