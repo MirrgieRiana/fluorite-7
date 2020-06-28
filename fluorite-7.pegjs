@@ -3803,25 +3803,39 @@
         ];
       });
       m("_LEFT_BACKSLASH", e => {
-        var alias = new fl7c.FluoriteAliasVariable(e.pc().allocateVariableId());
+        var alias1 = new fl7c.FluoriteAliasVariable(e.pc().allocateVariableId());
+        var alias2 = new fl7c.FluoriteAliasVariable(e.pc().allocateVariableId());
 
         e.pc().pushFrame();
         e.pc().nextLabelFrame();
-        e.pc().getFrame()["_"] = alias;
+        e.pc().getFrame()["_"] = alias1;
+        e.pc().getFrame()["__"] = alias2;
         var codes = e.arg(0).getCodeGetter(e.pc());
         e.pc().prevLabelFrame();
         e.pc().popFrame();
 
-        var codeBody =
-          "if (args.length != 1) throw new Error(\"Number of lambda arguments do not match: \" + args.length + \" != 1\");\n" +
-          "const " + alias.getRawCode(e.pc(), e.node().getLocation()) + " = args[0];\n" +
-          codes[0] +
-          "return " + codes[1] + ";";
-
+        var variableObject = "v_" + e.pc().allocateVariableId();
         return inline(
           "(util.createLambda(function(args) {\n" +
           fl7c.util.indent(
-            codeBody
+            "const " + alias1.getRawCode(e.pc(), e.node().getLocation()) + " = args.length >= 1 ? args[0] : null;\n" +
+            "const " + variableObject + " = {\n" +
+            fl7c.util.indent(
+              "LENGTH: util.createLambda(function(args2) {\n" +
+              fl7c.util.indent(
+                "return args.length;\n"
+              ) +
+              "}),\n"
+            ) +
+            "};\n" +
+            "for (let i = 0; i < args.length; i++) {\n" +
+            fl7c.util.indent(
+              "" + variableObject + "[i] = args[i];\n"
+            ) +
+            "}\n" +
+            "const " + alias2.getRawCode(e.pc(), e.node().getLocation()) + " = util.createObject(null, " + variableObject + ");\n" +
+            codes[0] +
+            "return " + codes[1] + ";"
           ) +
           "\n}))"
         );
