@@ -3011,6 +3011,20 @@
 
         return util.toStreamFromValues(array);
       }));
+      c("SHUFFLE", new fl7.FluoriteFunction(args => {
+
+        var streamer = args[0];
+        if (streamer === undefined) throw new Error("Illegal argument");
+        streamer = util.toStream(streamer);
+
+        var array = Array.from(streamer.toArray());
+        for (let i = array.length - 1; i >= 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [array[i], array[j]] = [array[j], array[i]];
+        }
+
+        return util.toStreamFromValues(array);
+      }));
       c("JSON", new fl7.FluoriteFunction(args => {
 
         var value = args[0];
