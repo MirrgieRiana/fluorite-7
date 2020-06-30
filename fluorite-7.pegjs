@@ -3737,17 +3737,23 @@
         var nodeObject = e.arg(0);
         var nodeKey = e.arg(1);
 
-        var key = undefined;
         if (nodeKey instanceof fl7c.FluoriteNodeMacro) {
           if (nodeKey.getKey() === "_LITERAL_IDENTIFIER") {
             if (nodeKey.getArgument(0) instanceof fl7c.FluoriteNodeTokenIdentifier) {
-              key = nodeKey.getArgument(0).getValue();
+              var key = nodeKey.getArgument(0).getValue();
+              return wrap(e.pc(), nodeObject, c => "(util.getDelegate(" + c + ", " + JSON.stringify(key) + "))");
             }
+          } else if (nodeKey.getKey() === "_ROUND") {
+              var codeObject = nodeObject.getCodeGetter(e.pc());
+              var codeKey = nodeKey.getCodeGetter(e.pc());
+              return [
+                codeObject[0] +
+                codeKey[0],
+                "(util.bind(" + codeKey[1] + ", " + codeObject[1] + "))",
+              ];
           }
         }
-        if (key === undefined) throw new Error("Illegal member access key");
-
-        return wrap(e.pc(), nodeObject, c => "(util.getDelegate(" + c + ", " + JSON.stringify(key) + "))");
+        throw new Error("Illegal member access key");
       });
       m("_RIGHT_ROUND", e => {
         var codesFunction = e.arg(0).getCodeGetter(e.pc());
