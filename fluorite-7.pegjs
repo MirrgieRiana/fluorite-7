@@ -4839,7 +4839,7 @@ TokenCompositeSectionFloat
   = [0-9]+ [.] [0-9]+ { return new fl7c.FluoriteNodeTokenFloat(location(), parseFloat(text()), text()); }
 
 TokenCompositeSectionIdentifier
-  = main:$CharacterIdentifierNonNumber+ & { return main !== "e" && main !== "E"; } {
+  = main:$CharacterIdentifierNonNumber+ & { return main.match(/^(_+|[eE])$/) === null; } {
     return new fl7c.FluoriteNodeTokenIdentifier(location(), text(), text());
   }
 
