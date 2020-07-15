@@ -154,7 +154,7 @@ function parse(source, startRule, scriptFile) {
 
         const fd = process.stdin.fd;
         const input = loadStringUtf8(fd);
-        fs.closeSync(fd);
+        //fs.closeSync(fd); // IN後にEXECするとエラーになる問題対策
 
         const inputs = input.split("\n");
 
