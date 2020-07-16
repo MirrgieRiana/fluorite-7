@@ -1480,6 +1480,15 @@
         if (isNumber(a)) {
           return a / util.toNumber(b);
         }
+        if (isString(a)) {
+          var delimiter;
+          if (b instanceof fl7.FluoriteRegExpProvider) {
+            delimiter = b.create();
+          } else {
+            delimiter = util.toString(b);
+          }
+          return util.toStreamFromValues(a.split(delimiter));
+        }
         if (a instanceof FluoriteValue) {
           var result = a.slash(b);
           if (result !== undefined) return result;
