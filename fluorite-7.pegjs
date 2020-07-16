@@ -2530,14 +2530,14 @@
         streamer = util.toStream(streamer);
 
         var predicate = args[1];
-        if (predicate === undefined) throw new Error("Illegal argument");
+        if (predicate === undefined) predicate = null;
 
         var array = [];
         var stream = streamer.start();
         while (true) {
           var next = stream.next();
           if (next === undefined) break;
-          if (util.toBoolean(util.call(predicate, [next]))) {
+          if (util.toBoolean(predicate === null ? next : util.call(predicate, [next]))) {
             array[array.length] = next;
           }
         }
