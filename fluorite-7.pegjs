@@ -2530,14 +2530,22 @@
         streamer = util.toStream(streamer);
 
         var predicate = args[1];
-        if (predicate === undefined) predicate = null;
+
+        var funcPredicate;
+        if (predicate === undefined) {
+          funcPredicate = a => util.toBoolean(a);
+        } else if (predicate instanceof fl7.FluoriteRegExpProvider) {
+          funcPredicate = a => util.match(util.toString(a), predicate);
+        } else {
+          funcPredicate = a => util.toBoolean(util.call(predicate, [a]));
+        }
 
         var array = [];
         var stream = streamer.start();
         while (true) {
           var next = stream.next();
           if (next === undefined) break;
-          if (util.toBoolean(predicate === null ? next : util.call(predicate, [next]))) {
+          if (funcPredicate(next)) {
             array[array.length] = next;
           }
         }
