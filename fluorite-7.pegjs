@@ -3526,6 +3526,33 @@
 
         return wrap(e.pc(), node, c => "(util.format(" + JSON.stringify(format) + ", " + c + "))");
       });
+      m("_EMBED_ENUMERATE", e => {
+        var codesHeader = [];
+
+        var variable = "v_" + e.pc().allocateVariableId();
+        codesHeader.push("const " + variable + " = [];\n");
+
+        var nodes = e.node().getArguments();
+        for (var i = 0; i < nodes.length; i++) {
+          var node = nodes[i];
+          if (node instanceof fl7c.FluoriteNodeTokenString) {
+            codesHeader.push("" + variable + "[" + variable + ".length] = " + JSON.stringify(node.getValue()) + ";\n");
+          } else {
+            codesHeader.push(node.getCodeIterator(e.pc(), codeItemOrStreamer => {
+              return functionUnpackStreamer(e.pc(), codeItemOrStreamer, (pc, codeItem) => {
+                return (
+                  "" + variable + "[" + variable + ".length] = " + codeItem + ";\n"
+                );
+              });
+            })[0]);
+          }
+        }
+        
+        return [
+          codesHeader.join(""),
+          "util.toStreamFromValues(" + variable + ")",
+        ];
+      });
       m("_COMPOSITE", e => {
 
         var count = e.node().getArgumentCount();
@@ -4740,18 +4767,30 @@ TokenEmbedFormat
     return new fl7c.FluoriteNodeTokenFormat(location(), result, "%" + text());
   }
 
+TokenEmbedEnumerateSection
+  = main:[a-zA-Z_0-9\u0080-\uFFFF,\-./]+ { return new fl7c.FluoriteNodeTokenString(location(), main.join(""), JSON.stringify(main.join(""))); }
+  / LiteralString
+  / LiteralEmbeddedString
+  / LiteralEmbeddedFluorite
+  / "$" main:LiteralIdentifier { return main; }
+  / LiteralEmbed
+  / Brackets
+
 TokenEmbed
-  = "$" main:LiteralIdentifier { return main; }
-  / "$" "(" _ main:Expression _ ")" { return main; }
+  = "$" "(" _ main:Expression _ ")" { return main; }
   / "$" format:TokenEmbedFormat "(" _ main:Expression _ ")" {
     return new fl7c.FluoriteNodeMacro(location(), "_STRING_FORMAT", [format, main]);
   }
+  / "$" "{" _ main:
+    ( main:TokenEmbedEnumerateSection _ { return main; }
+    )* "}" { return new fl7c.FluoriteNodeMacro(location(), "_EMBED_ENUMERATE", main); }
 
 TokenEmbeddedString
   = "\""
     main:
     ( main:TokenEmbeddedStringCharacter+ { return new fl7c.FluoriteNodeTokenString(location(), main.join(""), "\"" + text() + "\""); }
     / "$$" { return new fl7c.FluoriteNodeTokenString(location(), "$", "\"$\""); }
+    / "$" main:LiteralIdentifier { return main; }
     / TokenEmbed
     / "\\" "(" _ main:Expression _ ")" { return main; }
     / "\\" format:TokenEmbedFormat "(" _ main:Expression _ ")" {
@@ -4779,6 +4818,7 @@ TokenEmbeddedHereDocument "EmbeddedHereDocument"
         !(LB [ \t]* delimiter2:Identifier (ex:$[^\r\n]* &{ return ex === ""; }) &{ return delimiter === delimiter2; }) main:[^$] { return main; }
       )+ { return new fl7c.FluoriteNodeTokenString(location(), main.join(""), text() + lb); }
     / "$$" { return new fl7c.FluoriteNodeTokenString(location(), "$", "\"$\""); }
+    / "$" main:LiteralIdentifier { return main; }
     / TokenEmbed
     )*
     (LB [ \t]* delimiter2:Identifier (ex:$[^\r\n]* &{ return ex === ""; }) &{ return delimiter === delimiter2; })
