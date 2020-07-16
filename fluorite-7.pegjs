@@ -2337,6 +2337,30 @@
         }
         throw new Error("Illegal argument");
       }));
+      c("HEX", new fl7.FluoriteFunction(args => {
+        if (args.length == 1) {
+          return util.toNumber(args[0]).toString(16);
+        }
+        throw new Error("Illegal argument");
+      }));
+      c("FROM_HEX", new fl7.FluoriteFunction(args => {
+        if (args.length == 1) {
+          return parseInt(util.toString(args[0]), 16);
+        }
+        throw new Error("Illegal argument");
+      }));
+      c("BASE", new fl7.FluoriteFunction(args => {
+        if (args.length == 2) {
+          return util.toNumber(args[0]).toString(util.toNumber(args[1]));
+        }
+        throw new Error("Illegal argument");
+      }));
+      c("FROM_BASE", new fl7.FluoriteFunction(args => {
+        if (args.length == 2) {
+          return parseInt(util.toString(args[0]), util.toNumber(args[1]));
+        }
+        throw new Error("Illegal argument");
+      }));
       c("OUT", new fl7.FluoriteFunction(args => {
         if (args.length == 1) {
           var stream = util.toStream(args[0]).start();
