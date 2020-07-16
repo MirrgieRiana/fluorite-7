@@ -2535,7 +2535,7 @@
         if (predicate === undefined) {
           funcPredicate = a => util.toBoolean(a);
         } else if (predicate instanceof fl7.FluoriteRegExpProvider) {
-          funcPredicate = a => util.match(util.toString(a), predicate);
+          funcPredicate = a => util.match(util.toString(a), predicate)　!== null;
         } else {
           funcPredicate = a => util.toBoolean(util.call(predicate, [a]));
         }
