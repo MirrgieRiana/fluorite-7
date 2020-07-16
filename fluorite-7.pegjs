@@ -3375,7 +3375,12 @@
         }
         throw new Error("Illegal argument");
       });
-      m("_LITERAL_DOLLAR", e => {
+      m("_LITERAL_DOLLAR", e => { // TODO delete
+        var alias = e.pc().getAliasOrUndefined(e.node().getLocation(), "_OBJECT");
+        if (alias === undefined) throw new Error("No such alias: name=" + "_OBJECT");
+        return alias.getCodeGetter(e.pc(), e.node().getLocation());
+      });
+      m("_LITERAL_DOLLAR2", e => {
         var alias = e.pc().getAliasOrUndefined(e.node().getLocation(), "_OBJECT");
         if (alias === undefined) throw new Error("No such alias: name=" + "_OBJECT");
         return alias.getCodeGetter(e.pc(), e.node().getLocation());
@@ -3505,6 +3510,9 @@
           codesHeader.join(""),
           "(" + variable + ".join(\"\"))",
         ];
+      });
+      m("_LITERAL_EMBED", e => {
+        return e.arg(0).getCodeGetter(e.pc());
       });
       m("_STRING_FORMAT", e => {
 
@@ -4710,7 +4718,7 @@ TokenEmbeddedStringCharacter
   / "\\" "x" main:$([0-9a-fA-f] [0-9a-fA-f]) { return String.fromCharCode(parseInt(main, 16)); }
   / "\\" "u" main:$([0-9a-fA-f] [0-9a-fA-f] [0-9a-fA-f] [0-9a-fA-f]) { return String.fromCharCode(parseInt(main, 16)); }
 
-TokenEmbeddedStringFormat
+TokenEmbedFormat
   = "%" left:
     ( "0" { return result => result.zero = true;}
     / "-" { return result => result.left = true;}
@@ -4732,21 +4740,26 @@ TokenEmbeddedStringFormat
     return new fl7c.FluoriteNodeTokenFormat(location(), result, "%" + text());
   }
 
-TokenEmbeddedStringSection
-  = main:TokenEmbeddedStringCharacter+ { return new fl7c.FluoriteNodeTokenString(location(), main.join(""), "\"" + text() + "\""); }
-  / "$$" { return new fl7c.FluoriteNodeTokenString(location(), "$", "\"$\""); }
-  / "$" main:LiteralIdentifier { return main; }
+TokenEmbed
+  = "$" main:LiteralIdentifier { return main; }
   / "$" "(" _ main:Expression _ ")" { return main; }
-  / "$" format:TokenEmbeddedStringFormat "(" _ main:Expression _ ")" {
-    return new fl7c.FluoriteNodeMacro(location(), "_STRING_FORMAT", [format, main]);
-  }
-  / "\\" "(" _ main:Expression _ ")" { return main; }
-  / "\\" format:TokenEmbeddedStringFormat "(" _ main:Expression _ ")" {
+  / "$" format:TokenEmbedFormat "(" _ main:Expression _ ")" {
     return new fl7c.FluoriteNodeMacro(location(), "_STRING_FORMAT", [format, main]);
   }
 
 TokenEmbeddedString
-  = "\"" main:TokenEmbeddedStringSection* "\"" { return main; }
+  = "\""
+    main:
+    ( main:TokenEmbeddedStringCharacter+ { return new fl7c.FluoriteNodeTokenString(location(), main.join(""), "\"" + text() + "\""); }
+    / "$$" { return new fl7c.FluoriteNodeTokenString(location(), "$", "\"$\""); }
+    / TokenEmbed
+    / "\\" "(" _ main:Expression _ ")" { return main; }
+    / "\\" format:TokenEmbedFormat "(" _ main:Expression _ ")" {
+      return new fl7c.FluoriteNodeMacro(location(), "_STRING_FORMAT", [format, main]);
+    }
+    )*
+    "\""
+  { return main; }
 
 TokenHereDocument "HereDocument"
   = "<<" _ delimiter:
@@ -4766,11 +4779,7 @@ TokenEmbeddedHereDocument "EmbeddedHereDocument"
         !(LB [ \t]* delimiter2:Identifier (ex:$[^\r\n]* &{ return ex === ""; }) &{ return delimiter === delimiter2; }) main:[^$] { return main; }
       )+ { return new fl7c.FluoriteNodeTokenString(location(), main.join(""), text() + lb); }
     / "$$" { return new fl7c.FluoriteNodeTokenString(location(), "$", "\"$\""); }
-    / "$" main:LiteralIdentifier { return main; }
-    / "$" "(" _ main:Expression _ ")" { return main; }
-    / "$" format:TokenEmbeddedStringFormat "(" _ main:Expression _ ")" {
-      return new fl7c.FluoriteNodeMacro(location(), "_STRING_FORMAT", [format, main]);
-    }
+    / TokenEmbed
     )*
     (LB [ \t]* delimiter2:Identifier (ex:$[^\r\n]* &{ return ex === ""; }) &{ return delimiter === delimiter2; })
   { return main; }
@@ -4802,7 +4811,8 @@ LiteralIdentifier
   = main:TokenIdentifier { return new fl7c.FluoriteNodeMacro(location(), "_LITERAL_IDENTIFIER", [main]); }
 
 LiteralDollar
-  = "$" !"#" { return new fl7c.FluoriteNodeMacro(location(), "_LITERAL_DOLLAR", []); }
+  = "$$" { return new fl7c.FluoriteNodeMacro(location(), "_LITERAL_DOLLAR2", []); }
+  / "$" !("#" / "(" / "%" / "{") { return new fl7c.FluoriteNodeMacro(location(), "_LITERAL_DOLLAR", []); } // TODO delete
 
 LiteralCircumflex
   = "^" { return new fl7c.FluoriteNodeMacro(location(), "_LITERAL_CIRCUMFLEX", []); }
@@ -4825,6 +4835,9 @@ LiteralEmbeddedHereDocument
 LiteralEmbeddedFluorite
   = main:TokenEmbeddedFluorite { return new fl7c.FluoriteNodeMacro(location(), "_LITERAL_EMBEDDED_FLUORITE", main); }
 
+LiteralEmbed
+  = main:TokenEmbed { return new fl7c.FluoriteNodeMacro(location(), "_LITERAL_EMBED", [main]); }
+
 Literal
   = LiteralFloat
   / LiteralBasedInteger
@@ -4838,6 +4851,7 @@ Literal
   / LiteralHereDocument
   / LiteralEmbeddedHereDocument
   / LiteralEmbeddedFluorite
+  / LiteralEmbed
 
 //
 
