@@ -4333,9 +4333,58 @@
         ];
       });
       m("_EQUAL", e => {
+
+        if (e.arg(0) instanceof fl7c.FluoriteNodeMacro) {
+          if (e.arg(0).getKey() === "_COMMA") {
+
+            var getNodes = node => {
+              var args = node.getArguments();
+              var nodes = [];
+              for (var i = 0; i < args.length; i++) {
+                var arg = args[i];
+                if (!(arg instanceof fl7c.FluoriteNodeVoid)) {
+                  nodes.push(arg);
+                }
+              }
+              return nodes;
+            };
+
+            var nodesLeft = getNodes(e.arg(0));
+
+            var nodesRight = undefined;
+            if (e.arg(1) instanceof fl7c.FluoriteNodeMacro) {
+              if (e.arg(1).getKey() === "_COMMA") {
+                nodesRight = getNodes(e.arg(1));
+              }
+            }
+            if (nodesRight === undefined) throw new Error("Illegal right term: " + e.arg(1));
+
+            if (nodesLeft.length !== nodesRight.length) throw new Error("Argument count does not match: " + nodesLeft.length + " !== " + nodesRight.length);
+
+            var codes1 = [];
+            var codes2 = [];
+            for (var i = 0; i < nodesLeft.length; i++) {
+              var variable = "v_" + e.pc().allocateVariableId();
+              var codeRight = nodesRight[i].getCodeGetter(e.pc());
+              var codeLeft = nodesLeft[i].getCodeSetter(e.pc(), "(" + variable + ")");
+              codes1.push(codeRight[0]);
+              codes1.push("const " + variable + " = " + codeRight[1] + ";\n");
+              codes2.push(codeLeft[0]);
+            }
+
+            return [
+              codes1.join("") +
+              codes2.join(""),
+              "(util.empty())",
+            ];
+          }
+        }
+
         var variable = "v_" + e.pc().allocateVariableId();
+
         var codesRight = e.arg(1).getCodeGetter(e.pc());
         var codesLeft = e.arg(0).getCodeSetter(e.pc(), "(" + variable + ")");
+
         return [
           codesRight[0] +
           "const " + variable + " = " + codesRight[1] + ";\n" +
