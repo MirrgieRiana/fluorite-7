@@ -271,6 +271,7 @@ function parse(source, startRule, scriptFile) {
     const stringOut = child_process.execFileSync(filename, argsExec, {
       input: stdin,
       encoding: "utf8",
+      maxBuffer: 64 * 1024 * 1024,
     });
 
     const arrayOut = stringOut.split("\n");
