@@ -4029,6 +4029,7 @@
       m("_ASTERISK", e => wrap2_01(e, (c0, c1) => "(util.asterisk(" + c0 + ", " + c1 + "))"));
       m("_SLASH", e => wrap2_01(e, (c0, c1) => "(util.slash(" + c0 + ", " + c1 + "))"));
       m("_PERCENT", e => wrap2_01(e, (c0, c1) => "(" + c0 + " % " + c1 + ")"));
+      m("_PERCENT2", e => wrap2_01(e, (c0, c1) => "(" + c0 + " % " + c1 + " === 0)"));
       m("_PLUS", e => wrap2_01(e, (c0, c1) => "(util.plus(" + c0 + ", " + c1 + "))"));
       m("_MINUS", e => wrap2_01(e, (c0, c1) => "(util.minus(" + c0 + ", " + c1 + "))"));
       m("_AMPERSAND", e => wrap2_01(e, (c0, c1) => "(util.toString(" + c0 + ") + util.toString(" + c1 + "))"));
@@ -5123,6 +5124,7 @@ Mul
   = head:Pow tail:(_
     ( "*" { return [location(), "_ASTERISK"]; }
     / "/" { return [location(), "_SLASH"]; }
+    / "%%" { return [location(), "_PERCENT2"]; }
     / "%" { return [location(), "_PERCENT"]; }
   ) _ Pow)* {
     var result = head;
