@@ -4927,6 +4927,20 @@ LiteralEmbeddedFluorite
 LiteralEmbed
   = main:TokenEmbed { return new fl7c.FluoriteNodeMacro(location(), "_LITERAL_EMBED", [main]); }
 
+LiteralNotDot
+  = LiteralBasedInteger
+  / LiteralInteger
+  / LiteralIdentifier
+  / LiteralDollar
+  / LiteralCircumflex
+  / LiteralPatternString
+  / LiteralString
+  / LiteralEmbeddedString
+  / LiteralHereDocument
+  / LiteralEmbeddedHereDocument
+  / LiteralEmbeddedFluorite
+  / LiteralEmbed
+
 Literal
   = LiteralFloat
   / LiteralBasedInteger
@@ -5014,6 +5028,12 @@ Factor
   / Brackets
   / Execution
 
+FactorNotDot
+  = Composite
+  / LiteralNotDot
+  / Brackets
+  / Execution
+
 //
 
 Right
@@ -5024,8 +5044,8 @@ Right
     / "(" _ ")" { return [location(), "_RIGHT_EMPTY_ROUND", null]; }
     / "[" _ "]" { return [location(), "_RIGHT_EMPTY_SQUARE", null]; }
     / "{" _ "}" { return [location(), "_RIGHT_EMPTY_CURLY", null]; }
-    / "." _ main:Factor { return [location(), "_PERIOD", main]; }
-    / "::" _ main:Factor { return [location(), "_COLON2", main]; }
+    / "." _ main:FactorNotDot { return [location(), "_PERIOD", main]; }
+    / "::" _ main:FactorNotDot { return [location(), "_COLON2", main]; }
   ))* {
     var result = head;
     for (var i = 0; i < tail.length; i++) {
