@@ -6,6 +6,7 @@ usage() {
 	echo "	-j  output json" >&2
 	echo "	-c  show javascript" >&2
 	echo "	-e  parse as EFL" >&2
+	echo "  -o  options of node" >&2
 	exit 1
 }
 
@@ -34,6 +35,16 @@ do
     continue
   fi
 
+  if [ "$1" = "-o" ]
+  then
+    options+=("$1")
+    shift
+    (($# > 0)) || usage
+    options+=("$1")
+    shift
+    continue
+  fi
+
   if [ "$1" = "--" ]
   then
     shift
@@ -53,4 +64,4 @@ argv=("$@")
 
 app_dir=$(cd "$(dirname "$0")"; pwd)
 
-"$app_dir/fl7" "${options[@]}" -f "$source_file" -- "${argv[@]}"
+exec "$app_dir/fl7" "${options[@]}" -f "$source_file" -- "${argv[@]}"
