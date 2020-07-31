@@ -227,6 +227,11 @@ function parse(source, startRule, scriptFile) {
     }
     return new result.fl7.FluoriteObject(null, map);
   })());
+  c("PID", process.pid);
+  c("PPID", process.ppid);
+  c("MEMORY_USAGE", new result.fl7.FluoriteFunction(args => {
+    return new result.fl7.FluoriteObject(null, process.memoryUsage());
+  }));
   const codes = result.node.getCodeGetter(env);
   const code = "(function() {\n" + result.fl7c.util.indent(codes[0] + "return " + codes[1] + ";\n") + "}())";
   return {
