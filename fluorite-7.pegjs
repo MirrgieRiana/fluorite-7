@@ -1526,6 +1526,16 @@
 
       format: function(format, value) {
 
+        if (format instanceof FluoriteObject) {
+          format = {
+            conversion: format.map.conversion,
+            precision: format.map.precision,
+            width: format.map.width,
+            zero: format.map.zero,
+            left: format.map.left,
+          };
+        }
+
         var sign = undefined;
         var body;
         if (format.conversion === "d") {
@@ -3320,6 +3330,160 @@
           return object.isInstanceOf(clazz);
         }
         throw new Error("Illegal argument");
+      }));
+      c("FORMAT", new fl7.FluoriteFunction(args => {
+        if (args.length == 2) {
+          var format = args[0];
+          var value = args[1];
+          return util.format(format, value);
+        }
+        throw new Error("Illegal argument");
+      }));
+      c("PARENT", new fl7.FluoriteFunction(args => {
+        if (args.length == 1) {
+          var object = args[0];
+          if (!(object instanceof fl7.FluoriteObject)) throw new Error("Illegal argument");
+          return object.parent;
+        }
+        throw new Error("Illegal argument");
+      }));
+      c("NOW", new fl7.FluoriteFunction(args => {
+        return Date.now();
+      }));
+      var createDateObject = date => {
+        return new fl7.FluoriteObject(null, {
+          utcYear: date.getUTCFullYear(),
+          utcMonth: date.getUTCMonth() + 1,
+          utcDay: date.getUTCDate(),
+          utcHour: date.getUTCHours(),
+          utcMinute: date.getUTCMinutes(),
+          utcSecond: date.getUTCSeconds(),
+          utcMillisecond: date.getUTCMilliseconds(),
+          utcWeekday: date.getUTCDay(),
+          year: date.getFullYear(),
+          month: date.getMonth() + 1,
+          day: date.getDate(),
+          hour: date.getHours(),
+          minute: date.getMinutes(),
+          second: date.getSeconds(),
+          millisecond: date.getMilliseconds(),
+          weekday: date.getDay(),
+          epochMillisecond: date.getTime(),
+          timezoneOffset: date.getTimezoneOffset(),
+          TO_NUMBER: new fl7.FluoriteFunction(args => date.getTime()),
+          TO_STRING: new fl7.FluoriteFunction(args => {
+            var pad = number => number < 10 ? "0" + number : number;
+            return date.getFullYear() +
+              "-" + pad(date.getMonth() + 1) +
+              "-" + pad(date.getDate()) +
+              "T" + pad(date.getHours()) +
+              ":" + pad(date.getMinutes()) +
+              ":" + pad(date.getSeconds()) +
+              "." + (date.getMilliseconds() / 1000).toFixed(3).slice(2, 5);
+          }),
+        });
+      };
+      c("DATE", new fl7.FluoriteFunction(args => {
+        if (args.length == 0) {
+          var date = new Date();
+          return createDateObject(date);
+        }
+        if (args.length == 1) {
+          var date = new Date();
+          date.setTime(util.toNumber(args[0]));
+          return createDateObject(date);
+        }
+        throw new Error("Illegal argument");
+      }));
+      c("LOCAL", new fl7.FluoriteFunction(args => {
+        if (args.length == 3) {
+          var date = new Date(
+            util.toNumber(args[0]),
+            util.toNumber(args[1] - 1),
+            util.toNumber(args[2]));
+          return createDateObject(date);
+        }
+        if (args.length == 6) {
+          var date = new Date(
+            util.toNumber(args[0]),
+            util.toNumber(args[1] - 1),
+            util.toNumber(args[2]),
+            util.toNumber(args[3]),
+            util.toNumber(args[4]),
+            util.toNumber(args[5]));
+          return createDateObject(date);
+        }
+        if (args.length == 7) {
+          var date = new Date(
+            util.toNumber(args[0]),
+            util.toNumber(args[1] - 1),
+            util.toNumber(args[2]),
+            util.toNumber(args[3]),
+            util.toNumber(args[4]),
+            util.toNumber(args[5]));
+          date.setMilliseconds(util.toNumber(args[6]));
+          return createDateObject(date);
+        }
+        throw new Error("Illegal argument");
+      }));
+      c("UTC", new fl7.FluoriteFunction(args => {
+        if (args.length == 3) {
+          var date = new Date();
+          date.setTime(Date.UTC(
+            util.toNumber(args[0]),
+            util.toNumber(args[1] - 1),
+            util.toNumber(args[2])));
+          return createDateObject(date);
+        }
+        if (args.length == 6) {
+          var date = new Date();
+          date.setTime(Date.UTC(
+            util.toNumber(args[0]),
+            util.toNumber(args[1] - 1),
+            util.toNumber(args[2]),
+            util.toNumber(args[3]),
+            util.toNumber(args[4]),
+            util.toNumber(args[5])));
+          return createDateObject(date);
+        }
+        if (args.length == 7) {
+          var date = new Date();
+          date.setTime(Date.UTC(
+            util.toNumber(args[0]),
+            util.toNumber(args[1] - 1),
+            util.toNumber(args[2]),
+            util.toNumber(args[3]),
+            util.toNumber(args[4]),
+            util.toNumber(args[5])));
+          date.setUTCMilliseconds(util.toNumber(args[6]));
+          return createDateObject(date);
+        }
+        throw new Error("Illegal argument");
+      }));
+      c("TIME", new fl7.FluoriteFunction(args => {
+        var date;
+        a: {
+          if (args.length == 0) {
+            date = new Date();
+            break a;
+          }
+          if (args.length == 1) {
+            date = new Date();
+            date.setTime(util.toNumber(args[0]));
+            break a;
+          }
+          throw new Error("Illegal argument");
+        }
+        return new fl7.FluoriteObject(null, {
+          utcYear: date.getUTCFullYear(),
+          utcMonth: date.getUTCMonth() + 1,
+          utcDay: date.getUTCDate(),
+          hour: date.getUTCHours(),
+          year: date.getFullYear(),
+          month: date.getMonth() + 1,
+          day: date.getDate(),
+          hour: date.getHours(),
+        });
       }));
       m("_LITERAL_INTEGER", e => {
         if (e.arg(0) instanceof fl7c.FluoriteNodeTokenInteger) {
