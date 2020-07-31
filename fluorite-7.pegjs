@@ -2603,7 +2603,7 @@
         if (stream === undefined) throw new Error("Illegal argument");
         stream = util.toStream(stream);
 
-        return stream.toArray().join(delimiter);
+        return stream.toArray().map(value => util.toString(value)).join(delimiter);
       }));
       c("SPLIT", new fl7.FluoriteFunction(args => {
 
