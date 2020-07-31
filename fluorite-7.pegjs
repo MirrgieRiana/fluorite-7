@@ -2446,6 +2446,18 @@
         }
         return result;
       }));
+      c("COUNT", new fl7.FluoriteFunction(args => {
+        var stream = args[0];
+        if (stream === undefined) throw new Error("Illegal argument");
+        stream = util.toStream(stream).start();
+        var result = 0;
+        while (true) {
+          var next = stream.next();
+          if (next === undefined) break;
+          result++;
+        }
+        return result;
+      }));
       objects.ARRAY = fl7.util.createObject(null, {
         CALL: new fl7.FluoriteFunction(args => {
           var value = args[1];
