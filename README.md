@@ -1,3 +1,6 @@
+
+![CI](https://github.com/MirrgieRiana/fluorite-7/workflows/CI/badge.svg)
+
 # Install
 
 Install on current directory:
