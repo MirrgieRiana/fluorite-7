@@ -233,8 +233,7 @@ function parse(source, startRule, scriptFile) {
     return new result.fl7.FluoriteObject(null, process.memoryUsage());
   }));
   c("EXIT", new result.fl7.FluoriteFunction(args => {
-    const code = args[0];
-    code = code === undefined ? 0 : result.fl7.util.toNumber(code);
+    const code = args[0] === undefined ? 0 : result.fl7.util.toNumber(args[0]);
     process.exit(code);
   }));
   const codes = result.node.getCodeGetter(env);
