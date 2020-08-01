@@ -11,4 +11,4 @@ jobs:
     - uses: actions/checkout@v2
     - name: Run Test
       run: |
-        ls
+        ./fluorite7 test/test.fl7
