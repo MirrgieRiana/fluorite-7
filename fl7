@@ -44,7 +44,7 @@ do
   then
     shift
     (($# > 0)) || usage
-    exec=$(cat "$1")
+    exec=$(cat "$1") || exit 3
     script_file=$1
     shift
     continue
