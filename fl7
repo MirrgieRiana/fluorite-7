@@ -96,4 +96,4 @@ export script_file
 export compile
 export app_dir
 export NODE_PATH="$NODE_PATH:$app_dir"
-exec node $options "$app_dir/fl7_core.js" "${argv[@]}"
+exec node $options --expose-gc "$app_dir/fl7_core.js" "${argv[@]}"
