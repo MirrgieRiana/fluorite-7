@@ -2,6 +2,7 @@ const fs = require("fs");
 const path = require("path");
 const child_process = require("child_process");
 const parser = require(process.env.app_dir + "/fluorite-7.js");
+const heapdump = require("heapdump");
 let globalResult;
 const cacheUse = new Map();
 function parse(source, startRule, scriptFile) {
@@ -233,6 +234,10 @@ function parse(source, startRule, scriptFile) {
     return new result.fl7.FluoriteObject(null, process.memoryUsage());
   }));
   c("GC", new result.fl7.FluoriteFunction(args => global.gc()));
+  c("HEAPDUMP", new result.fl7.FluoriteFunction(args => {
+    const filename = args[0] === undefined ? "heapdump.heapsnapshot" : result.fl7.util.toString(args[0]);
+    heapdump.writeSnapshot(filename);
+  }));
   c("EXIT", new result.fl7.FluoriteFunction(args => {
     const code = args[0] === undefined ? 0 : result.fl7.util.toNumber(args[0]);
     process.exit(code);
