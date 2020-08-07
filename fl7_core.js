@@ -235,8 +235,11 @@ function parse(source, startRule, scriptFile) {
   }));
   c("GC", new result.fl7.FluoriteFunction(args => global.gc()));
   c("HEAPDUMP", new result.fl7.FluoriteFunction(args => {
-    const filename = args[0] === undefined ? "heapdump.heapsnapshot" : result.fl7.util.toString(args[0]);
-    heapdump.writeSnapshot(filename);
+    if (args[0] !== undefined) {
+      heapdump.writeSnapshot(result.fl7.util.toString(args[0]));
+    } else {
+      heapdump.writeSnapshot();
+    }
   }));
   c("EXIT", new result.fl7.FluoriteFunction(args => {
     const code = args[0] === undefined ? 0 : result.fl7.util.toNumber(args[0]);
