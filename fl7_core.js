@@ -136,13 +136,19 @@ function parse(source, startRule, scriptFile) {
     return result.fl7.util.toStreamFromArray(fs.readdirSync(result.fl7.util.toString(args[0])));
   }));
   c("EXEC", new result.fl7.FluoriteFunction(args => {
+
     const filename = args[0];
     if (filename === undefined) throw new Error("Illegal argument");
+    filename = result.fl7.util.toString(filename);
+
     const argsExec = [];
     {
+
       let streamer = args[1];
-      if (streamer === undefined) throw new Error("Illegal argument");
+      if (streamer === undefined) streamer = null;
+      if (streamer === null) streamer = result.fl7.util.empty();
       streamer = result.fl7.util.toStream(streamer);
+
       const stream = streamer.start();
       while (true) {
         const next = stream.next();
@@ -150,13 +156,32 @@ function parse(source, startRule, scriptFile) {
         argsExec[argsExec.length] = result.fl7.util.toString(next);
       }
     }
+
     let stdin = args[2];
-    if (stdin === undefined) throw new Error("Illegal argument");
+    if (stdin === undefined) stdin = null;
+    if (stdin === null) stdin = "";
     stdin = result.fl7.util.toString(stdin);
+
+    let env = process.env;
+    {
+      let extraEnv = args[3];
+      if (extraEnv === undefined) extraEnv = null;
+      if (extraEnv === null) {
+      } else if (extraEnv instanceof result.fl7.FluoriteObject) {
+        env = {
+          ...env,
+          ...extraEnv.map,
+        };
+      } else {
+        throw new Error("Illegal argument");
+      }
+    }
+
     const stringOut = child_process.execFileSync(filename, argsExec, {
       input: stdin,
       encoding: "utf8",
       maxBuffer: 64 * 1024 * 1024,
+      env: env,
     });
     const arrayOut = stringOut.split("\n");
     if (arrayOut[arrayOut.length - 1] === "") arrayOut.pop();
