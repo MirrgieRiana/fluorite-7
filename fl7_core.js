@@ -137,11 +137,11 @@ function parse(source, startRule, scriptFile) {
   }));
   c("EXEC", new result.fl7.FluoriteFunction(args => {
 
-    const filename = args[0];
+    let filename = args[0];
     if (filename === undefined) throw new Error("Illegal argument");
     filename = result.fl7.util.toString(filename);
 
-    const argsExec = [];
+    let argsExec = [];
     {
 
       let streamer = args[1];
