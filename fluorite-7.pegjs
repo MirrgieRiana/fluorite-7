@@ -1300,6 +1300,11 @@
         return "REGEXP";
       }
 
+      call(args) {
+        if (args.length != 1) throw new Error("ArgumentException: args.length = " + args.length + " (expected: 1)");
+        return this.match(args[0]);
+      }
+
     }
 
     //
