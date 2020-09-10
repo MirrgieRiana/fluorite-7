@@ -1399,37 +1399,38 @@
         return util.toStream(value);
       },
 
-      mount: function(path, resolver) {
-        if (!(path instanceof Array)) throw new Error("path is not an Array");
-        if (resolver instanceof FluoriteObject) {
-          path[path.length] = new FluoriteFunction(args => {
+      mount: function(oldPath, resolver) {
+        if (resolver instanceof FluoriteFunction) {
+          return new FluoriteFunction(args => {
             if (args.length != 2) throw new Error("Illegal argument");
-            var name = util.toString(args[0]);
-
+            var result = util.call(resolver, args);
+            if (result !== args[0]) {
+              return result;
+            } else {
+              return util.call(oldPath, args);
+            }
+          });
+        } else if (resolver instanceof FluoriteObject) {
+          return new FluoriteFunction(args => {
+            if (args.length != 2) throw new Error("Illegal argument");
+            var name = util.toString(args[1]);
             if (util.containedKey(name, resolver)) {
               return util.getOwnValueFromObject(resolver, name);
             } else {
-              return args[1];
+              return util.call(oldPath, args);
             }
           });
-        } else {
-          path[path.length] = resolver;
         }
+        throw new Error("Cannot mount: " + resolver);
       },
 
       resolve: function(path, name) {
-        var array;
-        if (path instanceof Array) {
-          array = path;
-        } else {
-          array = [path];
+        var pass = new FluoriteObject(null, {});
+        var res = util.call(path, [pass, name]);
+        if (res === pass) {
+          throw new Error("Can not resolve: name = " + name);
         }
-        var pass = [];
-        for (var i = array.length - 1; i >= 0; i--) {
-          var res = util.call(array[i], [name, pass]);
-          if (res !== pass) return res;
-        }
-        throw new Error("Can not resolve: name = " + name);
+        return res;
       },
 
       plus: function(a, b) {
@@ -2292,12 +2293,14 @@
       c("E", Math.E);
       c("NAN", NaN);
       c("INFINITY", Infinity);
-      c("PATH", [
-        new fl7.FluoriteFunction(args => {
-          if (args.length != 2) throw new Error("Illegal argument");
-          return args[0];
-        }),
-      ]);
+      c("PATH", new fl7.FluoriteFunction(args => {
+        if (args.length != 2) throw new Error("Illegal argument");
+        return args[1];
+      }));
+      c("STRICT", new fl7.FluoriteFunction(args => {
+        if (args.length != 2) throw new Error("Illegal argument");
+        throw new Error("No such alias: name=" + args[1]);
+      }));
       c("DIV", new fl7.FluoriteFunction(args => {
         if (args.length == 2) {
           return Math.trunc(util.toNumber(args[0]) / util.toNumber(args[1]));
@@ -4176,20 +4179,30 @@
       m("_LEFT_DOLLAR_HASH", e => wrap_0(e, c => "(util.getLength(" + c + "))"));
       m("_LEFT_ATSIGN", e => {
 
-        var node = e.arg(0);
-        var code = node.getCodeGetter(e.pc());
+        // 項を評価
+        var nodeMain = e.arg(0);
+        var codeMain = nodeMain.getCodeGetter(e.pc());
+        var variableMain = "v_" + e.pc().allocateVariableId();
 
-        var aliasPath = e.pc().getAliasOrUndefined(e.node().getLocation(), "PATH");
-        if (aliasPath === undefined) throw new Error("No alias: PATH");
-        var codePath = aliasPath.getCodeGetter(e.pc(), e.node().getLocation());
+        // 古いPATHを取得
+        var aliasOldPath = e.pc().getAliasOrUndefined(e.node().getLocation(), "PATH");
+        if (aliasOldPath === undefined) throw new Error("No such alias: PATH");
+        var codeOldPath = aliasOldPath.getCodeGetter(e.pc(), e.node().getLocation());
+        var variableOldPath = "v_" + e.pc().allocateVariableId();
 
-        var variable = "v_" + e.pc().allocateVariableId();
+        // PATHを更新
+        var variableIdNewPath = e.pc().allocateVariableId();
+        var variableNewPath = "v_" + variableIdNewPath;
+        var aliasNewPath = new fl7c.FluoriteAliasVariableSettable(variableIdNewPath);
+        e.pc().getFrame()["PATH"] = aliasNewPath;
+
         return [
-          code[0] +
-          codePath[0] +
-          "const " + variable +" = " + code[1] + ";\n" +
-          "util.mount(" + codePath[1] + ", " + variable +");\n",
-          "" + variable,
+          codeMain[0] +
+          "const " + variableMain +" = " + codeMain[1] + ";\n" +
+          codeOldPath[0] +
+          "const " + variableOldPath +" = " + codeOldPath[1] + ";\n" +
+          "const " + variableNewPath +" = util.mount(" + variableOldPath + ", " + variableMain + ");\n",
+          "" + variableMain,
         ];
       });
       m("_LEFT_BACKQUOTES", e => {
