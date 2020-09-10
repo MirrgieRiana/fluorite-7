@@ -814,6 +814,12 @@
         return "STREAMER";
       }
 
+      call(args) {
+        return new FluoriteStreamerMap(this, value => {
+          return util.call(value, args);
+        });
+      }
+
     }
 
     class FluoriteStreamerEmpty extends FluoriteStreamer {
