@@ -3486,30 +3486,25 @@
         }
         throw new Error("Illegal argument");
       }));
-      c("TIME", new fl7.FluoriteFunction(args => {
-        var date;
-        a: {
-          if (args.length == 0) {
-            date = new Date();
-            break a;
-          }
-          if (args.length == 1) {
-            date = new Date();
-            date.setTime(util.toNumber(args[0]));
-            break a;
-          }
-          throw new Error("Illegal argument");
-        }
-        return new fl7.FluoriteObject(null, {
-          utcYear: date.getUTCFullYear(),
-          utcMonth: date.getUTCMonth() + 1,
-          utcDay: date.getUTCDate(),
-          hour: date.getUTCHours(),
-          year: date.getFullYear(),
-          month: date.getMonth() + 1,
-          day: date.getDate(),
-          hour: date.getHours(),
-        });
+      c("DAYS", new fl7.FluoriteFunction(args => {
+        if (args.length != 1) throw new Error("Illegal argument");
+        return util.toNumber(args[0]) * 1000 * 60 * 60 * 24;
+      }));
+      c("HOURS", new fl7.FluoriteFunction(args => {
+        if (args.length != 1) throw new Error("Illegal argument");
+        return util.toNumber(args[0]) * 1000 * 60 * 60;
+      }));
+      c("MINUTES", new fl7.FluoriteFunction(args => {
+        if (args.length != 1) throw new Error("Illegal argument");
+        return util.toNumber(args[0]) * 1000 * 60;
+      }));
+      c("SECONDS", new fl7.FluoriteFunction(args => {
+        if (args.length != 1) throw new Error("Illegal argument");
+        return util.toNumber(args[0]) * 1000;
+      }));
+      c("MILLISECONDS", new fl7.FluoriteFunction(args => {
+        if (args.length != 1) throw new Error("Illegal argument");
+        return util.toNumber(args[0]);
       }));
       m("_LITERAL_INTEGER", e => {
         if (e.arg(0) instanceof fl7c.FluoriteNodeTokenInteger) {
