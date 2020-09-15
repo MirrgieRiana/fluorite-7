@@ -4609,8 +4609,8 @@
             if (nodeLeft instanceof fl7c.FluoriteNodeMacro) {
               if (nodeLeft.getKey() === "_LITERAL_IDENTIFIER") {
                 var nodeLeftIdentifier = nodeLeft.getArgument(0);
-                if (nodeLeft instanceof fl7c.FluoriteNodeTokenIdentifier) {
-                  key = nodeLeft.getValue();
+                if (nodeLeftIdentifier instanceof fl7c.FluoriteNodeTokenIdentifier) {
+                  key = nodeLeftIdentifier.getValue();
                   keyIndex = null;
                   nodesLeft = node.getArgument(1);
                   iterate = true;
