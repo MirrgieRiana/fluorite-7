@@ -4598,28 +4598,91 @@
       });
       var functionExtractPipeArguments = (node) => {
         var key = undefined;
+        var keyIndex = undefined;
         var nodesLeft = undefined;
         var iterate = undefined;
+        var object = undefined;
 
         if (node instanceof fl7c.FluoriteNodeMacro) {
           if (node.getKey() === "_COLON") {
-            if (node.getArgument(0) instanceof fl7c.FluoriteNodeMacro) {
-              if (node.getArgument(0).getKey() === "_LITERAL_IDENTIFIER") {
-                if (node.getArgument(0).getArgument(0) instanceof fl7c.FluoriteNodeTokenIdentifier) {
-                  key = node.getArgument(0).getArgument(0).getValue();
+            var nodeLeft = node.getArgument(0);
+            if (nodeLeft instanceof fl7c.FluoriteNodeMacro) {
+              if (nodeLeft.getKey() === "_LITERAL_IDENTIFIER") {
+                var nodeLeftIdentifier = nodeLeft.getArgument(0);
+                if (nodeLeft instanceof fl7c.FluoriteNodeTokenIdentifier) {
+                  key = nodeLeft.getValue();
+                  keyIndex = null;
                   nodesLeft = node.getArgument(1);
                   iterate = true;
+                  object = false;
+                }
+              }
+              if (nodeLeft.getKey() === "_COMMA") {
+                if (nodeLeft.getArgumentCount() == 2) {
+                  var nodeKeyIndex = nodeLeft.getArgument(0);
+                  var nodeKey = nodeLeft.getArgument(1);
+                  if (nodeKeyIndex instanceof fl7c.FluoriteNodeMacro) {
+                    if (nodeKeyIndex.getKey() === "_LITERAL_IDENTIFIER") {
+                      var nodeKeyIndexIdentifier = nodeKeyIndex.getArgument(0);
+                      if (nodeKeyIndexIdentifier instanceof fl7c.FluoriteNodeTokenIdentifier) {
+                        if (nodeKey instanceof fl7c.FluoriteNodeMacro) {
+                          if (nodeKey.getKey() === "_LITERAL_IDENTIFIER") {
+                            var nodeKeyIdentifier = nodeKey.getArgument(0);
+                            if (nodeKeyIdentifier instanceof fl7c.FluoriteNodeTokenIdentifier) {
+                              key = nodeKeyIdentifier.getValue();
+                              keyIndex = nodeKeyIndexIdentifier.getValue();
+                              nodesLeft = node.getArgument(1);
+                              iterate = true;
+                              object = false;
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+              if (nodeLeft.getKey() === "_SQUARE" || nodeLeft.getKey() === "_CURLY") {
+                var nodeColon = nodeLeft.getArgument(0);
+                if (nodeColon instanceof fl7c.FluoriteNodeMacro) {
+                  if (nodeColon.getKey() === "_COLON") {
+                    var nodeKeyIndex = nodeColon.getArgument(0);
+                    var nodeKey = nodeColon.getArgument(1);
+                    if (nodeKeyIndex instanceof fl7c.FluoriteNodeMacro) {
+                      if (nodeKeyIndex.getKey() === "_LITERAL_IDENTIFIER") {
+                        var nodeKeyIndexIdentifier = nodeKeyIndex.getArgument(0);
+                        if (nodeKeyIndexIdentifier instanceof fl7c.FluoriteNodeTokenIdentifier) {
+                          if (nodeKey instanceof fl7c.FluoriteNodeMacro) {
+                            if (nodeKey.getKey() === "_LITERAL_IDENTIFIER") {
+                            var nodeKeyIdentifier = nodeKey.getArgument(0);
+                              if (nodeKeyIdentifier instanceof fl7c.FluoriteNodeTokenIdentifier) {
+                                key = nodeKeyIdentifier.getValue();
+                                keyIndex = nodeKeyIndexIdentifier.getValue();
+                                nodesLeft = node.getArgument(1);
+                                iterate = true;
+                                object = false;
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
                 }
               }
             }
           }
           if (node.getKey() === "_EQUAL") {
-            if (node.getArgument(0) instanceof fl7c.FluoriteNodeMacro) {
-              if (node.getArgument(0).getKey() === "_LITERAL_IDENTIFIER") {
-                if (node.getArgument(0).getArgument(0) instanceof fl7c.FluoriteNodeTokenIdentifier) {
-                  key = node.getArgument(0).getArgument(0).getValue();
+            var nodeLeft = node.getArgument(0);
+            if (nodeLeft instanceof fl7c.FluoriteNodeMacro) {
+              if (nodeLeft.getKey() === "_LITERAL_IDENTIFIER") {
+                var nodeLeftIdentifier = nodeLeft.getArgument(0);
+                if (nodeLeftIdentifier instanceof fl7c.FluoriteNodeTokenIdentifier) {
+                  key = nodeLeftIdentifier.getValue();
+                  keyIndex = null;
                   nodesLeft = node.getArgument(1);
                   iterate = false;
+                  object = false;
                 }
               }
             }
@@ -4627,10 +4690,12 @@
         }
 
         if (key === undefined) key = "_";
+        if (keyIndex === undefined) keyIndex = null;
         if (nodesLeft === undefined) nodesLeft = node;
         if (iterate === undefined) iterate = true;
+        if (object === undefined) object = false;
 
-        return {key, nodesLeft, iterate};
+        return {key, keyIndex, nodesLeft, iterate, object};
       };
       var functionPipe = function(e, functionCodeFilter) {
 
@@ -4640,11 +4705,15 @@
         var variableId = e.pc().allocateVariableId();
         var variable = "v_" + variableId;
         var alias = new fl7c.FluoriteAliasVariable(variableId);
+        var variableIdIndex = e.pc().allocateVariableId();
+        var variableIndex = "v_" + variableIdIndex;
+        var aliasIndex = new fl7c.FluoriteAliasVariable(variableIdIndex);
 
         if (args.iterate) {
 
           e.pc().pushFrame();
           e.pc().nextLabelFrame();
+          if (args.keyIndex !== null) e.pc().getFrame()[args.keyIndex] = aliasIndex;
           e.pc().getFrame()[args.key] = alias;
           var codesRight = e.arg(1).getCodeGetter(e.pc());
           e.pc().prevLabelFrame();
@@ -4657,8 +4726,10 @@
 
           return [
             codesLeft[0] +
+            "let " + variableIndex + " = -1;\n" +
             "const " + variableIdFunction + " = function(" + variable + ") {\n" +
             fl7c.util.indent(
+              "" + variableIndex + "++;\n" +
               codesRight[0] +
               "return " + codesRight[1] + ";\n"
             ) +
@@ -4725,8 +4796,13 @@
 
         var args = functionExtractPipeArguments(e.arg(0));
 
+        var variableIdIndex = e.pc().allocateVariableId();
+        var variableIndex = "v_" + variableIdIndex;
+        var aliasIndex = new fl7c.FluoriteAliasVariable(variableIdIndex);
+
         if (args.iterate) {
           return [
+            "let " + variableIndex + " = -1;\n" +
             args.nodesLeft.getCodeIterator(e.pc(), codeItemOrStreamer => {
               return functionUnpackStreamer(e.pc(), codeItemOrStreamer, (pc, codeItem) => {
 
@@ -4735,6 +4811,7 @@
                 var alias = new fl7c.FluoriteAliasVariable(variableId);
 
                 e.pc().pushFrame();
+                if (args.keyIndex !== null) e.pc().getFrame()[args.keyIndex] = aliasIndex;
                 e.pc().getFrame()[args.key] = alias;
                 var codesRight = e.arg(1).getCodeGetter(pc);
                 e.pc().popFrame();
@@ -4742,6 +4819,7 @@
                 var variableIdItem = "v_" + e.pc().allocateVariableId();
 
                 return (
+                  "" + variableIndex + "++;\n" +
                   "const " + variableIdItem + " = " + codeItem + ";\n" +
                   "if (" + (functionCodeFilter === null ? "true" : functionCodeFilter(variableIdItem)) + ") {\n" +
                   fl7c.util.indent(
