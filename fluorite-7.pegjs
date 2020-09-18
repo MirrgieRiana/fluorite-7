@@ -3486,26 +3486,24 @@
         }
         throw new Error("Illegal argument");
       }));
-      c("DAYS", new fl7.FluoriteFunction(args => {
-        if (args.length != 1) throw new Error("Illegal argument");
-        return util.toNumber(args[0]) * 1000 * 60 * 60 * 24;
-      }));
-      c("HOURS", new fl7.FluoriteFunction(args => {
-        if (args.length != 1) throw new Error("Illegal argument");
-        return util.toNumber(args[0]) * 1000 * 60 * 60;
-      }));
-      c("MINUTES", new fl7.FluoriteFunction(args => {
-        if (args.length != 1) throw new Error("Illegal argument");
-        return util.toNumber(args[0]) * 1000 * 60;
-      }));
-      c("SECONDS", new fl7.FluoriteFunction(args => {
-        if (args.length != 1) throw new Error("Illegal argument");
-        return util.toNumber(args[0]) * 1000;
-      }));
-      c("MILLISECONDS", new fl7.FluoriteFunction(args => {
-        if (args.length != 1) throw new Error("Illegal argument");
-        return util.toNumber(args[0]);
-      }));
+      var setDateUnitFunction = (name, unit) => {
+        c(name, new fl7.FluoriteFunction(args => {
+          if (args[0] === undefined) throw new Error("Illegal argument");
+          if (args.length > 2) throw new Error("Illegal argument");
+          var right = args[1] === undefined ? 0 : util.toNumber(args[1]);
+          return util.toNumber(args[0]) * unit + right;
+        }));
+      };
+      setDateUnitFunction("UNIT_D", 1000 * 60 * 60 * 24);
+      setDateUnitFunction("UNIT_H", 1000 * 60 * 60);
+      setDateUnitFunction("UNIT_M", 1000 * 60);
+      setDateUnitFunction("UNIT_S", 1000);
+      setDateUnitFunction("UNIT_MS", 1);
+      setDateUnitFunction("DAYS", 1000 * 60 * 60 * 24);
+      setDateUnitFunction("HOURS", 1000 * 60 * 60);
+      setDateUnitFunction("MINUTES", 1000 * 60);
+      setDateUnitFunction("SECONDS", 1000);
+      setDateUnitFunction("MILLISECONDS", 1);
       m("_LITERAL_INTEGER", e => {
         if (e.arg(0) instanceof fl7c.FluoriteNodeTokenInteger) {
           return inline("(" + e.arg(0).getValue() + ")");
@@ -3802,20 +3800,27 @@
           ];
         };
 
-        var codeResult = getCodeGetterOfNumber(e.node().getArgument(0));
+        var i = count - 1;
 
-        for (var i = 1; i < count; i += 2) {
-          if (i + 1 >= count) {
-            var codeBody = getCodeGetterOfIdentifier(e.node().getArgument(i));
-            codeResult = call(codeBody, [codeResult]);
-          } else {
-            var codeBody = getCodeGetterOfIdentifier(e.node().getArgument(i));
-            var codeTail = getCodeGetterOfNumber(e.node().getArgument(i + 1));
-            codeResult = call(codeBody, [codeResult, codeTail]);
-          }
+        var codeRight;
+        if (count % 2 == 0) {
+          var codeLeft = getCodeGetterOfNumber(e.node().getArgument(i - 1));
+          var codeIdentifier = getCodeGetterOfIdentifier(e.node().getArgument(i));
+          codeRight = call(codeIdentifier, [codeLeft]);
+          i -= 2;
+        } else {
+          codeRight = getCodeGetterOfNumber(e.node().getArgument(i));
+          i--;
         }
 
-        return codeResult;
+        while (i >= 0) {
+          var codeLeft = getCodeGetterOfNumber(e.node().getArgument(i - 1));
+          var codeIdentifier = getCodeGetterOfIdentifier(e.node().getArgument(i));
+          codeRight = call(codeIdentifier, [codeLeft, codeRight]);
+          i -= 2;
+        }
+
+        return codeRight;
       });
       m("_ROUND", e => {
 
