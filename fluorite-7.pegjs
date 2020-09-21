@@ -2343,6 +2343,18 @@
         }
         throw new Error("Illegal argument");
       }));
+      c("FACT", new fl7.FluoriteFunction(args => {
+        if (args.length == 1) {
+          var n = util.toNumber(args[0]);
+          if (n < 0) throw new Error("Illegal argument: " + n);
+          var t = 1;
+          for (var i = 2; i <= n; i++) {
+            t *= i;
+          }
+          return t;
+        }
+        throw new Error("Illegal argument");
+      }));
       c("SIN", new fl7.FluoriteFunction(args => {
         if (args.length == 1) {
           return Math.sin(util.toNumber(args[0]));
@@ -2436,41 +2448,193 @@
         }
         throw new Error("Illegal argument");
       }));
+      c("HEAD", new fl7.FluoriteFunction(args => {
+        if (args.length === 2) {
+          const stream = util.toStream(args[0]).start();
+          const limit = util.toNumber(args[1]);
+          class FluoriteStreamerImpl extends fl7.FluoriteStreamer {
+
+            constructor() {
+              super();
+            }
+
+            start() {
+              let consumed = 0;
+              return {
+                next: () => {
+                  if (consumed >= limit) return undefined;
+                  consumed++;
+                  return stream.next();
+                },
+              };
+            }
+
+          }
+          return new FluoriteStreamerImpl();
+        }
+        throw new Error("Illegal argument");
+      }));
+      c("SKIP", new fl7.FluoriteFunction(args => {
+        if (args.length === 2) {
+          const stream = util.toStream(args[0]).start();
+          const limit = util.toNumber(args[1]);
+          class FluoriteStreamerImpl extends fl7.FluoriteStreamer {
+
+            constructor() {
+              super();
+            }
+
+            start() {
+              let skipped = false;
+              return {
+                next: () => {
+                  if (!skipped) {
+                    skipped = true;
+                    for (let i = 0; i < limit; i++) {
+                      const item = stream.next();
+                      if (item === undefined) return undefined;
+                    }
+                  }
+                  return stream.next();
+                },
+              };
+            }
+
+          }
+          return new FluoriteStreamerImpl();
+        }
+        throw new Error("Illegal argument");
+      }));
+      c("TAIL", new fl7.FluoriteFunction(args => {
+        if (args.length === 2) {
+          const stream = util.toStream(args[0]).start();
+          const limit = util.toNumber(args[1]);
+          class FluoriteStreamerImpl extends fl7.FluoriteStreamer {
+
+            constructor() {
+              super();
+            }
+
+            start() {
+              const buffer = [];
+              let skipped = false;
+              let i = 0;
+              return {
+                next: () => {
+                  if (!skipped) {
+                    skipped = true;
+                    while (true) {
+                      const item = stream.next();
+                      if (item === undefined) break;
+                      buffer.push(item);
+                      if (buffer.length > limit) buffer.shift();
+                    }
+                  }
+                  if (i >= buffer.length) return undefined;
+                  const item = buffer[i];
+                  i++;
+                  return item;
+                },
+              };
+            }
+
+          }
+          return new FluoriteStreamerImpl();
+        }
+        throw new Error("Illegal argument");
+      }));
+      c("BODY", new fl7.FluoriteFunction(args => {
+        let stream;
+        let skip;
+        let count;
+        if (args.length === 2) {
+          stream = util.toStream(args[0]).start();
+          skip = util.toNumber(args[1]);
+          count = 1;
+        } else if (args.length === 3) {
+          stream = util.toStream(args[0]).start();
+          skip = util.toNumber(args[1]);
+          count = util.toNumber(args[2]);
+        } else {
+          throw new Error("Illegal argument");
+        }
+        class FluoriteStreamerImpl extends fl7.FluoriteStreamer {
+
+          constructor() {
+            super();
+          }
+
+          start() {
+            let skipped = false;
+            let consumed = 0;
+            return {
+              next: () => {
+                if (!skipped) {
+                  skipped = true;
+                  for (let i = 0; i < skip; i++) {
+                    const item = stream.next();
+                    if (item === undefined) return undefined;
+                  }
+                }
+                if (consumed >= count) return undefined;
+                consumed++;
+                return stream.next();
+              },
+            };
+          }
+
+        }
+        return new FluoriteStreamerImpl();
+      }));
       c("ADD", new fl7.FluoriteFunction(args => {
-        var stream = args[0];
-        if (stream === undefined) throw new Error("Illegal argument");
-        stream = util.toStream(stream).start();
-        var result = 0;
-        while (true) {
-          var next = stream.next();
-          if (next === undefined) break;
-          result += util.toNumber(next);
+        let result = 0;
+        for (let i = 0; i < args.length; i++) {
+          const stream = util.toStream(args[i]).start();
+          while (true) {
+            const next = stream.next();
+            if (next === undefined) break;
+            result += util.toNumber(next);
+          }
         }
         return result;
       }));
       c("MUL", new fl7.FluoriteFunction(args => {
-        var stream = args[0];
-        if (stream === undefined) throw new Error("Illegal argument");
-        stream = util.toStream(stream).start();
-        var result = 1;
-        while (true) {
-          var next = stream.next();
-          if (next === undefined) break;
-          result *= util.toNumber(next);
+        let result = 1;
+        for (let i = 0; i < args.length; i++) {
+          const stream = util.toStream(args[i]).start();
+          while (true) {
+            const next = stream.next();
+            if (next === undefined) break;
+            result *= util.toNumber(next);
+          }
         }
         return result;
       }));
       c("COUNT", new fl7.FluoriteFunction(args => {
-        var stream = args[0];
-        if (stream === undefined) throw new Error("Illegal argument");
-        stream = util.toStream(stream).start();
-        var result = 0;
-        while (true) {
-          var next = stream.next();
-          if (next === undefined) break;
-          result++;
+        let result = 0;
+        for (let i = 0; i < args.length; i++) {
+          const stream = util.toStream(args[i]).start();
+          while (true) {
+            const next = stream.next();
+            if (next === undefined) break;
+            result++;
+          }
         }
         return result;
+      }));
+      c("AVERAGE", new fl7.FluoriteFunction(args => {
+        let sum = 0;
+        let count = 0;
+        for (let i = 0; i < args.length; i++) {
+          const stream = util.toStream(args[i]).start();
+          while (true) {
+            const next = stream.next();
+            if (next === undefined) break;
+            sum += util.toNumber(next);
+            count++;
+          }
+        }
+        return sum / count;
       }));
       objects.ARRAY = fl7.util.createObject(null, {
         CALL: new fl7.FluoriteFunction(args => {
