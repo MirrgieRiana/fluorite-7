@@ -2974,7 +2974,7 @@
         streamer = util.toStream(streamer);
 
         var array = streamer.toArray();
-        return array.length == 0 ? null : array[Math.floor(Math.random() * array.length)];
+        return array.length == 0 ? util.empty() : array[Math.floor(Math.random() * array.length)];
       }));
       c("SORT", new fl7.FluoriteFunction(args => {
 
