@@ -2967,6 +2967,15 @@
 
         return max === undefined ? null : max;
       }));
+      c("RANDOM", new fl7.FluoriteFunction(args => {
+
+        var streamer = args[0];
+        if (streamer === undefined) throw new Error("Illegal argument");
+        streamer = util.toStream(streamer);
+
+        var array = streamer.toArray();
+        return array[Math.floor(Math.random() * array.length)];
+      }));
       c("SORT", new fl7.FluoriteFunction(args => {
 
         var streamer = args[0];
