@@ -1913,17 +1913,7 @@
       getValueFromObject: function(object, key) {
 
         if (isNumber(key)) {
-
-          if (object instanceof Array) {
-            return util.getFromArray(object, key);
-          }
-
-          if (object instanceof FluoriteObject) {
-            var res = util.getValueFromObject(object, "GET");
-            if (res !== null) return util.call(res, [object, key]);
-            return util.getValueFromObject(object, String(key));
-          }
-
+          return util.getFromArray(object, key);
         }
 
         var objectClass;
