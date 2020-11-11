@@ -14,6 +14,7 @@ usage() {
 output_json=0
 compile=0
 embedded_fluorite=0
+unset exec
 script_file="<eval>"
 options=""
 while (($# > 0))
