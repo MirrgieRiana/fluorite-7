@@ -5028,6 +5028,39 @@
       m("_PIPE", e => functionPipe(e, null));
       m("_ITERATE_PIPE", (e, funcCode) => functionIteratePipe(e, funcCode, null));
       m("_QUESTION_PIPE", e => functionPipe(e, code => code + " !== null"));
+      m("_EXCLAMATION_QUESTION", e => {
+
+        var variableResult = "v_" + e.pc().allocateVariableId();
+
+        var variableIdError = e.pc().allocateVariableId();
+        var variableError = "v_" + variableIdError;
+        var aliasError = new fl7c.FluoriteAliasVariable(variableIdError);
+
+        e.pc().pushFrame();
+        var codesLeft = e.arg(0).getCodeGetter(e.pc());
+        e.pc().popFrame();
+        e.pc().pushFrame();
+        e.pc().getFrame()["_"] = aliasError;
+        var codesRight = e.arg(1).getCodeGetter(e.pc());
+        e.pc().popFrame();
+
+        return [
+          "let " + variableResult + ";\n" +
+          "try {\n" +
+          fl7c.util.indent(
+            codesLeft[0] +
+            variableResult + " = " + codesLeft[1] + ";\n"
+          ) +
+          "} catch (" + variableError + ") {\n" +
+          fl7c.util.indent(
+          variableError + " = " + variableError + ".toString();\n" +
+            codesRight[0] +
+            variableResult + " = " + codesRight[1] + ";\n"
+          ) +
+          "}\n",
+          "(" + variableResult + ")",
+        ];
+      });
       m("_ITERATE_QUESTION_PIPE", (e, funcCode) => functionIteratePipe(e, funcCode, code => code + " !== null"));
       m("_EXCLAMATION_PIPE", e => functionPipe(e, code => code + " === null"));
       m("_ITERATE_EXCLAMATION_PIPE", (e, funcCode) => functionIteratePipe(e, funcCode, code => code + " === null"));
@@ -5742,6 +5775,7 @@ Pipe
     ( "|" { return [location(), "_PIPE"]; }
     / "?|" { return [location(), "_QUESTION_PIPE"]; }
     / "!|" { return [location(), "_EXCLAMATION_PIPE"]; }
+    / "!?" { return [location(), "_EXCLAMATION_QUESTION"]; }
   ) _)* tail:LeftAssignment {
     var result = tail;
     for (var i = head.length - 1; i >= 0; i--) {
