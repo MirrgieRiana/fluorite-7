@@ -3340,13 +3340,13 @@
         if (args.length != 1) throw new Error("Illegal argument");
         var string = args[0];
         string = util.toString(string);
-        return encodeURI(string);
+        return encodeURIComponent(string);
       }));
       c("FROM_URI", new fl7.FluoriteFunction(args => {
         if (args.length != 1) throw new Error("Illegal argument");
         var string = args[0];
         string = util.toString(string);
-        return decodeURI(string);
+        return decodeURIComponent(string);
       }));
       c("YN", new fl7.FluoriteFunction(args => {
         return util.toBoolean(args[0]) ? "Yes" : "No";
