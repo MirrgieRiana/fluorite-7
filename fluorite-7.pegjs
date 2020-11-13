@@ -3336,6 +3336,18 @@
         charcode = util.toNumber(charcode);
         return String.fromCharCode.apply(null, [charcode]);
       }));
+      c("URI", new fl7.FluoriteFunction(args => {
+        if (args.length != 1) throw new Error("Illegal argument");
+        var string = args[0];
+        string = util.toString(string);
+        return encodeURI(string);
+      }));
+      c("FROM_URI", new fl7.FluoriteFunction(args => {
+        if (args.length != 1) throw new Error("Illegal argument");
+        var string = args[0];
+        string = util.toString(string);
+        return decodeURI(string);
+      }));
       c("YN", new fl7.FluoriteFunction(args => {
         return util.toBoolean(args[0]) ? "Yes" : "No";
       }));
