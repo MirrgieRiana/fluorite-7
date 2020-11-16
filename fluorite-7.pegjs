@@ -3342,6 +3342,24 @@
         string = util.toString(string);
         return encodeURIComponent(string);
       }));
+      c("CR", new fl7.FluoriteFunction(args => {
+        if (args.length != 1) throw new Error("Illegal argument");
+        var string = args[0];
+        string = util.toString(string);
+        return string.replace(/\r\n?|\n/g, replacement => "\r");
+      }));
+      c("LF", new fl7.FluoriteFunction(args => {
+        if (args.length != 1) throw new Error("Illegal argument");
+        var string = args[0];
+        string = util.toString(string);
+        return string.replace(/\r\n?|\n/g, replacement => "\n");
+      }));
+      c("CRLF", new fl7.FluoriteFunction(args => {
+        if (args.length != 1) throw new Error("Illegal argument");
+        var string = args[0];
+        string = util.toString(string);
+        return string.replace(/\r\n?|\n/g, replacement => "\r\n");
+      }));
       c("FROM_URI", new fl7.FluoriteFunction(args => {
         if (args.length != 1) throw new Error("Illegal argument");
         var string = args[0];
