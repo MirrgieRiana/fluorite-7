@@ -21,8 +21,6 @@ chmod +x fluorite-7/fluorite7
 
 (
   cd fluorite-7
-  mkdir -p node_modules/heapdump
-  mkdir -p node_modules/pegjs
   npm install
   ./compile.bash
 )
