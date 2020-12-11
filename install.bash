@@ -13,8 +13,10 @@ else
 fi
 
 echo -e '#!/usr/bin/env bash\nexec "$(dirname "$0")"/fluorite-7/fl7 "$@"' > fl7
+echo -e '#!/usr/bin/env bash\nexec "$(dirname "$0")"/fluorite-7/fl7m "$@"' > fl7m
 echo -e '#!/usr/bin/env bash\nexec "$(dirname "$0")"/fluorite-7/fluorite7 "$@"' > fluorite7
 chmod +x fl7
+chmod +x fl7m
 chmod +x fluorite7
 chmod +x fluorite-7/fl7
 chmod +x fluorite-7/fluorite7
