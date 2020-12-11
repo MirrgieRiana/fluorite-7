@@ -2,7 +2,7 @@
 
 usage() {
   echo "USAGE: $0 (" >&2
-  echo "         install <repository_url>" >&2
+  echo "         pull <repository_url>" >&2
   echo "       )" >&2
   exit 1
 }
