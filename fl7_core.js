@@ -48,6 +48,37 @@ function parse(source, startRule, scriptFile) {
     var pathes = result.fl7.util.toStream(args[0]).toArray();
     return path.resolve.apply(null, pathes);
   }));
+  c("MODULE", new result.fl7.FluoriteFunction(args => {
+    if (args.length == 2) {
+      const baseFile = result.fl7.util.toString(args[0]);
+      let moduleName = result.fl7.util.toString(args[1]);
+      const moduleScript = "main.fl7";
+      return path.resolve(baseFile, "../fl7_modules", "_" + encodeURIComponent(moduleName)
+        .replace(/\-/g, "%2D")
+        .replace(/\./g, "%2E")
+        .replace(/\!/g, "%21")
+        .replace(/\~/g, "%7E")
+        .replace(/\*/g, "%2A")
+        .replace(/\'/g, "%27")
+        .replace(/\(/g, "%28")
+        .replace(/\)/g, "%29"), moduleScript);
+    } else if (args.length == 3) {
+      const baseFile = result.fl7.util.toString(args[0]);
+      let moduleName = result.fl7.util.toString(args[1]);
+      const moduleScript = result.fl7.util.toString(args[2]);
+      return path.resolve(baseFile, "../fl7_modules", "_" + encodeURIComponent(moduleName)
+        .replace(/\-/g, "%2D")
+        .replace(/\./g, "%2E")
+        .replace(/\!/g, "%21")
+        .replace(/\~/g, "%7E")
+        .replace(/\*/g, "%2A")
+        .replace(/\'/g, "%27")
+        .replace(/\(/g, "%28")
+        .replace(/\)/g, "%29"), moduleScript);
+    } else {
+      throw new Error("Illegal Argument");
+    }
+  }));
   c("IN", (function(){
     class FluoriteStreamerStdin extends result.fl7.FluoriteStreamer {
       constructor () {
