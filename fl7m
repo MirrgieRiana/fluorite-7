@@ -75,7 +75,7 @@ do
   (($? == 0)) || exit
 
   # ダウンロード元
-  url_absolute_file=$(fl7 'ENV.repository_url =~ /^([a-zA-Z0-9_]+:\/\/[^\/]+)(\/.*)$/ | _.1 & RESOLVE(_.2, "..", (ENV.url_file | *FROM_URI)) | "?" @ _ ? _ : "$_?"')
+  url_absolute_file=$(fl7 'ENV.repository_url =~ /^((?:http|https):\/\/[^\/]+|file:\/\/)(\/.*)$/ | _.1 & RESOLVE(_.2, "..", (ENV.url_file | *FROM_URI)) | "?" @ _ ? _ : "$_?"')
   (($? == 0)) || exit
 
   # ダウンロード
