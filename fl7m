@@ -28,7 +28,14 @@ log "Repository URL: $repository_url"
 
 # リポジトリJSONファイル読み取り
 log "Fetching: $repository_url"
-repository_json=$(curl -s "$repository_url")
+repository_json=$(curl -s "$(fl7 '
+  a : ENV.repository_url =~ /^((?:http|https):\/\/[^\/]+|file:\/\/)(\/.*)$/;
+  a ? (
+    a.1 & RESOLVE(a.2) | "?" @ _ ? _ : "$_?"
+  ) : (
+    "file://" & REPLACE(RESOLVE(ENV.repository_url); /([^\/a-zA-Z0-9_])/g; \"%$%02s(_.1 | *CHARCODE | BASE(_; 16) | *UC)")
+  )
+')")
 (($? == 0)) || exit
 export repository_json
 
@@ -75,7 +82,14 @@ do
   (($? == 0)) || exit
 
   # ダウンロード元
-  url_absolute_file=$(fl7 'ENV.repository_url =~ /^((?:http|https):\/\/[^\/]+|file:\/\/)(\/.*)$/ | _.1 & RESOLVE(_.2, "..", (ENV.url_file | *FROM_URI)) | "?" @ _ ? _ : "$_?"')
+  url_absolute_file=$(fl7 '
+    a : ENV.repository_url =~ /^((?:http|https):\/\/[^\/]+|file:\/\/)(\/.*)$/;
+    a ? (
+      a.1 & RESOLVE(a.2, "..", (ENV.url_file | *FROM_URI)) | "?" @ _ ? _ : "$_?"
+    ) : (
+      "file://" & REPLACE(RESOLVE(ENV.repository_url, "..", (ENV.url_file | *FROM_URI)); /([^\/a-zA-Z0-9_])/g; \"%$%02s(_.1 | *CHARCODE | BASE(_; 16) | *UC)")
+    )
+  ')
   (($? == 0)) || exit
 
   # ダウンロード
