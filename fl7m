@@ -24,11 +24,14 @@ shift
 
 #
 
+dir_fl7=$(dirname "$0")
+fl7=$dir_fl7/fl7
+
 log "Repository URL: $repository_url"
 
 # リポジトリJSONファイル読み取り
 log "Fetching: $repository_url"
-repository_json=$(curl -s "$(fl7 '
+repository_json=$(curl -s "$("$fl7" '
   a : ENV.repository_url =~ /^((?:http|https):\/\/[^\/]+|file:\/\/)(\/.*)$/;
   a ? (
     a.1 & RESOLVE(a.2) | "?" @ _ ? _ : "$_?"
@@ -40,13 +43,13 @@ repository_json=$(curl -s "$(fl7 '
 export repository_json
 
 # リポジトリ名
-repository_name=$(fl7 '&FROM_JSON(ENV.repository_json).name | *URI')
+repository_name=$("$fl7" '&FROM_JSON(ENV.repository_json).name | *URI')
 (($? == 0)) || exit
 export repository_name
 log "Repository Name: $repository_name"
 
 # リポジトリ格納ディレクトリ
-repository_dir=fl7_modules/_$(fl7 '&FROM_JSON(ENV.repository_json).name | *URI | REPLACE(_; /[^a-zA-Z0-9_%]/g; \"%$%02s(UC(BASE(CHARCODE(_); 16)))")')
+repository_dir=fl7_modules/_$("$fl7" '&FROM_JSON(ENV.repository_json).name | *URI | REPLACE(_; /[^a-zA-Z0-9_%]/g; \"%$%02s(UC(BASE(CHARCODE(_); 16)))")')
 (($? == 0)) || exit
 export repository_dir
 log "Repository Dir: $repository_dir"
@@ -63,7 +66,7 @@ log "Making $repository_dir"
 mkdir -p "$repository_dir" || exit
 
 # リポジトリファイル
-list_url_file=($(fl7 'FROM_JSON(ENV.repository_json).files[] | &_ | *URI | REPLACE(_; /[^a-zA-Z0-9_%]/g; \"%$%02s(UC(BASE(CHARCODE(_); 16)))") => JOIN >> " "'))
+list_url_file=($("$fl7" 'FROM_JSON(ENV.repository_json).files[] | &_ | *URI | REPLACE(_; /[^a-zA-Z0-9_%]/g; \"%$%02s(UC(BASE(CHARCODE(_); 16)))") => JOIN >> " "'))
 (($? == 0)) || exit
 
 # ダウンロード
@@ -73,7 +76,7 @@ do
   export url_file
 
   # 実際のファイル名
-  file=$(fl7 '
+  file=$("$fl7" '
     s : (ENV.url_file | *FROM_URI);
     s =~ /^([^\/]+(?:\/[^\/]+)*)$/ ?: ERROR("Illegal file name: $s");
     +([SPLIT(s; "/")] | "." @ _ || ".." @ _) && ERROR("Illegal file name: $s");
@@ -82,7 +85,7 @@ do
   (($? == 0)) || exit
 
   # ダウンロード元
-  url_absolute_file=$(fl7 '
+  url_absolute_file=$("$fl7" '
     a : ENV.repository_url =~ /^((?:http|https):\/\/[^\/]+|file:\/\/)(\/.*)$/;
     a ? (
       a.1 & RESOLVE(a.2, "..", (ENV.url_file | *FROM_URI)) | "?" @ _ ? _ : "$_?"
