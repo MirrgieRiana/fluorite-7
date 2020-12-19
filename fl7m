@@ -97,6 +97,7 @@ do
 
   # ダウンロード
   log "Downloading $url_absolute_file -> $repository_dir/$file"
+  mkdir -p "$(dirname "$repository_dir/$file")"
   curl -s "$url_absolute_file" > "$repository_dir/$file" || exit
 
 done
