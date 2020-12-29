@@ -786,6 +786,12 @@
         throw new Error("Cannot convert streamer to json ");
       }
 
+      getStream() {
+        return new FluoriteStreamerMap(this, value => {
+          return util.toStreamFromArray(value);
+        });
+      }
+
       getLength() {
         var result = 0;
         var stream = this.start();
@@ -1744,6 +1750,11 @@
       },
 
       getFromArray: function(array, index) { // TODO 名称変更
+        if (array instanceof FluoriteStreamer) {
+          return new FluoriteStreamerMap(array, value => {
+            return util.getFromArray(value, index);
+          });
+        }
         if (array instanceof Array) {
           index = util.toNumber(index);
           if (index < 0) index = array.length + index;
@@ -1921,6 +1932,10 @@
           objectClass = this.objects.ARRAY;
         } else if (object instanceof FluoriteObject) {
           objectClass = object;
+        } else if (object instanceof FluoriteStreamer) {
+          return new FluoriteStreamerMap(object, value => {
+            return util.getValueFromObject(value, key);
+          });
         } else {
           throw new Error("Illegal argument: " + object + ", " + key);
         }
@@ -1954,6 +1969,10 @@
           objectClass = this.objects.ARRAY;
         } else if (object instanceof FluoriteObject) {
           objectClass = object;
+        } else if (object instanceof FluoriteStreamer) {
+          return new FluoriteStreamerMap(object, value => {
+            return util.getDelegate(value, key);
+          });
         } else {
           throw new Error("Illegal argument: " + object + ", " + key); // TODO エラーが起こったら引数をログに出す
         }
