@@ -2439,30 +2439,36 @@
         throw new Error("Illegal argument");
       }));
       c("HEAD", new fl7.FluoriteFunction(args => {
-        if (args.length === 2) {
-          const stream = util.toStream(args[0]).start();
-          const limit = util.toNumber(args[1]);
-          class FluoriteStreamerImpl extends fl7.FluoriteStreamer {
-
-            constructor() {
-              super();
-            }
-
-            start() {
-              let consumed = 0;
-              return {
-                next: () => {
-                  if (consumed >= limit) return undefined;
-                  consumed++;
-                  return stream.next();
-                },
-              };
-            }
-
-          }
-          return new FluoriteStreamerImpl();
+        let stream;
+        let limit;
+        if (args.length === 1) {
+          stream = util.toStream(args[0]).start();
+          limit = 1;
+        } else if (args.length === 2) {
+          stream = util.toStream(args[0]).start();
+          limit = util.toNumber(args[1]);
+        } else {
+          throw new Error("Illegal argument");
         }
-        throw new Error("Illegal argument");
+        class FluoriteStreamerImpl extends fl7.FluoriteStreamer {
+
+          constructor() {
+            super();
+          }
+
+          start() {
+            let consumed = 0;
+            return {
+              next: () => {
+                if (consumed >= limit) return undefined;
+                consumed++;
+                return stream.next();
+              },
+            };
+          }
+
+        }
+        return new FluoriteStreamerImpl();
       }));
       c("SKIP", new fl7.FluoriteFunction(args => {
         if (args.length === 2) {
@@ -2496,42 +2502,48 @@
         throw new Error("Illegal argument");
       }));
       c("TAIL", new fl7.FluoriteFunction(args => {
-        if (args.length === 2) {
-          const stream = util.toStream(args[0]).start();
-          const limit = util.toNumber(args[1]);
-          class FluoriteStreamerImpl extends fl7.FluoriteStreamer {
-
-            constructor() {
-              super();
-            }
-
-            start() {
-              const buffer = [];
-              let skipped = false;
-              let i = 0;
-              return {
-                next: () => {
-                  if (!skipped) {
-                    skipped = true;
-                    while (true) {
-                      const item = stream.next();
-                      if (item === undefined) break;
-                      buffer.push(item);
-                      if (buffer.length > limit) buffer.shift();
-                    }
-                  }
-                  if (i >= buffer.length) return undefined;
-                  const item = buffer[i];
-                  i++;
-                  return item;
-                },
-              };
-            }
-
-          }
-          return new FluoriteStreamerImpl();
+        let stream;
+        let limit;
+        if (args.length === 1) {
+          stream = util.toStream(args[0]).start();
+          limit = 1;
+        } else if (args.length === 2) {
+          stream = util.toStream(args[0]).start();
+          limit = util.toNumber(args[1]);
+        } else {
+          throw new Error("Illegal argument");
         }
-        throw new Error("Illegal argument");
+        class FluoriteStreamerImpl extends fl7.FluoriteStreamer {
+
+          constructor() {
+            super();
+          }
+
+          start() {
+            const buffer = [];
+            let skipped = false;
+            let i = 0;
+            return {
+              next: () => {
+                if (!skipped) {
+                  skipped = true;
+                  while (true) {
+                    const item = stream.next();
+                    if (item === undefined) break;
+                    buffer.push(item);
+                    if (buffer.length > limit) buffer.shift();
+                  }
+                }
+                if (i >= buffer.length) return undefined;
+                const item = buffer[i];
+                i++;
+                return item;
+              },
+            };
+          }
+
+        }
+        return new FluoriteStreamerImpl();
       }));
       c("BODY", new fl7.FluoriteFunction(args => {
         let stream;
