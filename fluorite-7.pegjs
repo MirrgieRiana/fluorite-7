@@ -2607,6 +2607,33 @@
         }
         return new FluoriteStreamerImpl();
       }));
+      c("REDUCE", new fl7.FluoriteFunction(args => {
+        let stream;
+        let reducer;
+        let value;
+        if (args.length == 2) {
+          stream = util.toStream(args[0]).start();
+          reducer = args[1];
+          value = undefined;
+        } else if (args.length == 3) {
+          stream = util.toStream(args[0]).start();
+          reducer = args[1];
+          value = args[2];
+        } else {
+          throw new Error("Illegal argument");
+        }
+        if (value === undefined) {
+          value = stream.next();
+          if (value === undefined) return null;
+        }
+
+        while (true) {
+          const next = stream.next();
+          if (next === undefined) break;
+          value = util.call(reducer, [value, next]);
+        }
+        return value;
+      }));
       c("ADD", new fl7.FluoriteFunction(args => {
         let result = 0;
         for (let i = 0; i < args.length; i++) {
