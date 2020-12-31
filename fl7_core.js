@@ -76,6 +76,7 @@ function parse(source, startRule, scriptFile) {
               break;
             }
           }
+
           // ファイルの終端に来た場合はこれまでにたまっていたバッファをくっつけて返す
           // ただし何も貯まっていない場合は何も返さない
           if (length === 0) {
@@ -133,6 +134,46 @@ function parse(source, startRule, scriptFile) {
       },
     };
   }
+  function createBufferReader(fd, size, doClose) {
+
+    let closed = false;
+
+    return {
+      next: () => {
+        while (true) {
+
+          // 既に閉じている場合は何も返さない
+          if (closed) return undefined;
+
+          // 新しく読み込む
+          let buffer;
+          let length;
+          while (true) {
+            try {
+              buffer = Buffer.alloc(size);
+              length = fs.readSync(fd, buffer, 0, buffer.length, null);
+            } catch (e) {
+              if (e.code === "EAGAIN") {
+                continue;
+              } else {
+                throw e;
+              }
+            }
+            break;
+          }
+
+          // ファイルの終端に来た場合は終了する
+          if (length === 0) {
+            closed = true;
+            if (doClose) fs.closeSync(fd);
+            return undefined;
+          }
+
+          return Array.from(buffer.subarray(0, length));
+        }
+      },
+    };
+  }
   c("RESOLVE", new result.fl7.FluoriteFunction(args => {
     if (args.length < 1) throw new Error("Illegal Argument");
     var pathes = result.fl7.util.toStream(args[0]).toArray();
@@ -176,6 +217,17 @@ function parse(source, startRule, scriptFile) {
       }
       start() {
         return createUtf8LineReader(process.stdin.fd, 4096, false);
+      }
+    }
+    return new FluoriteStreamerStdin();
+  })());
+  c("INB", (function(){
+    class FluoriteStreamerStdin extends result.fl7.FluoriteStreamer {
+      constructor () {
+        super();
+      }
+      start() {
+        return createBufferReader(process.stdin.fd, 4096, false);
       }
     }
     return new FluoriteStreamerStdin();
