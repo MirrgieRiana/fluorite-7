@@ -108,6 +108,18 @@ function parse(source, startRule, scriptFile) {
     }
     return new FluoriteStreamerStdin();
   })());
+  c("ERR", new result.fl7.FluoriteFunction(args => {
+    if (args.length == 1) {
+      var stream = result.fl7.util.toStream(args[0]).start();
+      while (true) {
+        var next = stream.next();
+        if (next === undefined) break;
+        console.error("%s", result.fl7.util.toString(next));
+      }
+      return args[0];
+    }
+    throw new Error("Illegal argument");
+  }));
   c("READ", (function(){
     class FluoriteStreamerRead extends result.fl7.FluoriteStreamer {
       constructor (filename) {
