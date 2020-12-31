@@ -232,6 +232,24 @@ function parse(source, startRule, scriptFile) {
     }
     return new FluoriteStreamerStdin();
   })());
+  c("OUTB", new result.fl7.FluoriteFunction(args => {
+    if (args.length == 1) {
+      var stream = result.fl7.util.toStream(args[0]).start();
+      while (true) {
+        var next = stream.next();
+        if (next === undefined) break;
+        if (next instanceof Array) {
+          process.stdout.write(Buffer.from(next))
+        } else if (typeof next === "string") {
+          process.stdout.write(next);
+        } else {
+          throw new Error("Illegal argument");
+        }
+      }
+      return args[0];
+    }
+    throw new Error("Illegal argument");
+  }));
   c("ERR", new result.fl7.FluoriteFunction(args => {
     if (args.length == 1) {
       var stream = result.fl7.util.toStream(args[0]).start();
@@ -239,6 +257,24 @@ function parse(source, startRule, scriptFile) {
         var next = stream.next();
         if (next === undefined) break;
         console.error("%s", result.fl7.util.toString(next));
+      }
+      return args[0];
+    }
+    throw new Error("Illegal argument");
+  }));
+  c("ERRB", new result.fl7.FluoriteFunction(args => {
+    if (args.length == 1) {
+      var stream = result.fl7.util.toStream(args[0]).start();
+      while (true) {
+        var next = stream.next();
+        if (next === undefined) break;
+        if (next instanceof Array) {
+          process.stderr.write(Buffer.from(next))
+        } else if (typeof next === "string") {
+          process.stderr.write(next);
+        } else {
+          throw new Error("Illegal argument");
+        }
       }
       return args[0];
     }
