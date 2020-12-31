@@ -43,6 +43,96 @@ function parse(source, startRule, scriptFile) {
     }
     return Buffer.concat(buffers, length).toString('utf8', 0, length);
   }
+  function createUtf8LineReader(fd, size, doClose) {
+
+    let closed = false;
+    let buffers = [];
+    let buffer;
+    let start = 0;
+    let length = 0;
+    let afterCR = false;
+
+    return {
+      next: () => {
+        while (true) {
+
+          // 既に閉じている場合は何も返さない
+          if (closed) return undefined;
+
+          // 前回の残りがないなら新しく読み込む
+          if (start >= length) {
+            while (true) {
+              try {
+                buffer = Buffer.alloc(size);
+                start = 0;
+                length = fs.readSync(fd, buffer, 0, buffer.length, null);
+              } catch (e) {
+                if (e.code === "EAGAIN") {
+                  continue;
+                } else {
+                  throw e;
+                }
+              }
+              break;
+            }
+          }
+          // ファイルの終端に来た場合はこれまでにたまっていたバッファをくっつけて返す
+          // ただし何も貯まっていない場合は何も返さない
+          if (length === 0) {
+            closed = true;
+            if (doClose) fs.closeSync(fd);
+            if (buffers.length === 0) {
+              return undefined;
+            } else {
+              return Buffer.concat(buffers).toString("utf8");
+            }
+          }
+
+          // CRの直後のLFは無視する
+          if (afterCR) {
+            if (buffer[start] === 10) {
+              start++;
+              afterCR = false;
+              continue;
+            }
+          }
+
+          // 改行文字が出る位置を探す
+          let index = -1;
+          for (let i = start; i < length; i++) {
+            if (buffer[i] === 10) {
+              index = i;
+              afterCR = false;
+              break;
+            } else if (buffer[i] === 13) {
+              index = i;
+              afterCR = true;
+              break;
+            }
+          }
+
+          // 改行文字があった場合、これまでにたまっていたバッファとこのバッファをくっつけたバッファを返す
+          if (index !== -1) {
+            if (buffers.length === 0) {
+              const result = buffer.subarray(start, index);
+              start = index + 1;
+              return result.toString("utf8");
+            } else {
+              const result = Buffer.concat([...buffers, buffer.subarray(start, index)]);
+              buffers = [];
+              start = index + 1;
+              return result.toString("utf8");
+            }
+          }
+
+          // 改行文字が見つからなかった場合、このバッファをためる
+          buffers.push(buffer.subarray(start, length));
+          start = length;
+
+        }
+      },
+    };
+  }
   c("RESOLVE", new result.fl7.FluoriteFunction(args => {
     if (args.length < 1) throw new Error("Illegal Argument");
     var pathes = result.fl7.util.toStream(args[0]).toArray();
@@ -84,26 +174,8 @@ function parse(source, startRule, scriptFile) {
       constructor () {
         super();
       }
-      start() { // TODO 徐々に読み込む
-        const fd = process.stdin.fd;
-        const input = loadStringUtf8(fd);
-        //fs.closeSync(fd); // IN後にEXECするとエラーになる問題対策
-        const inputs = input.split("\n");
-        var i = 0;
-        return {
-          next: () => {
-            if (i >= inputs.length) return undefined;
-            if (i == inputs.length - 1) {
-              if (inputs[i] === "") {
-                i++;
-                return undefined;
-              }
-            }
-            var result = inputs[i];
-            i++;
-            return result;
-          },
-        };
+      start() {
+        return createUtf8LineReader(process.stdin.fd, 4096, false);
       }
     }
     return new FluoriteStreamerStdin();
