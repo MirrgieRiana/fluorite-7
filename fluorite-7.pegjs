@@ -2421,7 +2421,7 @@
           while (true) {
             var next = stream.next();
             if (next === undefined) break;
-            console.log(util.toString(next));
+            console.log("%s", util.toString(next));
           }
           return args[0];
         }
