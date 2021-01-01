@@ -2730,6 +2730,31 @@
         }
         return new FluoriteStreamerImpl();
       }));
+      c("FIRST", new fl7.FluoriteFunction(args => {
+        let stream;
+        if (args.length === 1) {
+          stream = util.toStream(args[0]).start();
+        } else {
+          throw new Error("Illegal argument");
+        }
+        const next = stream.next();
+        if (next === undefined) return null;
+        return next;
+      }));
+      c("LAST", new fl7.FluoriteFunction(args => {
+        let stream;
+        if (args.length === 1) {
+          stream = util.toStream(args[0]).start();
+        } else {
+          throw new Error("Illegal argument");
+        }
+        let last = null;
+        while (true) {
+          const next = stream.next();
+          if (next === undefined) return last;
+          last = next;
+        }
+      }));
       c("REDUCE", new fl7.FluoriteFunction(args => {
         let stream;
         let reducer;
