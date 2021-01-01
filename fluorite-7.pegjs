@@ -2442,6 +2442,129 @@
       c("TRUE", true);
       c("FALSE", false);
       c("NULL", null);
+
+
+      c("INT8", new fl7.FluoriteFunction(args => {
+        if (args.length === 1) {
+          if (typeof args[0] !== "number") throw new Error("Illegal argument");
+          return Array.from(new Uint8Array(Int8Array.from([args[0]]).buffer));
+        }
+        throw new Error("Illegal argument");
+      }));
+      c("FROM_INT8", new fl7.FluoriteFunction(args => {
+        if (args.length === 1) {
+          if (!(args[0] instanceof Array)) throw new Error("Illegal argument");
+          return Array.from(new Int8Array(Uint8Array.from(args[0]).buffer))[0];
+        }
+        throw new Error("Illegal argument");
+      }));
+
+      c("UINT8", new fl7.FluoriteFunction(args => {
+        if (args.length === 1) {
+          if (typeof args[0] !== "number") throw new Error("Illegal argument");
+          return Array.from(new Uint8Array(Uint8Array.from([args[0]]).buffer));
+        }
+        throw new Error("Illegal argument");
+      }));
+      c("FROM_UINT8", new fl7.FluoriteFunction(args => {
+        if (args.length === 1) {
+          if (!(args[0] instanceof Array)) throw new Error("Illegal argument");
+          return Array.from(new Uint8Array(Uint8Array.from(args[0]).buffer))[0];
+        }
+        throw new Error("Illegal argument");
+      }));
+
+      c("INT16", new fl7.FluoriteFunction(args => {
+        if (args.length === 1) {
+          if (typeof args[0] !== "number") throw new Error("Illegal argument");
+          return Array.from(new Uint8Array(Int16Array.from([args[0]]).buffer));
+        }
+        throw new Error("Illegal argument");
+      }));
+      c("FROM_INT16", new fl7.FluoriteFunction(args => {
+        if (args.length === 1) {
+          if (!(args[0] instanceof Array)) throw new Error("Illegal argument");
+          return Array.from(new Int16Array(Uint8Array.from(args[0]).buffer))[0];
+        }
+        throw new Error("Illegal argument");
+      }));
+
+      c("UINT16", new fl7.FluoriteFunction(args => {
+        if (args.length === 1) {
+          if (typeof args[0] !== "number") throw new Error("Illegal argument");
+          return Array.from(new Uint8Array(Uint16Array.from([args[0]]).buffer));
+        }
+        throw new Error("Illegal argument");
+      }));
+      c("FROM_UINT16", new fl7.FluoriteFunction(args => {
+        if (args.length === 1) {
+          if (!(args[0] instanceof Array)) throw new Error("Illegal argument");
+          return Array.from(new Uint16Array(Uint8Array.from(args[0]).buffer))[0];
+        }
+        throw new Error("Illegal argument");
+      }));
+
+      c("INT32", new fl7.FluoriteFunction(args => {
+        if (args.length === 1) {
+          if (typeof args[0] !== "number") throw new Error("Illegal argument");
+          return Array.from(new Uint8Array(Int32Array.from([args[0]]).buffer));
+        }
+        throw new Error("Illegal argument");
+      }));
+      c("FROM_INT32", new fl7.FluoriteFunction(args => {
+        if (args.length === 1) {
+          if (!(args[0] instanceof Array)) throw new Error("Illegal argument");
+          return Array.from(new Int32Array(Uint8Array.from(args[0]).buffer))[0];
+        }
+        throw new Error("Illegal argument");
+      }));
+
+      c("UINT32", new fl7.FluoriteFunction(args => {
+        if (args.length === 1) {
+          if (typeof args[0] !== "number") throw new Error("Illegal argument");
+          return Array.from(new Uint8Array(Uint32Array.from([args[0]]).buffer));
+        }
+        throw new Error("Illegal argument");
+      }));
+      c("FROM_UINT32", new fl7.FluoriteFunction(args => {
+        if (args.length === 1) {
+          if (!(args[0] instanceof Array)) throw new Error("Illegal argument");
+          return Array.from(new Uint32Array(Uint8Array.from(args[0]).buffer))[0];
+        }
+        throw new Error("Illegal argument");
+      }));
+
+      c("FLOAT32", new fl7.FluoriteFunction(args => {
+        if (args.length === 1) {
+          if (typeof args[0] !== "number") throw new Error("Illegal argument");
+          return Array.from(new Uint8Array(Float32Array.from([args[0]]).buffer));
+        }
+        throw new Error("Illegal argument");
+      }));
+      c("FROM_FLOAT32", new fl7.FluoriteFunction(args => {
+        if (args.length === 1) {
+          if (!(args[0] instanceof Array)) throw new Error("Illegal argument");
+          return Array.from(new Float32Array(Uint8Array.from(args[0]).buffer))[0];
+        }
+        throw new Error("Illegal argument");
+      }));
+
+      c("FLOAT64", new fl7.FluoriteFunction(args => {
+        if (args.length === 1) {
+          if (typeof args[0] !== "number") throw new Error("Illegal argument");
+          return Array.from(new Uint8Array(Float64Array.from([args[0]]).buffer));
+        }
+        throw new Error("Illegal argument");
+      }));
+      c("FROM_FLOAT64", new fl7.FluoriteFunction(args => {
+        if (args.length === 1) {
+          if (!(args[0] instanceof Array)) throw new Error("Illegal argument");
+          return Array.from(new Float64Array(Uint8Array.from(args[0]).buffer))[0];
+        }
+        throw new Error("Illegal argument");
+      }));
+
+
       c("RAND", new fl7.FluoriteFunction(args => {
         if (args.length == 0) {
           return Math.random();
