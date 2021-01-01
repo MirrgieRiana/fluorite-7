@@ -3031,12 +3031,11 @@
           const tableOut = [];
           for (let i = 0; i < tableIn.length; i++) {
             for (let j = 0; j < tableIn[i].length; j++) {
-              if (tableOut.length <= j) {
-                const array2 = [];
-                for (let k = 0; k < i; k++) {
-                  array2[k] = null;
-                }
-                tableOut.push(array2);
+              while (tableOut.length <= j) {
+                tableOut.push([]);
+              }
+              while (tableOut[j].length <= i - 1) {
+                tableOut[j].push(null);
               }
               tableOut[j][i] = tableIn[i][j];
             }
