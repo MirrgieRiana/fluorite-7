@@ -3024,6 +3024,27 @@
         var array = streamer.toArray();
         return array.length == 0 ? util.empty() : array[Math.floor(Math.random() * array.length)];
       }));
+      c("TRANSPOSE", new fl7.FluoriteFunction(args => {
+        if (args.length === 1) {
+          const tableIn = args[0];
+          if (!(tableIn instanceof Array)) throw new Error("Illegal argument");
+          const tableOut = [];
+          for (let i = 0; i < tableIn.length; i++) {
+            for (let j = 0; j < tableIn[i].length; j++) {
+              if (tableOut.length <= j) {
+                const array2 = [];
+                for (let k = 0; k < i; k++) {
+                  array2[k] = null;
+                }
+                tableOut.push(array2);
+              }
+              tableOut[j][i] = tableIn[i][j];
+            }
+          }
+          return tableOut;
+        }
+        throw new Error("Illegal argument");
+      }));
       c("SORT", new fl7.FluoriteFunction(args => {
 
         var streamer = args[0];
