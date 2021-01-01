@@ -470,6 +470,35 @@ function parse(source, startRule, scriptFile) {
       env: env,
     }));
   }));
+  c("SHELL", new result.fl7.FluoriteFunction(args => {
+
+    let script = args[0];
+    if (script === undefined) throw new Error("Illegal argument");
+    script = result.fl7.util.toString(script);
+
+    const stringOut = child_process.execFileSync(process.env.SHELL, [], {
+      input: script,
+      encoding: "utf8",
+      maxBuffer: 64 * 1024 * 1024,
+      env: process.env,
+    });
+    const arrayOut = stringOut.split("\n");
+    if (arrayOut[arrayOut.length - 1] === "") arrayOut.pop();
+    return result.fl7.util.toStreamFromArray(arrayOut);
+  }));
+  c("SHELLB", new result.fl7.FluoriteFunction(args => {
+
+    let script = args[0];
+    if (script === undefined) throw new Error("Illegal argument");
+    script = Buffer.from(result.fl7.util.toString(script));
+
+    return Array.from(child_process.execFileSync(process.env.SHELL, [], {
+      input: script,
+      encoding: "buffer",
+      maxBuffer: 64 * 1024 * 1024,
+      env: process.env,
+    }));
+  }));
   c("EVAL", (function(){
     return new result.fl7.FluoriteFunction(args => {
       var source = args[0];
