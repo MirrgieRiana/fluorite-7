@@ -210,6 +210,20 @@ function parse(source, startRule, scriptFile) {
       throw new Error("Illegal Argument");
     }
   }));
+  c("UTF8", new result.fl7.FluoriteFunction(args => {
+    if (args.length == 1) {
+      return Array.from(Buffer.from(result.fl7.util.toString(args[0])));
+    }
+    throw new Error("Illegal argument");
+  }));
+  c("FROM_UTF8", new result.fl7.FluoriteFunction(args => {
+    if (args.length == 1) {
+      if (args[0] instanceof Array) {
+        return Buffer.from(args[0]).toString();
+      }
+    }
+    throw new Error("Illegal argument");
+  }));
   c("IN", (function(){
     class FluoriteStreamerStdin extends result.fl7.FluoriteStreamer {
       constructor () {
