@@ -286,26 +286,24 @@ function parse(source, startRule, scriptFile) {
         super();
         this._filename = filename;
       }
-      start() { // TODO 徐々に読み込む
-        const fd = fs.openSync(this._filename, "r");
-        const input = loadStringUtf8(fd);
-        fs.closeSync(fd);
-        const inputs = input.split("\n");
-        var i = 0;
-        return {
-          next: () => {
-            if (i >= inputs.length) return undefined;
-            if (i == inputs.length - 1) {
-              if (inputs[i] === "") {
-                i++;
-                return undefined;
-              }
-            }
-            var result = inputs[i];
-            i++;
-            return result;
-          },
-        };
+      start() {
+        return createUtf8LineReader(fs.openSync(this._filename, "r"), 4096, true);
+      }
+    }
+    return new result.fl7.FluoriteFunction(args => {
+      var filename = args[0];
+      if (filename === undefined) throw new Error("Illegal argument");
+      return new FluoriteStreamerRead(result.fl7.util.toString(filename));
+    });
+  })());
+  c("READB", (function(){
+    class FluoriteStreamerRead extends result.fl7.FluoriteStreamer {
+      constructor (filename) {
+        super();
+        this._filename = filename;
+      }
+      start() {
+        return createBufferReader(fs.openSync(this._filename, "r"), 4096, true);
       }
     }
     return new result.fl7.FluoriteFunction(args => {
@@ -329,6 +327,31 @@ function parse(source, startRule, scriptFile) {
         if (next === undefined) break;
         fs.writeSync(fd, result.fl7.util.toString(next));
         fs.writeSync(fd, "\n");
+      }
+      fs.closeSync(fd);
+      return null;
+    });
+  })());
+  c("WRITEB", (function(){
+    return new result.fl7.FluoriteFunction(args => {
+      var filename = args[0];
+      if (filename === undefined) throw new Error("Illegal argument");
+      filename = result.fl7.util.toString(filename);
+      var streamer = args[1];
+      if (streamer === undefined) throw new Error("Illegal argument");
+      streamer = result.fl7.util.toStream(streamer);
+      const fd = fs.openSync(filename, "w");
+      const stream = streamer.start();
+      while (true) {
+        const next = stream.next();
+        if (next === undefined) break;
+        if (next instanceof Array) {
+          fs.writeSync(fd, Buffer.from(next));
+        } else if (typeof next === "string") {
+          fs.writeSync(fd, next);
+        } else {
+          throw new Error("Illegal argument");
+        }
       }
       fs.closeSync(fd);
       return null;
