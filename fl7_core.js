@@ -363,7 +363,11 @@ function parse(source, startRule, scriptFile) {
     let stdin = args[2];
     if (stdin === undefined) stdin = null;
     if (stdin === null) stdin = "";
-    stdin = result.fl7.util.toString(stdin);
+    if (stdin instanceof Array) {
+      stdin = Buffer.from(stdin);
+    } else {
+      stdin = result.fl7.util.toString(stdin);
+    }
 
     let env = process.env;
     {
@@ -389,6 +393,59 @@ function parse(source, startRule, scriptFile) {
     const arrayOut = stringOut.split("\n");
     if (arrayOut[arrayOut.length - 1] === "") arrayOut.pop();
     return result.fl7.util.toStreamFromArray(arrayOut);
+  }));
+  c("EXECB", new result.fl7.FluoriteFunction(args => {
+
+    let filename = args[0];
+    if (filename === undefined) throw new Error("Illegal argument");
+    filename = result.fl7.util.toString(filename);
+
+    let argsExec = [];
+    {
+
+      let streamer = args[1];
+      if (streamer === undefined) streamer = null;
+      if (streamer === null) streamer = result.fl7.util.empty();
+      streamer = result.fl7.util.toStream(streamer);
+
+      const stream = streamer.start();
+      while (true) {
+        const next = stream.next();
+        if (next === undefined) break;
+        argsExec[argsExec.length] = result.fl7.util.toString(next);
+      }
+    }
+
+    let stdin = args[2];
+    if (stdin === undefined) stdin = null;
+    if (stdin === null) stdin = "";
+    if (stdin instanceof Array) {
+      stdin = Buffer.from(stdin);
+    } else {
+      stdin = Buffer.from(result.fl7.util.toString(stdin));
+    }
+
+    let env = process.env;
+    {
+      let extraEnv = args[3];
+      if (extraEnv === undefined) extraEnv = null;
+      if (extraEnv === null) {
+      } else if (extraEnv instanceof result.fl7.FluoriteObject) {
+        env = {
+          ...env,
+          ...extraEnv.map,
+        };
+      } else {
+        throw new Error("Illegal argument");
+      }
+    }
+
+    return Array.from(child_process.execFileSync(filename, argsExec, {
+      input: stdin,
+      encoding: "buffer",
+      maxBuffer: 64 * 1024 * 1024,
+      env: env,
+    }));
   }));
   c("EVAL", (function(){
     return new result.fl7.FluoriteFunction(args => {
