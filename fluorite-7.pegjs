@@ -2581,13 +2581,13 @@
         throw new Error("Illegal argument");
       }));
       c("HEAD", new fl7.FluoriteFunction(args => {
-        let stream;
+        let streamer;
         let limit;
         if (args.length === 1) {
-          stream = util.toStream(args[0]).start();
+          streamer = util.toStream(args[0]);
           limit = 1;
         } else if (args.length === 2) {
-          stream = util.toStream(args[0]).start();
+          streamer = util.toStream(args[0]);
           limit = util.toNumber(args[1]);
         } else {
           throw new Error("Illegal argument");
@@ -2599,6 +2599,7 @@
           }
 
           start() {
+            let stream = streamer.start();
             let consumed = 0;
             return {
               next: () => {
@@ -2614,7 +2615,7 @@
       }));
       c("SKIP", new fl7.FluoriteFunction(args => {
         if (args.length === 2) {
-          const stream = util.toStream(args[0]).start();
+          const streamer = util.toStream(args[0]);
           const limit = util.toNumber(args[1]);
           class FluoriteStreamerImpl extends fl7.FluoriteStreamer {
 
@@ -2623,6 +2624,7 @@
             }
 
             start() {
+              let stream = streamer.start();
               let skipped = false;
               return {
                 next: () => {
@@ -2644,13 +2646,13 @@
         throw new Error("Illegal argument");
       }));
       c("TAIL", new fl7.FluoriteFunction(args => {
-        let stream;
+        let streamer;
         let limit;
         if (args.length === 1) {
-          stream = util.toStream(args[0]).start();
+          streamer = util.toStream(args[0]);
           limit = 1;
         } else if (args.length === 2) {
-          stream = util.toStream(args[0]).start();
+          streamer = util.toStream(args[0]);
           limit = util.toNumber(args[1]);
         } else {
           throw new Error("Illegal argument");
@@ -2663,6 +2665,7 @@
 
           start() {
             const buffer = [];
+            let stream = streamer.start();
             let skipped = false;
             let i = 0;
             return {
@@ -2688,15 +2691,15 @@
         return new FluoriteStreamerImpl();
       }));
       c("BODY", new fl7.FluoriteFunction(args => {
-        let stream;
+        let streamer;
         let skip;
         let count;
         if (args.length === 2) {
-          stream = util.toStream(args[0]).start();
+          streamer = util.toStream(args[0]);
           skip = util.toNumber(args[1]);
           count = 1;
         } else if (args.length === 3) {
-          stream = util.toStream(args[0]).start();
+          streamer = util.toStream(args[0]);
           skip = util.toNumber(args[1]);
           count = util.toNumber(args[2]);
         } else {
@@ -2709,6 +2712,7 @@
           }
 
           start() {
+            let stream = streamer.start();
             let skipped = false;
             let consumed = 0;
             return {
