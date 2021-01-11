@@ -5135,8 +5135,9 @@
         var alias = new fl7c.FluoriteAliasVariable(variableId);
         var variableIdIndex = e.pc().allocateVariableId();
         var variableIndex = "v_" + variableIdIndex;
-        var aliasIndex = new fl7c.FluoriteAliasVariable(variableIdIndex);
-
+        var variableIdIndexConst = e.pc().allocateVariableId();
+        var variableIndexConst = "v_" + variableIdIndexConst;
+        var aliasIndex = new fl7c.FluoriteAliasVariable(variableIdIndexConst);
         if (args.iterate) {
 
           e.pc().pushFrame();
@@ -5158,6 +5159,7 @@
             "const " + variableIdFunction + " = function(" + variable + ") {\n" +
             fl7c.util.indent(
               "" + variableIndex + "++;\n" +
+              "const " + variableIndexConst + " = " + variableIndex + ";\n" +
               codesRight[0] +
               "return " + codesRight[1] + ";\n"
             ) +
@@ -5226,7 +5228,9 @@
 
         var variableIdIndex = e.pc().allocateVariableId();
         var variableIndex = "v_" + variableIdIndex;
-        var aliasIndex = new fl7c.FluoriteAliasVariable(variableIdIndex);
+        var variableIdIndexConst = e.pc().allocateVariableId();
+        var variableIndexConst = "v_" + variableIdIndexConst;
+        var aliasIndex = new fl7c.FluoriteAliasVariable(variableIdIndexConst);
 
         if (args.iterate) {
           return [
@@ -5248,6 +5252,7 @@
 
                 return (
                   "" + variableIndex + "++;\n" +
+                  "const " + variableIndexConst + " = " + variableIndex + ";\n" +
                   "const " + variableIdItem + " = " + codeItem + ";\n" +
                   "if (" + (functionCodeFilter === null ? "true" : functionCodeFilter(variableIdItem)) + ") {\n" +
                   fl7c.util.indent(
