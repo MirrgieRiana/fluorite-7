@@ -375,6 +375,36 @@ function parse(source, startRule, scriptFile) {
     if (args.length != 1) throw new Error("Illegal argument");
     return result.fl7.util.toStreamFromArray(fs.readdirSync(result.fl7.util.toString(args[0])));
   }));
+  c("STAT", new result.fl7.FluoriteFunction(args => {
+    if (args.length != 1) throw new Error("Illegal argument");
+    const stats = statSync(result.fl7.util.toString(args[0]), {throwIfNoEntry: false});
+    if (stats === undefined) return null;
+    return new result.fl7.FluoriteObject(null, {
+      is_blockDevice: new result.fl7.FluoriteFunction(args => stats.isBlockDevice()),
+      is_characterDevice: new result.fl7.FluoriteFunction(args => stats.isCharacterDevice()),
+      is_directory: new result.fl7.FluoriteFunction(args => stats.isDirectory()),
+      is_fifo: new result.fl7.FluoriteFunction(args => stats.isFIFO()),
+      is_file: new result.fl7.FluoriteFunction(args => stats.isFile()),
+      is_socket: new result.fl7.FluoriteFunction(args => stats.isSocket()),
+      is_symbolicLink: new result.fl7.FluoriteFunction(args => stats.isSymbolicLink()),
+      dev: stats.dev,
+      ino: stats.ino,
+      mode: stats.mode,
+      nlink: stats.nlink,
+      uid: stats.uid,
+      gid: stats.gid,
+      rdev: stats.rdev,
+      size: stats.size,
+      blksize: stats.blksize,
+      blocks: stats.blocks,
+      atime: stats.atimeMs,
+      mtime: stats.mtimeMs,
+      ctime: stats.ctimeMs,
+      birthtime: stats.birthtimeMs,
+      TO_NUMBER: new result.fl7.FluoriteFunction(args => stats.size),
+      LENGTH: new result.fl7.FluoriteFunction(args => stats.size),
+    });
+  }));
   c("EXEC", new result.fl7.FluoriteFunction(args => {
 
     let filename = args[0];
