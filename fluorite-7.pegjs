@@ -4600,7 +4600,7 @@
         );
       });
       m("_LEFT_DOLLAR_HASH", e => wrap_0(e, c => "(util.getLength(" + c + "))"));
-      m("_LEFT_DOLLAR_BACKSLASH", e => wrap_0(e, c => "(JSON.stringify(" + c + "))"));
+      m("_LEFT_DOLLAR_BACKSLASH", e => wrap_0(e, c => "(JSON.stringify(" + c + ", null, 2))"));
       m("_LEFT_DOLLAR_ASTERISK", e => wrap_0(e, c => "(JSON.parse(util.toString(" + c + ")))"));
       m("_LEFT_ATSIGN", e => {
 
