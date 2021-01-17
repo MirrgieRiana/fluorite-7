@@ -4600,6 +4600,8 @@
         );
       });
       m("_LEFT_DOLLAR_HASH", e => wrap_0(e, c => "(util.getLength(" + c + "))"));
+      m("_LEFT_DOLLAR_BACKSLASH", e => wrap_0(e, c => "(JSON.stringify(" + c + "))"));
+      m("_LEFT_DOLLAR_ASTERISK", e => wrap_0(e, c => "(JSON.parse(util.toString(" + c + ")))"));
       m("_LEFT_ATSIGN", e => {
 
         // 項を評価
@@ -5641,7 +5643,7 @@ LiteralIdentifier
 
 LiteralDollar
   = "$$" { return new fl7c.FluoriteNodeMacro(location(), "_LITERAL_DOLLAR2", []); }
-  / "$" !("#" / "(" / "%" / "{") { return new fl7c.FluoriteNodeMacro(location(), "_LITERAL_DOLLAR", []); } // TODO delete
+  / "$" !("#" / "(" / "%" / "{" / "*" / "\\") { return new fl7c.FluoriteNodeMacro(location(), "_LITERAL_DOLLAR", []); } // TODO delete
 
 LiteralCircumflex
   = "^" { return new fl7c.FluoriteNodeMacro(location(), "_LITERAL_CIRCUMFLEX", []); }
@@ -5825,6 +5827,8 @@ Left
     / "*" { return [location(), "_LEFT_ASTERISK", []]; }
     / "\\" { return [location(), "_LEFT_BACKSLASH", []]; }
     / "$#" { return [location(), "_LEFT_DOLLAR_HASH", []]; }
+    / "$\\" { return [location(), "_LEFT_DOLLAR_BACKSLASH", []]; }
+    / "$*" { return [location(), "_LEFT_DOLLAR_ASTERISK", []]; }
     / "@" { return [location(), "_LEFT_ATSIGN", []]; }
     / "`" main:Right "`" { return [location(), "_LEFT_BACKQUOTES", [main]]; }
   ) _ tail:Left {
