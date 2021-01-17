@@ -3,6 +3,7 @@ const path = require("path");
 const child_process = require("child_process");
 const parser = require(process.env.app_dir + "/fluorite-7.js");
 const heapdump = require("heapdump");
+const syncRequest = require("sync-request");
 let globalResult;
 const cacheUse = new Map();
 function parse(source, startRule, scriptFile) {
@@ -625,6 +626,20 @@ function parse(source, startRule, scriptFile) {
   c("EXIT", new result.fl7.FluoriteFunction(args => {
     const code = args[0] === undefined ? 0 : result.fl7.util.toNumber(args[0]);
     process.exit(code);
+  }));
+  c("HTTP", new result.fl7.FluoriteFunction(args => {
+    if (args.length !== 1) throw new Error("Illegal argument");
+    const url = result.fl7.util.toString(args[0]);
+    const response = syncRequest("GET", url);
+    if (response.statusCode < 200 || response.statusCode >= 300) throw new Error("HTTP Error: " + response.statusCode);
+    return response.body.toString("utf8");
+  }));
+  c("HTTPB", new result.fl7.FluoriteFunction(args => {
+    if (args.length !== 1) throw new Error("Illegal argument");
+    const url = result.fl7.util.toString(args[0]);
+    const response = syncRequest("GET", url);
+    if (response.statusCode < 200 || response.statusCode >= 300) throw new Error("HTTP Error: " + response.statusCode);
+    return Array.from(response.body);
   }));
   const codes = result.node.getCodeGetter(env);
   const code = "(function() {\n" + result.fl7c.util.indent(codes[0] + "return " + codes[1] + ";\n") + "}())";
