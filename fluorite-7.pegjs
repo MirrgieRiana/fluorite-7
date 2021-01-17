@@ -1542,6 +1542,17 @@
         throw new Error("Illegal argument: " + value);
       },
 
+      toJson: function(value) {
+        return JSON.stringify(value, null, 2);
+      },
+
+      fromJson: function(value) {
+        return JSON.parse(util.toString(value), (k, v) => {
+          if (typeof v === "object" && v !== null && !Array.isArray(v)) return util.createObject(null, v);
+          return v;
+        })
+      },
+
       format: function(format, value) {
 
         if (format instanceof FluoriteObject) {
@@ -4600,8 +4611,8 @@
         );
       });
       m("_LEFT_DOLLAR_HASH", e => wrap_0(e, c => "(util.getLength(" + c + "))"));
-      m("_LEFT_DOLLAR_BACKSLASH", e => wrap_0(e, c => "(JSON.stringify(" + c + ", null, 2))"));
-      m("_LEFT_DOLLAR_ASTERISK", e => wrap_0(e, c => "(JSON.parse(util.toString(" + c + ")))"));
+      m("_LEFT_DOLLAR_BACKSLASH", e => wrap_0(e, c => "(util.toJson(" + c + "))"));
+      m("_LEFT_DOLLAR_ASTERISK", e => wrap_0(e, c => "(util.fromJson(" + c + "))"));
       m("_LEFT_ATSIGN", e => {
 
         // 項を評価
