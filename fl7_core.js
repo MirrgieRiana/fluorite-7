@@ -632,7 +632,10 @@ function parse(source, startRule, scriptFile) {
     const url = result.fl7.util.toString(args[0]);
     const response = syncRequest("GET", url);
     if (response.statusCode < 200 || response.statusCode >= 300) throw new Error("HTTP Error: " + response.statusCode);
-    return response.body.toString("utf8");
+    const stringOut = response.body.toString("utf8");
+    const arrayOut = stringOut.split("\n");
+    if (arrayOut[arrayOut.length - 1] === "") arrayOut.pop();
+    return result.fl7.util.toStreamFromArray(arrayOut);
   }));
   c("HTTPB", new result.fl7.FluoriteFunction(args => {
     if (args.length !== 1) throw new Error("Illegal argument");
