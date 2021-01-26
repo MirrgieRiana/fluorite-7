@@ -373,8 +373,13 @@ function parse(source, startRule, scriptFile) {
     });
   })());
   c("LS", new result.fl7.FluoriteFunction(args => {
-    if (args.length != 1) throw new Error("Illegal argument");
-    return result.fl7.util.toStreamFromArray(fs.readdirSync(result.fl7.util.toString(args[0])));
+    if (args.length === 0) {
+      return result.fl7.util.toStreamFromArray(fs.readdirSync("."));
+    } else if (args.length === 1) {
+      return result.fl7.util.toStreamFromArray(fs.readdirSync(result.fl7.util.toString(args[0])));
+    } else {
+      throw new Error("Illegal argument");
+    }
   }));
   c("STAT", new result.fl7.FluoriteFunction(args => {
     if (args.length != 1) throw new Error("Illegal argument");
