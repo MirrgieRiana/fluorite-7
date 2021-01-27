@@ -607,7 +607,7 @@ function parse(source, startRule, scriptFile) {
   })());
   constantIdsScript.push(c("FILE", path.resolve(scriptFile)));
   c("ARGV", process.argv.slice(1));
-  c("ARGS", process.argv.slice(2));
+  c("ARGS", result.fl7.util.toStreamFromArray(process.argv.slice(2)));
   c("ENV", (function() {
     const map = {};
     const names = Object.getOwnPropertyNames(process.env);
