@@ -28,4 +28,5 @@ chmod a+x fluorite-7/fluorite7
   cd fluorite-7
   npm install
   ./compile.bash
+  ./fl7m pull 'https://raw.githubusercontent.com/MirrgieRiana/fl7-module_fl7.argv/main/module.json?'
 )
