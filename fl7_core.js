@@ -176,41 +176,48 @@ function parse(source, startRule, scriptFile) {
     };
   }
   c("RESOLVE", new result.fl7.FluoriteFunction(args => {
-    if (args.length < 1) throw new Error("Illegal Argument");
+    if (args.length !== 1) throw new Error("Illegal Argument");
     var pathes = result.fl7.util.toStream(args[0]).toArray();
     return path.resolve.apply(null, pathes);
   }));
   c("MODULE", new result.fl7.FluoriteFunction(args => {
+    let baseFiles;
+    let moduleName;
+    let moduleScript;
     if (args.length == 2) {
-      const baseFile = result.fl7.util.toString(args[0]);
-      let moduleName = result.fl7.util.toString(args[1]);
-      const moduleScript = "main.fl7";
-      return path.resolve(baseFile, "../fl7_modules", "_" + encodeURIComponent(moduleName)
-        .replace(/\-/g, "%2D")
-        .replace(/\./g, "%2E")
-        .replace(/\!/g, "%21")
-        .replace(/\~/g, "%7E")
-        .replace(/\*/g, "%2A")
-        .replace(/\'/g, "%27")
-        .replace(/\(/g, "%28")
-        .replace(/\)/g, "%29"), moduleScript);
+      baseFiles = result.fl7.util.toStream(args[0]).toArray();
+      moduleName = result.fl7.util.toString(args[1]);
+      moduleScript = "main.fl7";
     } else if (args.length == 3) {
-      const baseFile = result.fl7.util.toString(args[0]);
-      let moduleName = result.fl7.util.toString(args[1]);
-      const moduleScript = result.fl7.util.toString(args[2]);
-      return path.resolve(baseFile, "../fl7_modules", "_" + encodeURIComponent(moduleName)
-        .replace(/\-/g, "%2D")
-        .replace(/\./g, "%2E")
-        .replace(/\!/g, "%21")
-        .replace(/\~/g, "%7E")
-        .replace(/\*/g, "%2A")
-        .replace(/\'/g, "%27")
-        .replace(/\(/g, "%28")
-        .replace(/\)/g, "%29"), moduleScript);
+      baseFiles = result.fl7.util.toStream(args[0]).toArray();
+      moduleName = result.fl7.util.toString(args[1]);
+      moduleScript = result.fl7.util.toString(args[2]);
     } else {
       throw new Error("Illegal Argument");
     }
+
+    for (let baseFile of baseFiles) {
+      let modulePath = path.resolve(baseFile, "../fl7_modules", "_" + encodeURIComponent(moduleName)
+        .replace(/\-/g, "%2D")
+        .replace(/\./g, "%2E")
+        .replace(/\!/g, "%21")
+        .replace(/\~/g, "%7E")
+        .replace(/\*/g, "%2A")
+        .replace(/\'/g, "%27")
+        .replace(/\(/g, "%28")
+        .replace(/\)/g, "%29"));
+      let stat = fs.statSync(modulePath, {throwIfNoEntry: false});
+      if (stat !== undefined && stat.isDirectory()) {
+        return path.resolve(modulePath, moduleScript);
+      }
+    }
+    throw new Error("No such module: " + moduleName);
   }));
+  c("INC", result.fl7.util.toStreamFromArray([
+    "./fl7_modules",
+    path.resolve(process.env.HOME, ".fl7/fl7_modules"),
+    path.resolve(process.env.app_dir, "fl7_modules"),
+  ]));
   c("UTF8", new result.fl7.FluoriteFunction(args => {
     if (args.length == 1) {
       return Array.from(Buffer.from(result.fl7.util.toString(args[0])));
