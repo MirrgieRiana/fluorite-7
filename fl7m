@@ -24,11 +24,11 @@
         # モジュールはURL
         create_pathHandler : path -> {
           get : () -> (
-            "Fetching : $path" => log;
+            "Fetching: $path" => log;
             HTTP(path)
           );
           download : dest -> (
-            "Downloading : $path -> $dest" => log;
+            "Downloading: $path -> $dest" => log;
             WRITE(dest; HTTP(path))
           );
         };
@@ -40,11 +40,11 @@
         # モジュールはローカルファイル
         create_pathHandler : path -> {
           get : () -> (
-            "Reading : $path" => log;
+            "Reading: $path" => log;
             READ(path)
           );
           download : dest -> (
-            "Copying : $path -> $dest" => log;
+            "Copying: $path -> $dest" => log;
             EXEC("cp"; path, dest)
           );
         };
