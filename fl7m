@@ -1,107 +1,100 @@
 #!/usr/bin/env bash
 
-usage() {
-  echo "USAGE: $0 (" >&2
-  echo "         pull <repository_url>" >&2
-  echo "       )" >&2
-  exit 1
-}
+"$(dirname "$0")"/fl7 '
+  @STRICT;
 
-log() {
-  echo "[$(date '+%F %T')] $1"
-}
+  usage : message -> (
+    message && (message => ERR);
+    "USAGE: $(ARGV.0) pull <url_module>" => ERR;
+    EXIT(1);
+  );
+  log : message -> OUT("[$(DATE())] $message");
 
-(($# < 1)) && usage
-command=$1
-shift
+  $#ARGV <= 1 && usage(NULL);
+  command : ARGV.1;
+  (command === "pull") ? (
+    $#ARGV <= 2 && usage(NULL);
+    url_module : ARGV.2;
+    "Module URL: $url_module" => log;
 
-(($# < 1)) && usage
-repository_url=$1
-export repository_url
-shift
+    # モジュールハンドラ
+    moduleHandler : (
+      a : url_module =~ /^((?:http|https):\/\/[^\/]+|file:\/\/)(\/.*)$/;
+      a ? (
+        # モジュールはURL
+        create_pathHandler : path -> {
+          get : () -> (
+            "Fetching : $path" => log;
+            HTTP(path)
+          );
+          download : dest -> (
+            "Downloading : $path -> $dest" => log;
+            WRITE(dest; HTTP(path))
+          );
+        };
+        {
+          index : () -> create_pathHandler(a.1 & RESOLVE(a.2) | "?" @ _ ? _ : "$_?");
+          resolve : path -> create_pathHandler(a.1 & RESOLVE(a.2, "..", path) | "?" @ _ ? _ : "$_?");
+        }
+      ) : (
+        # モジュールはローカルファイル
+        create_pathHandler : path -> {
+          get : () -> (
+            "Reading : $path" => log;
+            READ(path)
+          );
+          download : dest -> (
+            "Copying : $path -> $dest" => log;
+            EXEC("cp"; path, dest)
+          );
+        };
+        {
+          index : () -> create_pathHandler(RESOLVE(url_module));
+          resolve : path -> create_pathHandler(RESOLVE(url_module, "..", path));
+        }
+      )
+    );
 
-(($# >= 1)) && usage
+    # モジュールJSONデータ取得
+    data_module : $*moduleHandler.index().get();
 
-#
+    # モジュール名
+    "Module Name: $(data_module.name)" => log;
 
-dir_fl7=$(dirname "$0")
-fl7=$dir_fl7/fl7
+    # モジュール格納先
+    dir_module : "fl7_modules/_$(&data_module.name | *URI | REPLACE(_; /[^a-zA-Z0-9_%]/g; \"%$%02s(UC(BASE(CHARCODE(_); 16)))"))";
+    "Module Dir: $(dir_module)" => log;
 
-log "Repository URL: $repository_url"
+    # モジュール格納先初期化
+    STAT(dir_module) && EXEC("rm"; "-rf", dir_module);
+    EXEC("mkdir"; "-p", dir_module);
 
-# リポジトリJSONファイル読み取り
-log "Fetching: $repository_url"
-repository_json=$(curl -s "$("$fl7" '
-  a : ENV.repository_url =~ /^((?:http|https):\/\/[^\/]+|file:\/\/)(\/.*)$/;
-  a ? (
-    a.1 & RESOLVE(a.2) | "?" @ _ ? _ : "$_?"
+    # モジュール構成ファイルダウンロード
+    file : data_module.files[] | (
+
+      # ファイル名チェック
+      (
+
+        # 先頭が/、末尾が/、/が連続であってはならない
+        file =~ /^\/|\/$|\/\// && ERROR("Illegal file name: $file");
+
+        # 節に.や..があってはならない
+        +([SPLIT(file; "/")] | "." @ _ || ".." @ _) && ERROR("Illegal file name: $file");
+
+      );
+
+      # 出力先
+      dest : RESOLVE(dir_module, file);
+
+      # ダウンロード
+      EXEC("mkdir"; "-p", RESOLVE(dest, ".."));
+      moduleHandler.resolve(file).download(dest);
+
+    );
+
+    "Successfully Installed" => log;
+
   ) : (
-    "file://" & REPLACE(RESOLVE(ENV.repository_url); /([^\/a-zA-Z0-9_])/g; \"%$%02s(_.1 | *CHARCODE | BASE(_; 16) | *UC)")
-  )
-')")
-(($? == 0)) || exit
-export repository_json
-
-# リポジトリ名
-repository_name=$("$fl7" '&FROM_JSON(ENV.repository_json).name | *URI')
-(($? == 0)) || exit
-export repository_name
-log "Repository Name: $repository_name"
-
-# リポジトリ格納ディレクトリ
-repository_dir=fl7_modules/_$("$fl7" '&FROM_JSON(ENV.repository_json).name | *URI | REPLACE(_; /[^a-zA-Z0-9_%]/g; \"%$%02s(UC(BASE(CHARCODE(_); 16)))")')
-(($? == 0)) || exit
-export repository_dir
-log "Repository Dir: $repository_dir"
-
-# リポジトリ格納ディレクトリがある場合は削除
-if [ -d "$repository_dir" ]
-then
-  log "Removing $repository_dir"
-  rm -rf "$repository_dir" || exit
-fi
-
-# リポジトリ格納ディレクトリ作成
-log "Making $repository_dir"
-mkdir -p "$repository_dir" || exit
-
-# リポジトリファイル
-list_url_file=($("$fl7" 'FROM_JSON(ENV.repository_json).files[] | &_ | *URI | REPLACE(_; /[^a-zA-Z0-9_%]/g; \"%$%02s(UC(BASE(CHARCODE(_); 16)))") => JOIN >> " "'))
-(($? == 0)) || exit
-
-# ダウンロード
-for url_file in "${list_url_file[@]}"
-do
-
-  export url_file
-
-  # 実際のファイル名
-  file=$("$fl7" '
-    s : (ENV.url_file | *FROM_URI);
-    s =~ /^([^\/]+(?:\/[^\/]+)*)$/ ?: ERROR("Illegal file name: $s");
-    +([SPLIT(s; "/")] | "." @ _ || ".." @ _) && ERROR("Illegal file name: $s");
-    s
-  ')
-  (($? == 0)) || exit
-
-  # ダウンロード元
-  url_absolute_file=$("$fl7" '
-    a : ENV.repository_url =~ /^((?:http|https):\/\/[^\/]+|file:\/\/)(\/.*)$/;
-    a ? (
-      a.1 & RESOLVE(a.2, "..", (ENV.url_file | *FROM_URI)) | "?" @ _ ? _ : "$_?"
-    ) : (
-      "file://" & REPLACE(RESOLVE(ENV.repository_url, "..", (ENV.url_file | *FROM_URI)); /([^\/a-zA-Z0-9_])/g; \"%$%02s(_.1 | *CHARCODE | BASE(_; 16) | *UC)")
-    )
-  ')
-  (($? == 0)) || exit
-
-  # ダウンロード
-  log "Downloading $url_absolute_file -> $repository_dir/$file"
-  mkdir -p "$(dirname "$repository_dir/$file")"
-  curl -s "$url_absolute_file" > "$repository_dir/$file" || exit
-
-done
-
-log "Successfully Installed"
-
-exit 0
+    usage("Unknown command: $command");
+  );
+' "$@"
