@@ -2833,6 +2833,25 @@
         }
         return result;
       }));
+      c("INDEX", new fl7.FluoriteFunction(args => {
+        let stream;
+        let expected;
+        if (args.length == 2) {
+          stream = util.toStream(args[0]).start();
+          expected = args[1];
+        } else {
+          throw new Error("Illegal argument");
+        }
+
+        let i = 0;
+        while (true) {
+          const next = stream.next();
+          if (next === undefined) break;
+          if (util.equal(next, expected)) return i;
+          i++;
+        }
+        return null;
+      }));
       c("AVERAGE", new fl7.FluoriteFunction(args => {
         let sum = 0;
         let count = 0;
