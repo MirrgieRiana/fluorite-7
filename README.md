@@ -17,7 +17,20 @@ Install on `/usr/local/bin`:
 (cd /usr/local/bin; curl https://raw.githubusercontent.com/MirrgieRiana/fluorite-7/master/install.bash | bash)
 ```
 
-It is assumed that git, node and npm is installed.
+## Environment
+
+fluorite-7 needs git, node and npm and node must be a latest version.
+
+On Debian:
+
+```
+# apt update
+# apt install -y git
+# apt install -y nodejs
+# apt install -y npm
+# npm install -g n
+# n latest
+```
 
 # Online Editor
 
