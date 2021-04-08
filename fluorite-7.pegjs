@@ -3602,6 +3602,30 @@
         string = util.toString(string);
         return encodeURIComponent(string);
       }));
+      c("SHELL_ARG", new fl7.FluoriteFunction(args => {
+        let value;
+        if (args.length == 1) {
+          value = args[0];
+        } else {
+          throw new Error("Illegal argument");
+        }
+
+        let escape = value => {
+          if (value instanceof Array) {
+            return value.map(v => escape(v)).join(" ");
+          } else {
+            return "'" + util.toString(value).replace(/'/g, `'\\''`) + "'";
+          }
+        };
+
+        if (value instanceof fl7.FluoriteStreamer) {
+          return util.map(value, item => {
+            return escape(item);
+          });
+        } else {
+          return escape(value);
+        }
+      }));
       c("CR", new fl7.FluoriteFunction(args => {
         if (args.length != 1) throw new Error("Illegal argument");
         var string = args[0];
