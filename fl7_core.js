@@ -390,7 +390,16 @@ function parse(source, startRule, scriptFile) {
   }));
   c("STAT", new result.fl7.FluoriteFunction(args => {
     if (args.length != 1) throw new Error("Illegal argument");
-    const stats = fs.statSync(result.fl7.util.toString(args[0]), {throwIfNoEntry: false});
+    let stats;
+    try { // 旧バージョンnodeでエラーになる対策
+      stats = fs.statSync(result.fl7.util.toString(args[0]), {throwIfNoEntry: false});
+    } catch (e) {
+      if (e.code === "ENOENT") {
+        return null;
+      } else {
+        throw e;
+      }
+    }
     if (stats === undefined) return null;
     return new result.fl7.FluoriteObject(null, {
       is_blockDevice: new result.fl7.FluoriteFunction(args => stats.isBlockDevice()),
